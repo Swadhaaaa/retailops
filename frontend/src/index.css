@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==============================
+   Dot bounce animation delays
+   (used on the LoginPage success screen)
+   ============================== */
+.dot-bounce-delay-1 {
+  animation: dot-bounce 0.8s ease-in-out infinite;
+  animation-delay: 0s;
+}
+.dot-bounce-delay-2 {
+  animation: dot-bounce 0.8s ease-in-out infinite;
+  animation-delay: 0.1s;
+}
+.dot-bounce-delay-3 {
+  animation: dot-bounce 0.8s ease-in-out infinite;
+  animation-delay: 0.2s;
+}
+.dot-bounce-delay-4 {
+  animation: dot-bounce 0.8s ease-in-out infinite;
+  animation-delay: 0.3s;
+}
+.dot-bounce-delay-5 {
+  animation: dot-bounce 0.8s ease-in-out infinite;
+  animation-delay: 0.4s;
+}
+
+@keyframes dot-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
