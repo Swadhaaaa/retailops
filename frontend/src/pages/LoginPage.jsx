@@ -101,7 +101,7 @@ const LoginPage = () => {
         if (loggedUser.role === 'admin') {
           navigate('/admin');
         } else {
-          navigate('/user');
+          navigate('/dashboard');
         }
       }, 2000);
       return () => clearTimeout(timer);

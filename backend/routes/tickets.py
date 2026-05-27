@@ -70,13 +70,103 @@ def get_tickets():
 
     result = []
 
-    for ticket in tickets:
+    for ticket in tickets: 
         result.append({
             'ticket_id': ticket[0],
             'title': ticket[1],
             'description': ticket[2],
+            'category_id': ticket[3],
             'priority': ticket[4],
-            'status': ticket[5]
-        })
+            'status': ticket[5],
+            'raised_by': ticket[7],
+            'assigned_to': ticket[8],
+            'created_at': str(ticket[11])
+    })
 
     return jsonify(result)
+
+
+# GET SINGLE TICKET
+@tickets_bp.route('/<ticket_id>', methods=['GET'])
+@jwt_required()
+def get_single_ticket(ticket_id):
+
+    conn = duckdb.connect('tickets.db')
+
+    ticket = conn.execute("""
+        SELECT *
+        FROM tickets
+        WHERE ticket_id = ?
+    """, [ticket_id]).fetchone()
+
+    conn.close()
+
+    if not ticket:
+        return jsonify({
+            'error': 'Ticket not found'
+        }), 404
+
+    return jsonify({
+        'ticket_id': ticket[0],
+        'title': ticket[1],
+        'description': ticket[2],
+        'priority': ticket[4],
+        'status': ticket[5]
+    })
+
+
+# ADMIN GET ALL TICKETS
+@tickets_bp.route('/admin/all', methods=['GET'])
+@jwt_required()
+def admin_get_all_tickets():
+
+    conn = duckdb.connect('tickets.db')
+
+    tickets = conn.execute("""
+        SELECT *
+        FROM tickets
+        ORDER BY created_at DESC
+    """).fetchall()
+
+    conn.close()
+
+    result = []
+
+    for ticket in tickets:
+        result.append({
+        'ticket_id': ticket[0],
+        'title': ticket[1],
+        'description': ticket[2],
+        'category_id': ticket[3],
+        'priority': ticket[4],
+        'status': ticket[5],
+        'raised_by': ticket[7],
+        'assigned_to': ticket[8],
+        'created_at': str(ticket[11])
+    })
+
+    return jsonify(result)
+
+    # ASSIGN AGENT
+@tickets_bp.route('/<ticket_id>/assign', methods=['PUT'])
+@jwt_required()
+def assign_agent(ticket_id):
+
+    data = request.get_json()
+
+    agent = data.get('agent')
+
+    conn = duckdb.connect('tickets.db')
+
+    conn.execute("""
+        UPDATE tickets
+        SET assigned_to = ?,
+            status = 'In Progress'
+        WHERE ticket_id = ?
+    """, [agent, ticket_id])
+
+    conn.close()
+
+    return jsonify({
+        'message': 'Agent assigned successfully'
+    })

@@ -8,6 +8,8 @@ import LoginPage from './pages/LoginPage';
 import AdminDashboard from './pages/AdminDashboard';
 import UserDashboard from './pages/UserDashboard';
 
+import ProtectedRoute from './components/shared/ProtectedRoute';
+
 function App() {
 
   return (
@@ -23,12 +25,20 @@ function App() {
 
         <Route
           path="/admin"
-          element={<AdminDashboard />}
+          element={
+            <ProtectedRoute role="admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
         />
 
         <Route
-          path="/user"
-          element={<UserDashboard />}
+          path="/dashboard"
+          element={
+            <ProtectedRoute role="user">
+              <UserDashboard />
+            </ProtectedRoute>
+          }
         />
 
       </Routes>

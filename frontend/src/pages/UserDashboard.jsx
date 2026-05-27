@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import relianceLogo from '../assets/reliance_logo.png';
 
+
 const getCategoryIcon = (catId) => {
   switch (catId) {
     case 1: // Payment Issues
@@ -405,13 +406,13 @@ const UserDashboard = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-100 text-sm">
                       {tickets.map((query) => (
-                        <tr key={query.id} className="hover:bg-gray-50/40 transition-colors">
+                        <tr key={query.ticket_id} className="hover:bg-gray-50/40 transition-colors">
                           <td className="py-4.5 px-6 font-bold text-brandDarkNavy font-sora">
-                            {query.id}
+                            {query.ticket_id}
                           </td>
                           <td className="py-4.5 px-6 text-gray-700 font-medium">
                             <div>
-                              <p className="font-semibold">{query.subject}</p>
+                              <p className="font-semibold">{query.title}</p>
                               {query.description && (
                                 <p className="text-xs text-gray-400 font-normal line-clamp-1 mt-0.5">{query.description}</p>
                               )}
@@ -419,7 +420,7 @@ const UserDashboard = () => {
                           </td>
                           <td className="py-4.5 px-6">
                             <span className="px-2.5 py-1 bg-gray-100 rounded-lg text-xs font-medium text-gray-600 border border-gray-200/50">
-                              {query.category}
+                            Category #{query.category_id || 'N/A'}
                             </span>
                           </td>
                           <td className="py-4.5 px-6">
@@ -441,7 +442,7 @@ const UserDashboard = () => {
                             </span>
                           </td>
                           <td className="py-4.5 px-6 text-xs text-gray-400 font-medium">
-                            {query.date}
+                            {query.created_at || 'Today'}
                           </td>
                         </tr>
                       ))}

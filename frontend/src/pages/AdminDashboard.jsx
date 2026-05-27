@@ -24,7 +24,7 @@ const AdminDashboard = () => {
   const fetchTickets = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/tickets/');
+      const response = await api.get('/tickets/admin/all');
       setTickets(response.data);
     } catch (err) {
       console.error('Error fetching admin tickets:', err);
@@ -48,12 +48,15 @@ const AdminDashboard = () => {
       // Optimistically update state
       setTickets(prev =>
         prev.map(q => {
-          if (q.id === queryId) {
+          if (q.ticket_id === queryId) {
             let updatedStatus = q.status;
             if (q.status === 'Open' && newAgent !== 'Unassigned') {
               updatedStatus = 'In Progress';
             }
-            return { ...q, agent: newAgent, status: updatedStatus };
+           return {...q, 
+            assigned_to: newAgent, 
+            status: updatedStatus
+           };
           }
           return q;
         })
@@ -86,31 +89,41 @@ const AdminDashboard = () => {
 
   // Sidebar Items
   const sidebarItems = [
-    { name: 'Dashboard', icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-      </svg>
-    )},
-    { name: 'My Queries', icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
-      </svg>
-    )},
-    { name: 'Messages', icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-      </svg>
-    )},
-    { name: 'Analytics', icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v5.625C7.5 19.346 6.996 19.875 6.375 19.875h-2.25A1.375 1.375 0 0 1 3 18.5v-5.375zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v10.125c0 .621-.504 1.125-1.125 1.125h-2.25a1.375 1.375 0 0 1-1.375-1.375V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v14.625c0 .621-.504 1.125-1.125 1.125h-2.25a1.375 1.375 0 0 1-1.375-1.375V4.125z" />
-      </svg>
-    )},
-    { name: 'Profile', icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-      </svg>
-    )}
+    {
+      name: 'Dashboard', icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+        </svg>
+      )
+    },
+    {
+      name: 'My Queries', icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+        </svg>
+      )
+    },
+    {
+      name: 'Messages', icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+        </svg>
+      )
+    },
+    {
+      name: 'Analytics', icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v5.625C7.5 19.346 6.996 19.875 6.375 19.875h-2.25A1.375 1.375 0 0 1 3 18.5v-5.375zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v10.125c0 .621-.504 1.125-1.125 1.125h-2.25a1.375 1.375 0 0 1-1.375-1.375V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v14.625c0 .621-.504 1.125-1.125 1.125h-2.25a1.375 1.375 0 0 1-1.375-1.375V4.125z" />
+        </svg>
+      )
+    },
+    {
+      name: 'Profile', icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+        </svg>
+      )
+    }
   ];
 
   const getStatusBadgeStyles = (status) => {
@@ -172,9 +185,8 @@ const AdminDashboard = () => {
                 <button
                   key={item.name}
                   onClick={() => setActiveTab(item.name)}
-                  className={`w-full flex items-center space-x-3 px-3.5 py-3 rounded-xl text-sm transition-all duration-300 relative ${
-                    isActive ? 'bg-brandNavy/5 text-brandNavy font-semibold' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
-                  }`}
+                  className={`w-full flex items-center space-x-3 px-3.5 py-3 rounded-xl text-sm transition-all duration-300 relative ${isActive ? 'bg-brandNavy/5 text-brandNavy font-semibold' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                    }`}
                 >
                   {/* Active highlight vertical strip */}
                   {isActive && (
@@ -328,65 +340,95 @@ const AdminDashboard = () => {
                         <th className="py-4 px-6">Date</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 text-sm">
+                    <tbody className="divide-y divide-gray-100/50">
+
                       {tickets.map((query) => (
-                        <tr key={query.id} className="hover:bg-gray-50/40 transition-colors">
-                          {/* ID */}
-                          <td className="py-4.5 px-6 font-bold text-brandDarkNavy font-sora">
-                            {query.id}
+
+                        <tr
+                          key={query.ticket_id}
+                          className="hover:bg-gray-50/40 transition-colors"
+                        >
+
+                          {/* Ticket ID */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-bold text-[#0B1F5F]">
+                              {query.ticket_id}
+                            </div>
                           </td>
-                          {/* User/Vendor Email */}
-                          <td className="py-4.5 px-6 text-gray-600 font-medium">
-                            {query.userEmail}
+
+                          {/* Vendor */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-800">
+                              {query.raised_by}
+                            </div>
                           </td>
+
                           {/* Subject */}
-                          <td className="py-4.5 px-6 text-gray-700 font-medium">
-                            <div>
-                              <p className="font-semibold">{query.subject}</p>
-                              {query.description && (
-                                <p className="text-xs text-gray-400 font-normal line-clamp-1 mt-0.5">{query.description}</p>
-                              )}
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-gray-800">
+                              {query.title}
+                            </div>
+
+                            <div className="text-xs text-gray-500 truncate max-w-[180px]">
+                              {query.description}
                             </div>
                           </td>
+
                           {/* Category */}
-                          <td className="py-4.5 px-6">
+                          <td className="px-6 py-4 whitespace-nowrap">
+
                             <span className="px-2.5 py-1 bg-gray-100 rounded-lg text-xs font-medium text-gray-600 border border-gray-200/50">
-                              {query.category}
+                              Category #{query.category_id}
                             </span>
+
                           </td>
-                          {/* Agent Assignment Selection */}
-                          <td className="py-4.5 px-6">
-                            <div className="relative inline-block w-44">
-                              <select
-                                value={query.agent}
-                                onChange={(e) => handleAssignAgent(query.id, e.target.value)}
-                                className={`w-full px-2.5 py-1.5 text-xs rounded-lg border outline-none font-medium cursor-pointer transition-colors ${
-                                  query.agent === 'Unassigned'
-                                    ? 'border-brandRed/20 bg-brandRed/5 text-brandRed font-semibold'
-                                    : 'border-gray-200 bg-white text-gray-700 focus:border-brandNavy'
-                                }`}
-                              >
-                                <option value="Unassigned">⚠️ Unassigned</option>
-                                {AGENTS.map((agent) => (
-                                  <option key={agent} value={agent}>
-                                    👤 {agent}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
+
+                          {/* Assign Agent */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+
+                            <select
+                              value={query.assigned_to || 'Unassigned'}
+                              onChange={(e) =>
+                                handleAssignAgent(
+                                  query.ticket_id,
+                                  e.target.value
+                                )
+                              }
+                              className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white"
+                            >
+
+                              <option>Unassigned</option>
+                              <option>Swadha Kumari</option>
+                              <option>Rahul Sharma</option>
+                              <option>Neha Gupta</option>
+
+                            </select>
+
                           </td>
-                          {/* Status Badge */}
-                          <td className="py-4.5 px-6">
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusBadgeStyles(query.status)}`}>
+
+                          {/* Status */}
+                          <td className="px-6 py-4 whitespace-nowrap">
+
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${query.status === 'Open'
+                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              : query.status === 'In Progress'
+                                ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                : 'bg-green-50 text-green-700 border-green-200'
+                              }`}>
                               {query.status}
                             </span>
+
                           </td>
+
                           {/* Date */}
-                          <td className="py-4.5 px-6 text-xs text-gray-400 font-medium">
-                            {query.date}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {query.created_at}
                           </td>
+
                         </tr>
+
                       ))}
+
                     </tbody>
                   </table>
                 )}
