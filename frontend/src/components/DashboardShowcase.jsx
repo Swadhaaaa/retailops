@@ -35,7 +35,7 @@ const DashboardShowcase = () => {
       badge: 'Live Operations',
 
       content: (
-        <div className="space-y-3 mt-7">
+        <div className="space-y-2 mt-4">
           <div className="flex justify-between items-center pb-2 border-b border-white/10 text-[10px]">
             <span className="font-semibold tracking-wider uppercase text-white/60">
               Recent Vendor Queries
@@ -47,7 +47,7 @@ const DashboardShowcase = () => {
             </span>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/[0.08] hover:border-white/20 transition-all duration-500 group cursor-default showcase-stagger-1">
               <div className="flex flex-col text-left">
                 <span className="text-[9px] text-white/50 font-mono">
@@ -107,7 +107,7 @@ const DashboardShowcase = () => {
       badge: 'Action Center',
 
       content: (
-        <div className="space-y-4">
+        <div className="space-y-2">
           <div className="flex justify-between items-center text-[10px] pb-2 border-b border-white/10">
             <span className="font-semibold tracking-wider uppercase text-white/60">
               Ticket Lifecycle
@@ -191,7 +191,7 @@ const DashboardShowcase = () => {
       badge: 'Performance Insights',
 
       content: (
-        <div className="space-y-4">
+        <div className="space-y-2">
           <div className="flex justify-between items-center text-[10px] pb-2 border-b border-white/10">
             <span className="font-semibold tracking-wider uppercase text-white/60">
               Operational Health
@@ -203,7 +203,7 @@ const DashboardShowcase = () => {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 showcase-stagger-1">
+          <div className="grid grid-cols-2 gap-2 showcase-stagger-1">
             <div className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/[0.08] hover:border-white/20 transition-all duration-500 group">
               <span className="text-[8px] text-white/50 uppercase block">
                 Res. Rate
@@ -233,7 +233,7 @@ const DashboardShowcase = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 showcase-stagger-2">
+          <div className="grid grid-cols-2 gap-2 showcase-stagger-2">
             <div className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/[0.08] hover:border-white/20 transition-all duration-500 group">
               <span className="text-[8px] text-white/50 uppercase block">
                 Total Queries
@@ -279,14 +279,14 @@ const DashboardShowcase = () => {
   ];
 
   return (
-    <div className="relative select-none w-full max-w-[540px] mx-auto py-4">
+    <div className="relative select-none w-full max-w-[520px] mx-auto py-2">
 
       {/* GLOW - animated */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] bg-brandRed/15 rounded-full blur-[100px] pointer-events-none -z-10 animate-glow-pulse" />
       <div className="absolute top-1/3 left-1/3 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] bg-blue-500/10 rounded-full blur-[80px] pointer-events-none -z-10 animate-glow-pulse" style={{ animationDelay: '5s' }} />
 
       {/* MAIN CARD - fixed height for uniform size */}
-      <div className="relative bg-brandNavy/35 backdrop-blur-xl border border-white/10 rounded-[32px] p-6 shadow-2xl overflow-hidden min-h-[400px]">
+      <div className="relative bg-brandNavy/35 backdrop-blur-xl border border-white/10 rounded-[32px] p-6 shadow-2xl overflow-hidden min-h-[350px]">
 
         {/* GRID */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:16px_16px] opacity-40"></div>
@@ -302,7 +302,7 @@ const DashboardShowcase = () => {
                   : 'opacity-0 translate-y-4 scale-[0.96] absolute inset-0 pointer-events-none'
                 }`}
             >
-              <div className="flex justify-end items-center mb-4 relative z-10">
+              <div className="flex justify-end items-center mb-2 relative z-10">
                 <div className="flex space-x-2">
                   {dashboards.map((_, i) => (
                     <button
@@ -318,8 +318,8 @@ const DashboardShowcase = () => {
               </div>
 
               {/* TITLE */}
-              <div className="text-left mb-4">
-                <h3 className="text-2xl font-bold font-sora text-white">
+              <div className="text-center mb-2">
+                <h3 className="text-xl font-bold font-sora text-white">
                   {dash.title}
                 </h3>
 
@@ -329,7 +329,7 @@ const DashboardShowcase = () => {
               </div>
 
               {/* CONTENT - fixed height container */}
-              <div className="relative z-10 rounded-2xl bg-white/[0.03] border border-white/5 p-5 backdrop-blur-sm min-h-[240px]">
+              <div className="relative z-10 rounded-2xl bg-white/[0.03] border border-white/5 p-4 backdrop-blur-sm min-h-[180px]">
                 {dash.content}
               </div>
             </div>

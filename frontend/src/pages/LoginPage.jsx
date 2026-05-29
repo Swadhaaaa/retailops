@@ -5,6 +5,7 @@ import { RoleContext } from '../context/RoleContext';
 import { useNavigate } from 'react-router-dom';
 import BlobTransition from '../components/BlobTransition';
 import relianceLogo from '../assets/reliance_logo.png';
+import CursorGradientBg from '../components/CursorGradientBg';
 import DashboardShowcase from '../components/DashboardShowcase';
 
 const LoginPage = () => {
@@ -133,13 +134,15 @@ const LoginPage = () => {
         </div>
 
         {/* Center Showcase Area */}
-        <div className="relative z-10 flex-1 flex items-start justify-center py-2 xl:py-4 px-8 mt-2">
+        <div className="relative z-10 flex-1 flex items-center justify-center py-6 xl:py-8 px-8 mt-2">
           <DashboardShowcase />
         </div>
       </div>
 
       {/* ----------------- RIGHT PANEL & TRANSITIONS ----------------- */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 relative bg-white z-0">
+      <div className="flex-1 relative z-0 overflow-hidden">
+        <CursorGradientBg>
+          <div className="flex items-center justify-center p-6 lg:p-12 h-full relative">
 
         {/* BACKGROUND ACCENT SHAPE */}
         <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-[#F3F5FB]/30 rounded-bl-[100px] pointer-events-none -z-10" />
@@ -340,6 +343,8 @@ const LoginPage = () => {
             </div>
           </div>
         )}
+          </div>
+        </CursorGradientBg>
 
       </div>
 
