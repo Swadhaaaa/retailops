@@ -318,7 +318,7 @@ const DashboardShowcase = () => {
               </div>
 
               {/* TITLE */}
-              <div className="text-center mb-2">
+              <div className="text-center mb-2 -mt-2">
                 <h3 className="text-xl font-bold font-sora text-white">
                   {dash.title}
                 </h3>
