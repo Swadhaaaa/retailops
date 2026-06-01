@@ -1,222 +1,226 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { RoleContext } from '../context/RoleContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import relianceLogo from '../assets/reliance_logo.png';
 
-
-const staticCategories = [
-  {
-    category_id: 1,
-    name: 'Payment Issues',
-    description: 'Invoice and payment related issues',
-    bg: 'bg-emerald-50/50 hover:bg-emerald-50 text-emerald-600 border-emerald-100/60 hover:border-emerald-300 hover:shadow-emerald-50',
-    icon: (
-      <svg className="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
-      </svg>
-    )
-  },
-  {
-    category_id: 2,
-    name: 'Inventory Issues',
-    description: 'Stock and inventory problems',
-    bg: 'bg-blue-50/50 hover:bg-blue-50 text-blue-600 border-blue-100/60 hover:border-blue-300 hover:shadow-blue-50',
-    icon: (
-      <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
-      </svg>
-    )
-  },
-  {
-    category_id: 3,
-    name: 'Technical Support',
-    description: 'System and technical support',
-    bg: 'bg-indigo-50/50 hover:bg-indigo-50 text-indigo-600 border-indigo-100/60 hover:border-indigo-300 hover:shadow-indigo-50',
-    icon: (
-      <svg className="w-8 h-8 text-indigo-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.43l-1.003.828c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.43l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-      </svg>
-    )
-  },
-  {
-    category_id: 4,
-    name: 'Delivery Issues',
-    description: 'Shipment and delivery concerns',
-    bg: 'bg-purple-50/50 hover:bg-purple-50 text-purple-600 border-purple-100/60 hover:border-purple-300 hover:shadow-purple-50',
-    icon: (
-      <svg className="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.129-1.125v-3.097c0-.626-.25-1.226-.694-1.671l-2.73-2.73a1.125 1.125 0 0 0-.796-.329H13.5m4.5 9v-5.25m0 5.25h-6.75M13.5 9h2.25M13.5 6h2.25M13.5 3h2.25M2.25 10.5h11.25m-11.25 0V3.75c0-.621.504-1.125 1.125-1.125h9.75c.621 0 1.125.504 1.125 1.125v6.75m-12 0h12" />
-      </svg>
-    )
-  },
-  {
-    category_id: 5,
-    name: 'Documentation',
-    description: 'Document and compliance issues',
-    bg: 'bg-teal-50/50 hover:bg-teal-50 text-teal-600 border-teal-100/60 hover:border-teal-300 hover:shadow-teal-50',
-    icon: (
-      <svg className="w-8 h-8 text-teal-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25h-2.25a1.5 1.5 0 0 0-1.5 1.5v2.25m0-10.5v10.5m-9-7.5h3m-3 3h6m-6 3h6" />
-      </svg>
-    )
-  },
-  {
-    category_id: 6,
-    name: 'Order Discrepancies',
-    description: 'Mismatched order quantities or items',
-    bg: 'bg-amber-50/50 hover:bg-amber-50 text-amber-600 border-amber-100/60 hover:border-amber-300 hover:shadow-amber-50',
-    icon: (
-      <svg className="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-      </svg>
-    )
-  },
-  {
-    category_id: 7,
-    name: 'User Onboarding',
-    description: 'Registration and profile setup queries',
-    bg: 'bg-cyan-50/50 hover:bg-cyan-50 text-cyan-600 border-cyan-100/60 hover:border-cyan-300 hover:shadow-cyan-50',
-    icon: (
-      <svg className="w-8 h-8 text-cyan-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
-      </svg>
-    )
-  },
-  {
-    category_id: 8,
-    name: 'Quality Control',
-    description: 'Product quality and damage complaints',
-    bg: 'bg-rose-50/50 hover:bg-rose-50 text-rose-600 border-rose-100/60 hover:border-rose-300 hover:shadow-rose-50',
-    icon: (
-      <svg className="w-8 h-8 text-rose-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296a3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
-      </svg>
-    )
-  },
-  {
-    category_id: 9,
-    name: 'Pricing & Billing',
-    description: 'Pricing disputes and billing inquiries',
-    bg: 'bg-yellow-50/50 hover:bg-yellow-50 text-yellow-600 border-yellow-100/60 hover:border-yellow-300 hover:shadow-yellow-50',
-    icon: (
-      <svg className="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879-.659c1.546-1.159 3.816-1.159 5.362 0l1.178.884M15 10.125c-.77-.19-1.56-.233-2.339-.127-.776.106-1.554.407-2.23.896-.68.491-1.144 1.189-1.309 1.994-.165.805-.034 1.637.38 2.333.415.696 1.077 1.218 1.83 1.488.752.27 1.57.29 2.337.062a7.485 7.485 0 0 0 2.112-.888M9 10.125C9.77 9.935 10.56 9.892 11.339 9.998c.776-.106 1.554-.407 2.23-.896.68-.491 1.144-1.189 1.309-1.994.165-.805.034-1.637-.38-2.333-.415-.696-1.077-1.218-1.83-1.488-.752-.27-1.57-.29-2.337-.062a7.485 7.485 0 0 0-2.112.888" />
-      </svg>
-    )
-  },
-  {
-    category_id: 10,
-    name: 'SLA Violations',
-    description: 'SLA delays and performance escalations',
-    bg: 'bg-red-50/50 hover:bg-red-50 text-red-600 border-red-100/60 hover:border-red-300 hover:shadow-red-50',
-    icon: (
-      <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-      </svg>
-    )
-  },
-  {
-    category_id: 11,
-    name: 'Logistics Support',
-    description: 'Transport, routing, and carrier issues',
-    bg: 'bg-orange-50/50 hover:bg-orange-50 text-orange-600 border-orange-100/60 hover:border-orange-300 hover:shadow-orange-50',
-    icon: (
-      <svg className="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.129-1.125v-3.097c0-.626-.25-1.226-.694-1.671l-2.73-2.73a1.125 1.125 0 0 0-.796-.329H13.5m4.5 9v-5.25m0 5.25h-6.75M13.5 9h2.25" />
-      </svg>
-    )
-  },
-  {
-    category_id: 12,
-    name: 'Database & Sync',
-    description: 'Data mismatch and sync issues',
-    bg: 'bg-violet-50/50 hover:bg-violet-50 text-violet-600 border-violet-100/60 hover:border-violet-300 hover:shadow-violet-50',
-    icon: (
-      <svg className="w-8 h-8 text-violet-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V10.125" />
-      </svg>
-    )
-  },
-  {
-    category_id: 13,
-    name: 'Account & Security',
-    description: 'Security settings and account recovery',
-    bg: 'bg-gray-50/50 hover:bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-400 hover:shadow-gray-50',
-    icon: (
-      <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-      </svg>
-    )
-  },
-  {
-    category_id: 14,
-    name: 'Refunds & Returns',
-    description: 'Product return requests and refunds',
-    bg: 'bg-lime-50/50 hover:bg-lime-50 text-lime-600 border-lime-100/60 hover:border-lime-300 hover:shadow-lime-50',
-    icon: (
-      <svg className="w-8 h-8 text-lime-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-      </svg>
-    )
-  },
-  {
-    category_id: 15,
-    name: 'Compliance & Audits',
-    description: 'Regulatory, policy, and audit support',
-    bg: 'bg-fuchsia-50/50 hover:bg-fuchsia-50 text-fuchsia-600 border-fuchsia-100/60 hover:border-fuchsia-300 hover:shadow-fuchsia-50',
-    icon: (
-      <svg className="w-8 h-8 text-fuchsia-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M11.35 11.75a3.25 3.25 0 1 1-6.5 0 3.25 3.25 0 0 1 6.5 0Zm0 0c0 1.25-.37 2.41-1 3.38L14 18.5m-8.5-8a8.5 8.5 0 1 1 17 0 8.5 8.5 0 0 1-17 0Z" />
-      </svg>
-    )
+/* ─────────────────────────────────────────────
+   GLOBAL STYLES injected once
+───────────────────────────────────────────── */
+const GLOBAL_STYLES = `
+  @keyframes pageFadeSlideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0);    }
   }
+  .page-enter {
+    animation: pageFadeSlideIn 0.22s cubic-bezier(.4,0,.2,1) both;
+  }
+
+  @keyframes slideUpFade {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0);    }
+  }
+  .animate-slide-up-fade { animation: slideUpFade .35s ease both; }
+
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(.95); }
+    to   { opacity: 1; transform: scale(1);   }
+  }
+  .animate-scale-in { animation: scaleIn .2s cubic-bezier(.4,0,.2,1) both; }
+
+  @keyframes notifPulse {
+    0%, 100% { transform: scale(1);   opacity: 1; }
+    50%       { transform: scale(1.4); opacity: .6; }
+  }
+  .notif-pulse { animation: notifPulse 2s ease-in-out infinite; }
+
+  @keyframes liveDot {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .3; }
+  }
+  .live-dot { animation: liveDot 1.4s ease-in-out infinite; }
+
+  @keyframes barFill {
+    from { width: 0; }
+  }
+  .bar-animate { animation: barFill .9s cubic-bezier(.4,0,.2,1) both; }
+
+  @keyframes trendUp {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-3px); }
+  }
+  .trend-up { animation: trendUp 1.6s ease-in-out infinite; }
+
+  .cat-card {
+    transition: transform .25s cubic-bezier(.4,0,.2,1),
+                box-shadow .25s cubic-bezier(.4,0,.2,1),
+                border-color .25s ease;
+  }
+  .cat-card:hover { transform: translateY(-5px); }
+
+  .action-card {
+    transition: transform .22s cubic-bezier(.4,0,.2,1),
+                box-shadow .22s ease,
+                border-color .22s ease;
+  }
+  .action-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 14px 28px rgba(0,0,0,.07);
+  }
+
+  .stat-card {
+    transition: transform .22s cubic-bezier(.4,0,.2,1),
+                box-shadow .22s ease;
+  }
+  .stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0,0,0,.06);
+  }
+
+  .sidebar-item {
+    transition: background .18s ease, color .18s ease,
+                transform .15s ease, box-shadow .18s ease;
+  }
+  .sidebar-item:hover { transform: translateX(2px); }
+
+  .action-card:hover .icon-scale,
+  .cat-card:hover .icon-scale,
+  .stat-card:hover .icon-scale { transform: scale(1.12); }
+  .icon-scale { transition: transform .22s cubic-bezier(.4,0,.2,1); }
+
+  .ticket-card {
+    transition: transform .22s cubic-bezier(.4,0,.2,1),
+                box-shadow .22s ease,
+                border-color .22s ease;
+  }
+  .ticket-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 36px rgba(0,0,0,.08);
+    border-color: #c7d2fe;
+  }
+
+  .cat-arrow { 
+    opacity: 0; 
+    transform: translateX(-6px);
+    transition: opacity .2s ease, transform .2s ease;
+  }
+  .cat-card:hover .cat-arrow {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .glass-navbar {
+    background: rgba(255,255,255,.82);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  @keyframes badgePop {
+    0%   { transform: scale(1); }
+    30%  { transform: scale(1.3); }
+    60%  { transform: scale(.9); }
+    100% { transform: scale(1); }
+  }
+  .badge-pop { animation: badgePop .5s ease forwards; }
+
+  .icon-glow-emerald { box-shadow: 0 0 18px rgba(16,185,129,.18); }
+  .icon-glow-blue    { box-shadow: 0 0 18px rgba(59,130,246,.18); }
+  .icon-glow-indigo  { box-shadow: 0 0 18px rgba(99,102,241,.18); }
+  .icon-glow-purple  { box-shadow: 0 0 18px rgba(168,85,247,.18); }
+  .icon-glow-teal    { box-shadow: 0 0 18px rgba(20,184,166,.18); }
+  .icon-glow-amber   { box-shadow: 0 0 18px rgba(245,158,11,.18); }
+  .icon-glow-rose    { box-shadow: 0 0 18px rgba(244,63,94,.18); }
+  .icon-glow-red     { box-shadow: 0 0 18px rgba(239,68,68,.18); }
+  .icon-glow-cyan    { box-shadow: 0 0 18px rgba(6,182,212,.18); }
+  .icon-glow-violet  { box-shadow: 0 0 18px rgba(139,92,246,.18); }
+  .icon-glow-orange  { box-shadow: 0 0 18px rgba(249,115,22,.18); }
+  .icon-glow-lime    { box-shadow: 0 0 18px rgba(132,204,22,.18); }
+  .icon-glow-fuchsia { box-shadow: 0 0 18px rgba(217,70,239,.18); }
+  .icon-glow-gray    { box-shadow: 0 0 18px rgba(107,114,128,.12); }
+  .icon-glow-yellow  { box-shadow: 0 0 18px rgba(234,179,8,.18);   }
+`;
+
+const injectGlobalStyles = () => {
+  if (typeof document !== 'undefined' && !document.getElementById('ud-global-styles')) {
+    const el = document.createElement('style');
+    el.id = 'ud-global-styles';
+    el.textContent = GLOBAL_STYLES;
+    document.head.appendChild(el);
+  }
+};
+
+/* ─────────────────────────────────────────────
+   STATIC CATEGORIES
+───────────────────────────────────────────── */
+const staticCategories = [
+  { category_id: 1, name: 'Payment Issues', description: 'Invoice and payment related issues', ticketCount: 24, glowClass: 'icon-glow-indigo', bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]', icon: (<svg className="w-8 h-8 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" /></svg>) },
+  { category_id: 2, name: 'Inventory Issues', description: 'Stock and inventory problems', ticketCount: 18, glowClass: 'icon-glow-blue', bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]', icon: (<svg className="w-8 h-8 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>) },
+  { category_id: 3, name: 'Technical Support', description: 'System and technical support', ticketCount: 9, glowClass: 'icon-glow-indigo', bg: 'bg-brandRed/8 hover:bg-brandRed/12 text-brandRed border-brandRed/20 hover:border-brandRed/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(227,24,55,.12)]', icon: (<svg className="w-8 h-8 text-brandRed" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.43l-1.003.828c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.43l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>) },
+  { category_id: 4, name: 'Delivery Issues', description: 'Shipment and delivery concerns', ticketCount: 31, glowClass: 'icon-glow-purple', bg: 'bg-brandGold/12 hover:bg-brandGold/16 text-brandGold border-brandGold/30 hover:border-brandGold/50', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,166,35,.12)]', icon: (<svg className="w-8 h-8 text-brandGold" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.129-1.125v-3.097c0-.626-.25-1.226-.694-1.671l-2.73-2.73a1.125 1.125 0 0 0-.796-.329H13.5m4.5 9v-5.25m0 5.25h-6.75M13.5 9h2.25M13.5 6h2.25M13.5 3h2.25M2.25 10.5h11.25m-11.25 0V3.75c0-.621.504-1.125 1.125-1.125h9.75c.621 0 1.125.504 1.125 1.125v6.75m-12 0h12" /></svg>) },
+  { category_id: 5, name: 'Documentation', description: 'Document and compliance issues', ticketCount: 7, glowClass: 'icon-glow-teal', bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]', icon: (<svg className="w-8 h-8 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25h-2.25a1.5 1.5 0 0 0-1.5 1.5v2.25m0-10.5v10.5m-9-7.5h3m-3 3h6m-6 3h6" /></svg>) },
+  { category_id: 6, name: 'Order Discrepancies', description: 'Mismatched order quantities or items', ticketCount: 14, glowClass: 'icon-glow-amber', bg: 'bg-brandRed/8 hover:bg-brandRed/12 text-brandRed border-brandRed/20 hover:border-brandRed/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(227,24,55,.12)]', icon: (<svg className="w-8 h-8 text-brandRed" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" /></svg>) },
+  { category_id: 7, name: 'User Onboarding', description: 'Registration and profile setup queries', ticketCount: 5, glowClass: 'icon-glow-cyan', bg: 'bg-brandGold/12 hover:bg-brandGold/16 text-brandGold border-brandGold/30 hover:border-brandGold/50', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,166,35,.12)]', icon: (<svg className="w-8 h-8 text-brandGold" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" /></svg>) },
+  { category_id: 8, name: 'Quality Control', description: 'Product quality and damage complaints', ticketCount: 11, glowClass: 'icon-glow-rose', bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]', icon: (<svg className="w-8 h-8 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" /></svg>) },
+  { category_id: 9, name: 'Pricing & Billing', description: 'Pricing disputes and billing inquiries', ticketCount: 8, glowClass: 'icon-glow-yellow', bg: 'bg-brandRed/8 hover:bg-brandRed/12 text-brandRed border-brandRed/20 hover:border-brandRed/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(227,24,55,.12)]', icon: (<svg className="w-8 h-8 text-brandRed" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879-.659c1.546-1.159 3.816-1.159 5.362 0l1.178.884M15 10.125c-.77-.19-1.56-.233-2.339-.127-.776.106-1.554.407-2.23.896-.68.491-1.144 1.189-1.309 1.994-.165.805-.034 1.637.38 2.333.415.696 1.077 1.218 1.83 1.488.752.27 1.57.29 2.337.062a7.485 7.485 0 0 0 2.112-.888M9 10.125C9.77 9.935 10.56 9.892 11.339 9.998c.776-.106 1.554-.407 2.23-.896.68-.491 1.144-1.189 1.309-1.994.165-.805.034-1.637-.38-2.333-.415-.696-1.077-1.218-1.83-1.488-.752-.27-1.57-.29-2.337-.062a7.485 7.485 0 0 0-2.112.888" /></svg>) },
+  { category_id: 10, name: 'SLA Violations', description: 'SLA delays and performance escalations', ticketCount: 3, glowClass: 'icon-glow-red', bg: 'bg-brandGold/12 hover:bg-brandGold/16 text-brandGold border-brandGold/30 hover:border-brandGold/50', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,166,35,.12)]', icon: (<svg className="w-8 h-8 text-brandGold" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>) },
+  { category_id: 11, name: 'Logistics Support', description: 'Transport, routing, and carrier issues', ticketCount: 16, glowClass: 'icon-glow-orange', bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]', icon: (<svg className="w-8 h-8 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.129-1.125v-3.097c0-.626-.25-1.226-.694-1.671l-2.73-2.73a1.125 1.125 0 0 0-.796-.329H13.5m4.5 9v-5.25m0 5.25h-6.75M13.5 9h2.25" /></svg>) },
+  { category_id: 12, name: 'Database & Sync', description: 'Data mismatch and sync issues', ticketCount: 6, glowClass: 'icon-glow-violet', bg: 'bg-brandRed/8 hover:bg-brandRed/12 text-brandRed border-brandRed/20 hover:border-brandRed/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(227,24,55,.12)]', icon: (<svg className="w-8 h-8 text-brandRed" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V10.125" /></svg>) },
+  { category_id: 13, name: 'Account & Security', description: 'Security settings and account recovery', ticketCount: 4, glowClass: 'icon-glow-gray', bg: 'bg-brandGold/12 hover:bg-brandGold/16 text-brandGold border-brandGold/30 hover:border-brandGold/50', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,166,35,.12)]', icon: (<svg className="w-8 h-8 text-brandGold" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>) },
+  { category_id: 14, name: 'Refunds & Returns', description: 'Product return requests and refunds', ticketCount: 19, glowClass: 'icon-glow-lime', bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]', icon: (<svg className="w-8 h-8 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" /></svg>) },
+  { category_id: 15, name: 'Compliance & Audits', description: 'Regulatory, policy, and audit support', ticketCount: 2, glowClass: 'icon-glow-fuchsia', bg: 'bg-brandRed/8 hover:bg-brandRed/12 text-brandRed border-brandRed/20 hover:border-brandRed/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(227,24,55,.12)]', icon: (<svg className="w-8 h-8 text-brandRed" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>) },
+  { category_id: 16, name: 'Vendor Management', description: 'Vendor onboarding, agreements, and disputes', ticketCount: 13, glowClass: 'icon-glow-teal', bg: 'bg-brandGold/12 hover:bg-brandGold/16 text-brandGold border-brandGold/30 hover:border-brandGold/50', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,166,35,.12)]', icon: (<svg className="w-8 h-8 text-brandGold" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349M3.75 21V9.349m0 0a3.001 3.001 0 0 0 3.75-.615A2.993 2.993 0 0 0 9.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 0 0 2.25 1.016c.896 0 1.7-.393 2.25-1.015a3.001 3.001 0 0 0 3.75.614m-16.5 0a3.004 3.004 0 0 1-.621-4.72L4.318 3.44A1.5 1.5 0 0 1 5.378 3h13.243a1.5 1.5 0 0 1 1.06.44l1.19 1.189a3 3 0 0 1-.621 4.72M6.75 18h3.75a.75.75 0 0 0 .75-.75V13.5a.75.75 0 0 0-.75-.75H6.75a.75.75 0 0 0-.75.75v3.75c0 .414.336.75.75.75Z" /></svg>) },
+  { category_id: 17, name: 'Store Operations', description: 'In-store operational queries and escalations', ticketCount: 22, glowClass: 'icon-glow-emerald', bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]', icon: (<svg className="w-8 h-8 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349M3.75 21V9.349m0 0a3.001 3.001 0 0 0 3.75-.615A2.993 2.993 0 0 0 9.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 0 0 2.25 1.016c.896 0 1.7-.393 2.25-1.015a3.001 3.001 0 0 0 3.75.614m-16.5 0a3.004 3.004 0 0 1-.621-4.72L4.318 3.44A1.5 1.5 0 0 1 5.378 3h13.243a1.5 1.5 0 0 1 1.06.44l1.19 1.189a3 3 0 0 1-.621 4.72" /></svg>) },
+  { category_id: 18, name: 'HR & Workforce', description: 'Staff queries, attendance, and HR support', ticketCount: 10, glowClass: 'icon-glow-purple', bg: 'bg-brandRed/8 hover:bg-brandRed/12 text-brandRed border-brandRed/20 hover:border-brandRed/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(227,24,55,.12)]', icon: (<svg className="w-8 h-8 text-brandRed" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" /></svg>) },
+  { category_id: 19, name: 'IT Infrastructure', description: 'Network, hardware, and system outages', ticketCount: 7, glowClass: 'icon-glow-cyan', bg: 'bg-brandGold/12 hover:bg-brandGold/16 text-brandGold border-brandGold/30 hover:border-brandGold/50', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,166,35,.12)]', icon: (<svg className="w-8 h-8 text-brandGold" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-16.5-3a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3m-19.5 0a4.5 4.5 0 0 1 .9-2.7L5.737 5.1a3.375 3.375 0 0 1 2.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 0 1 .9 2.7m0 0a3 3 0 0 1-3 3m0 3h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Zm-3 6h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Z" /></svg>) },
+  { category_id: 20, name: 'Finance & Reporting', description: 'Financial reports, budgets, and reconciliation', ticketCount: 9, glowClass: 'icon-glow-lime', bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]', icon: (<svg className="w-8 h-8 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" /></svg>) },
 ];
 
-
 const getCategoryIcon = (catId) => {
-  const staticCat = staticCategories.find(c => c.category_id === catId);
-  if (staticCat) return staticCat.icon;
-  return (
+  const s = staticCategories.find(c => c.category_id === catId);
+  return s ? s.icon : (
     <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
     </svg>
   );
 };
 
+/* ─────────────────────────────────────────────
+   COMPONENT
+───────────────────────────────────────────── */
 const UserDashboard = () => {
+  injectGlobalStyles();
+
   const { user, logout } = useContext(AuthContext);
   const { selectedSubRole } = useContext(RoleContext);
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('Dashboard');
+  const [transitionKey, setTransitionKey] = useState(0);
   const [tickets, setTickets] = useState([]);
   const [categories, setCategories] = useState(staticCategories);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
 
-  // Form State
   const [formSubject, setFormSubject] = useState('');
   const [formCategory, setFormCategory] = useState('1');
   const [formPriority, setFormPriority] = useState('Medium');
   const [formDescription, setFormDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Attachment State
   const [attachment, setAttachment] = useState(null);
   const [attachmentError, setAttachmentError] = useState('');
 
-  // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [priorityFilter, setPriorityFilter] = useState('All');
 
-  // Live Time state
-  const [liveTime, setLiveTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+  const [liveTime, setLiveTime] = useState(
+    new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  );
+
+  const [notifPopped, setNotifPopped] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -225,66 +229,60 @@ const UserDashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // CSV Export utility
+  useEffect(() => {
+    const t = setInterval(() => {
+      setNotifPopped(true);
+      setTimeout(() => setNotifPopped(false), 600);
+    }, 8000);
+    return () => clearInterval(t);
+  }, []);
+
   const exportTicketsCSV = () => {
-    if (tickets.length === 0) {
-      alert("No tickets to export.");
-      return;
-    }
-    const headers = ["Ticket ID", "Title", "Description", "Category ID", "Priority", "Status", "Created At"];
+    if (tickets.length === 0) { alert('No tickets to export.'); return; }
+    const headers = ['Ticket ID', 'Title', 'Description', 'Category ID', 'Priority', 'Status', 'Created At'];
     const rows = tickets.map(t => [
       t.ticket_id,
       `"${t.title.replace(/"/g, '""')}"`,
       `"${(t.description || '').replace(/"/g, '""')}"`,
-      t.category_id,
-      t.priority,
-      t.status,
-      t.created_at || 'Today'
+      t.category_id, t.priority, t.status, t.created_at || 'Today'
     ]);
-    const csvContent = "data:text/csv;charset=utf-8,"
-      + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `QMS_Tickets_Export_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const csv = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const a = document.createElement('a');
+    a.setAttribute('href', encodeURI(csv));
+    a.setAttribute('download', `QMS_Tickets_Export_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
   };
 
-  // Determine current role info
-  const subRole = selectedSubRole || 'business'; // default to business
+  const subRole = selectedSubRole || 'business';
   const isVendor = subRole === 'vendor';
   const roleLabel = isVendor ? 'User' : 'Business User';
 
-  // Role-based styling accents
   const primaryBrandColor = isVendor ? 'text-brandRed bg-brandRed/10' : 'text-brandNavy bg-brandNavy/10';
-  const buttonColor = isVendor ? 'bg-brandRed hover:bg-[#C2112C] shadow-brandRed/20' : 'bg-brandNavy hover:bg-brandDarkNavy shadow-brandNavy/20';
-  const activeSidebarBg = isVendor ? 'bg-brandRed/5 text-brandRed font-semibold' : 'bg-brandNavy/5 text-brandNavy font-semibold';
-  const activeSidebarLine = isVendor ? 'bg-brandRed' : 'bg-brandNavy';
+  const buttonColor = isVendor
+    ? 'bg-brandRed hover:bg-[#C2112C] shadow-brandRed/20'
+    : 'bg-brandNavy hover:bg-brandDarkNavy shadow-brandNavy/20';
 
-  // Greeting name
+  const activeSidebarBg = isVendor
+    ? 'bg-brandRed/8 text-brandRed font-semibold shadow-[inset_0_0_0_1px_rgba(220,38,38,.08)]'
+    : 'bg-brandNavy/8 text-brandNavy font-semibold shadow-[inset_0_0_0_1px_rgba(15,27,76,.08)]';
+  const activeSidebarLine = isVendor ? 'bg-brandRed' : 'bg-brandNavy';
+  const activeSidebarGlow = isVendor
+    ? 'shadow-[0_2px_10px_rgba(220,38,38,.12)]'
+    : 'shadow-[0_2px_10px_rgba(15,27,76,.10)]';
+
   const userName = user?.name || (isVendor ? 'User Partner' : 'Retail Executive');
   const userEmail = user?.email || 'user@relianceretail.com';
 
-  // Get initials for avatar
-  const getInitials = (name) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase();
-  };
+  const getInitials = (name) =>
+    name.split(' ').map(n => n[0]).join('').toUpperCase();
 
-  // Fetch Tickets and Categories on mount
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
       const ticketsRes = await api.get('/tickets/');
       setTickets(ticketsRes.data);
-
       const categoriesRes = await api.get('/categories/');
-      if (categoriesRes.data && categoriesRes.data.length > 0) {
+      if (categoriesRes.data?.length) {
         setFormCategory(staticCategories[0].category_id.toString());
       }
     } catch (err) {
@@ -294,43 +292,34 @@ const UserDashboard = () => {
     }
   };
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  useEffect(() => { fetchDashboardData(); }, []);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
+  const switchTab = (tab) => {
+    setActiveTab(tab);
+    setTransitionKey(k => k + 1);
   };
 
-  // Submit new ticket
+  const handleLogout = () => { logout(); navigate('/'); };
+
   const handleSubmitTicket = async (e) => {
     e.preventDefault();
     if (!formSubject || !formDescription || !formCategory) return;
-
     setIsSubmitting(true);
     try {
-      let finalDescription = formDescription;
-      if (attachment) {
-        finalDescription += `\n\n[Attachment: ${attachment.name} (${(attachment.size / (1024 * 1024)).toFixed(2)} MB)]`;
-      }
+      const formData = new FormData();
+      formData.append('title', formSubject);
+      formData.append('description', formDescription);
+      formData.append('category_id', parseInt(formCategory, 10));
+      formData.append('priority', formPriority);
+      if (attachment) formData.append('attachment', attachment);
 
-      await api.post('/tickets/', {
-        title: formSubject,
-        description: finalDescription,
-        category_id: parseInt(formCategory, 10),
-        priority: formPriority
+      await api.post('/tickets/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      // Clear Form & Close Modal
-      setFormSubject('');
-      setFormDescription('');
-      setFormPriority('Medium');
-      setAttachment(null);
-      setFormCategory(staticCategories[0].category_id.toString());
+      setFormSubject(''); setFormDescription(''); setFormPriority('Medium');
+      setAttachment(null); setFormCategory(staticCategories[0].category_id.toString());
       setIsModalOpen(false);
-
-      // Refresh data
       await fetchDashboardData();
     } catch (err) {
       console.error('Error raising ticket:', err);
@@ -340,43 +329,41 @@ const UserDashboard = () => {
     }
   };
 
-  const handleCategoryClick = (categoryId) => {
-    setFormCategory(categoryId.toString());
-    setIsModalOpen(true);
+  const downloadAttachment = async (filename) => {
+    try {
+      const response = await api.get(`/tickets/download/${filename}`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename.split('_').slice(1).join('_'));
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+    } catch (err) {
+      console.error('Download failed:', err);
+      alert('Failed to download attachment');
+    }
   };
 
-  // Handle file select
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 25 * 1024 * 1024) {
-      setAttachmentError('Maximum file size is 25MB');
-      setAttachment(null);
-      return;
-    }
-    setAttachmentError('');
-    setAttachment(file);
+    if (file.size > 25 * 1024 * 1024) { setAttachmentError('Maximum file size is 25MB'); setAttachment(null); return; }
+    setAttachmentError(''); setAttachment(file);
   };
 
-  // Handle Drag & Drop
-  const handleDragOver = (e) => {
-    e.preventDefault();
-  };
-
+  const handleDragOver = (e) => e.preventDefault();
   const handleDrop = (e) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (!file) return;
-    if (file.size > 25 * 1024 * 1024) {
-      setAttachmentError('Maximum file size is 25MB');
-      setAttachment(null);
-      return;
-    }
-    setAttachmentError('');
-    setAttachment(file);
+    if (file.size > 25 * 1024 * 1024) { setAttachmentError('Maximum file size is 25MB'); setAttachment(null); return; }
+    setAttachmentError(''); setAttachment(file);
   };
 
-  // Sidebar Items
+  /* ── Sidebar items ── */
   const sidebarItems = [
     {
       name: 'Dashboard', icon: (
@@ -398,13 +385,13 @@ const UserDashboard = () => {
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
           </svg>
-          <span className="absolute -top-1.5 -right-2 px-1 py-0.5 rounded-full bg-rose-500 text-[8px] font-extrabold text-white">2</span>
+          <span className="absolute -top-1.5 -right-2 px-1 py-0.5 rounded-full bg-brandRed text-[8px] font-extrabold text-white">2</span>
         </div>
       )
     },
     {
       name: 'Documents', icon: (
-        <svg xmlns="http://www.w3.org/2050/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" />
         </svg>
       )
@@ -427,42 +414,42 @@ const UserDashboard = () => {
 
   const getStatusBadgeStyles = (status) => {
     switch (status) {
-      case 'Open':
-        return 'bg-brandNavy/10 text-brandNavy border-brandNavy/20';
-      case 'In Progress':
-        return 'bg-amber-50 text-amber-700 border-amber-200';
-      case 'Resolved':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-      case 'Urgent':
-        return 'bg-brandRed/10 text-brandRed border-brandRed/20';
-      default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
+      case 'Open': return 'bg-brandNavy/10 text-brandNavy border-brandNavy/20';
+      case 'In Progress': return 'bg-brandGold/12 text-brandGold border-brandGold/30';
+      case 'Resolved': return 'bg-brandRed/10 text-brandRed border-brandRed/20';
+      case 'Urgent': return 'bg-brandRed/10 text-brandRed border-brandRed/20';
+      default: return 'bg-brandMuted/10 text-brandMuted border-brandMuted/20';
     }
   };
 
-  // Custom Tab Rendering
+  /* ══════════════════════════════════════════
+     DASHBOARD TAB
+  ══════════════════════════════════════════ */
   const renderDashboard = () => {
-    const openCount = tickets.filter(t => t.status === 'Open').length;
-    const progressCount = tickets.filter(t => t.status === 'In Progress').length;
-    const resolvedCount = tickets.filter(t => t.status === 'Resolved').length;
-
     return (
-      <div className="space-y-6 animate-slide-up-fade text-left">
-        {/* Welcome Header Banner */}
+      <div className="space-y-6 text-left">
+
+        {/* ── Welcome Banner ── */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-extrabold text-brandDarkNavy font-sora">
-              Good Morning, {userName}! 👋
-            </h1>
-            <p className="text-xs text-gray-400 mt-1.5 font-semibold font-dmSans">
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-2xl lg:text-3xl font-extrabold text-brandDarkNavy font-sora">
+                Good Morning, {userName}! 👋
+              </h1>
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brandNavy/8 border border-brandNavy/20 text-[9px] font-bold text-brandNavy ml-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-brandNavy live-dot inline-block" />
+                LIVE
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1 font-semibold font-dmSans">
               Raise a query, track existing requests, or check recent updates.
+              <span className="ml-2 text-gray-400">· 3 tickets updated today</span>
             </p>
           </div>
-          
           {/* Last Login Card */}
-          <div className="bg-white border border-gray-150/60 rounded-2xl px-5 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.01)] flex items-center space-x-3.5 shrink-0 self-start lg:self-center">
+          <div className="bg-white border border-gray-150/60 rounded-2xl px-5 py-3 shadow-[0_4px_12px_rgba(0,0,0,.02)] flex items-center space-x-3.5 shrink-0 self-start lg:self-center">
             <div className="p-2 rounded-xl bg-gray-50 text-gray-400">
-              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
               </svg>
             </div>
@@ -473,352 +460,140 @@ const UserDashboard = () => {
           </div>
         </div>
 
-        {/* 4 Action Cards Row */}
+        {/* ── 4 Action Cards ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Action 1: Raise a Query */}
-          <div
-            onClick={() => setIsModalOpen(true)}
-            className="bg-white border border-gray-100/80 rounded-3xl p-5 shadow-[0_4px_12px_rgba(0,0,0,0.01)] hover:shadow-[0_8px_20px_rgba(15,27,76,0.03)] hover:-translate-y-1.5 transition-all duration-300 flex items-center space-x-4 cursor-pointer"
-          >
-            <div className="w-12 h-12 rounded-full bg-rose-500 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-rose-500/10 select-none shrink-0">
-              +
-            </div>
-            <div>
-              <h3 className="text-[13px] font-extrabold text-brandDarkNavy font-sora leading-none">Raise a Query</h3>
-              <p className="text-[10px] text-gray-405 mt-1.5 font-semibold leading-normal font-dmSans">Select a category and raise a new query</p>
-            </div>
-          </div>
-
-          {/* Action 2: View My Queries */}
-          <div
-            onClick={() => setActiveTab('My Queries')}
-            className="bg-white border border-gray-100/80 rounded-3xl p-5 shadow-[0_4px_12px_rgba(0,0,0,0.01)] hover:shadow-[0_8px_20px_rgba(15,27,76,0.03)] hover:-translate-y-1.5 transition-all duration-300 flex items-center space-x-4 cursor-pointer"
-          >
-            <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-md shadow-blue-500/10 shrink-0">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-[13px] font-extrabold text-brandDarkNavy font-sora leading-none">View My Queries</h3>
-              <p className="text-[10px] text-gray-405 mt-1.5 font-semibold leading-normal font-dmSans">Track and view all your queries</p>
-            </div>
-          </div>
-
-          {/* Action 3: Messages */}
-          <div
-            onClick={() => setActiveTab('Messages')}
-            className="bg-white border border-gray-100/80 rounded-3xl p-5 shadow-[0_4px_12px_rgba(0,0,0,0.01)] hover:shadow-[0_8px_20px_rgba(15,27,76,0.03)] hover:-translate-y-1.5 transition-all duration-300 flex items-center space-x-4 cursor-pointer"
-          >
-            <div className="w-12 h-12 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-md shadow-indigo-500/10 shrink-0">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-[13px] font-extrabold text-brandDarkNavy font-sora leading-none">Messages</h3>
-              <p className="text-[10px] text-gray-405 mt-1.5 font-semibold leading-normal font-dmSans">Check replies and notifications</p>
-            </div>
-          </div>
-
-          {/* Action 4: Download Documents */}
-          <div
-            onClick={() => setActiveTab('Profile')}
-            className="bg-white border border-gray-100/80 rounded-3xl p-5 shadow-[0_4px_12px_rgba(0,0,0,0.01)] hover:shadow-[0_8px_20px_rgba(15,27,76,0.03)] hover:-translate-y-1.5 transition-all duration-300 flex items-center space-x-4 cursor-pointer"
-          >
-            <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/10 shrink-0">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-[13px] font-extrabold text-brandDarkNavy font-sora leading-none">Download Documents</h3>
-              <p className="text-[10px] text-gray-405 mt-1.5 font-semibold leading-normal font-dmSans">View and download important documents</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Core Layout Columns */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Column (8 / 12 span) */}
-          <div className="lg:col-span-8 space-y-6">
-            
-            {/* Widget: My Active Queries */}
-            <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-[0_4px_12px_rgba(0,0,0,0.01)]">
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-sm font-extrabold text-brandDarkNavy font-sora">My Active Queries</h3>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('My Queries')}
-                  className="text-xs text-brandNavy font-extrabold hover:underline flex items-center space-x-1"
-                >
-                  <span>View All Queries</span>
-                  <span>&rarr;</span>
-                </button>
+          {[
+            {
+              label: 'Raise a Query', desc: 'Select a category and raise a new query',
+              bg: 'bg-brandRed', shadow: 'shadow-brandRed/20', glowHover: 'hover:shadow-[0_14px_28px_rgba(227,24,55,.18)]',
+              borderHover: 'hover:border-brandRed/30',
+              onClick: () => setIsModalOpen(true),
+              icon: <span className="text-xl font-bold text-white icon-scale">+</span>
+            },
+            {
+              label: 'View My Queries', desc: 'Track and view all your queries',
+              bg: 'bg-brandNavy', shadow: 'shadow-brandNavy/20', glowHover: 'hover:shadow-[0_14px_28px_rgba(15,27,76,.18)]',
+              borderHover: 'hover:border-brandNavy/30',
+              onClick: () => switchTab('My Queries'),
+              icon: (
+                <svg className="w-5 h-5 text-white icon-scale" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" />
+                </svg>
+              )
+            },
+            {
+              label: 'Messages', desc: 'Check replies and notifications',
+              bg: 'bg-brandGold', shadow: 'shadow-brandGold/20', glowHover: 'hover:shadow-[0_14px_28px_rgba(245,166,35,.18)]',
+              borderHover: 'hover:border-brandGold/30',
+              onClick: () => switchTab('Messages'),
+              icon: (
+                <svg className="w-5 h-5 text-white icon-scale" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+                </svg>
+              )
+            },
+            {
+              label: 'Download Documents', desc: 'View and download important documents',
+              bg: 'bg-brandRed', shadow: 'shadow-brandRed/20', glowHover: 'hover:shadow-[0_14px_28px_rgba(227,24,55,.18)]',
+              borderHover: 'hover:border-brandRed/30',
+              onClick: () => switchTab('Profile'),
+              icon: (
+                <svg className="w-5 h-5 text-white icon-scale" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+              )
+            }
+          ].map((card) => (
+            <div
+              key={card.label}
+              onClick={card.onClick}
+              className={`action-card bg-white border border-gray-100/80 rounded-3xl p-5 cursor-pointer flex items-center space-x-4 ${card.glowHover} ${card.borderHover}`}
+            >
+              <div className={`w-12 h-12 rounded-full ${card.bg} flex items-center justify-center shadow-md ${card.shadow} shrink-0`}>
+                {card.icon}
               </div>
-
-              {/* 4 Stat pill cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {/* Stat 1: Open */}
-                <div className="bg-teal-50/20 border border-teal-100/50 rounded-2xl p-4 text-left">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[26px] font-extrabold text-emerald-600 font-sora">{openCount || 3}</span>
-                    <span className="p-1 rounded-lg bg-teal-50 text-emerald-600">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9 3.75h.008v.008H12v-.008z" />
-                      </svg>
-                    </span>
-                  </div>
-                  <h4 className="text-[11px] font-extrabold text-brandDarkNavy mt-3">Open</h4>
-                  <p className="text-[8px] text-gray-400 mt-0.5 font-bold">Require your attention</p>
-                </div>
-
-                {/* Stat 2: In Progress */}
-                <div className="bg-blue-50/20 border border-blue-100/50 rounded-2xl p-4 text-left">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[26px] font-extrabold text-blue-600 font-sora">{progressCount || 2}</span>
-                    <span className="p-1 rounded-lg bg-blue-50 text-blue-600">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                      </svg>
-                    </span>
-                  </div>
-                  <h4 className="text-[11px] font-extrabold text-brandDarkNavy mt-3">In Progress</h4>
-                  <p className="text-[8px] text-gray-400 mt-0.5 font-bold">Being worked on</p>
-                </div>
-
-                {/* Stat 3: Awaiting Response */}
-                <div className="bg-amber-50/20 border border-amber-100/50 rounded-2xl p-4 text-left">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[26px] font-extrabold text-amber-600 font-sora">1</span>
-                    <span className="p-1 rounded-lg bg-amber-50 text-amber-600">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-                      </svg>
-                    </span>
-                  </div>
-                  <h4 className="text-[11px] font-extrabold text-brandDarkNavy mt-3">Awaiting Response</h4>
-                  <p className="text-[8px] text-gray-400 mt-0.5 font-bold">Response from you pending</p>
-                </div>
-
-                {/* Stat 4: Resolved */}
-                <div className="bg-purple-50/20 border border-purple-100/50 rounded-2xl p-4 text-left">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[26px] font-extrabold text-purple-600 font-sora">{resolvedCount || 18}</span>
-                    <span className="p-1 rounded-lg bg-purple-50 text-purple-600">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
-                      </svg>
-                    </span>
-                  </div>
-                  <h4 className="text-[11px] font-extrabold text-brandDarkNavy mt-3">Resolved</h4>
-                  <p className="text-[8px] text-gray-400 mt-0.5 font-bold">Closed queries</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Widget: Choose a Category Grid */}
-            <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-[0_4px_12px_rgba(0,0,0,0.01)]">
               <div>
-                <h3 className="text-sm font-extrabold text-brandDarkNavy font-sora">Choose a Category to Raise a Query</h3>
-                <p className="text-[10px] text-gray-400 mt-0.5 font-semibold font-dmSans">Select the most relevant category for your issue</p>
-              </div>
-
-              {/* 2x4 Categories Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5">
-                {staticCategories.slice(0, 8).map((cat) => {
-                  const isMostUsed = cat.category_id === 1 || cat.category_id === 4;
-                  return (
-                    <div
-                      key={cat.category_id}
-                      onClick={() => handleCategoryClick(cat.category_id)}
-                      className={`p-4 transition-all duration-300 cursor-pointer flex flex-col justify-between min-h-[170px] relative rounded-2xl border ${cat.bg}`}
-                    >
-                      {/* Most Used Badge */}
-                      {isMostUsed && (
-                        <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded bg-emerald-500 text-[8px] font-extrabold text-white tracking-wide uppercase select-none">
-                          Most Used
-                        </span>
-                      )}
-
-                      {/* Icon */}
-                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
-                        {cat.icon}
-                      </div>
-
-                      {/* Content */}
-                      <div>
-                        <h4 className="text-[12px] font-extrabold font-sora text-brandDarkNavy leading-none">
-                          {cat.name}
-                        </h4>
-                        <p className="text-[9px] text-gray-400 mt-1 font-semibold leading-relaxed line-clamp-2">
-                          {cat.description}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Bottom "View All Categories" link */}
-              <div className="mt-5 text-center">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(true)}
-                  className="px-6 py-2.5 rounded-full border border-gray-150 hover:bg-gray-50 text-xs font-bold text-gray-600 transition-colors inline-flex items-center space-x-1.5 font-dmSans"
-                >
-                  <span>View All Categories</span>
-                  <span>&rarr;</span>
-                </button>
+                <h3 className="text-[13px] font-extrabold text-brandDarkNavy font-sora leading-none">{card.label}</h3>
+                <p className="text-[10px] text-gray-500 mt-1.5 font-semibold leading-normal font-dmSans">{card.desc}</p>
               </div>
             </div>
+          ))}
+        </div>
 
+        {/* ── Full-Width Category Grid ── */}
+        <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-[0_4px_12px_rgba(0,0,0,.01)]">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-sm font-extrabold text-brandDarkNavy font-sora">Choose a Category to Raise a Query</h3>
+              <p className="text-[10px] text-gray-500 mt-0.5 font-semibold font-dmSans">Select the most relevant category for your issue</p>
+            </div>
           </div>
 
-          {/* Right Column (4 / 12 span) */}
-          <div className="lg:col-span-4 space-y-6">
-            
-            {/* Recent Activity Card */}
-            <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-[0_4px_12px_rgba(0,0,0,0.01)] text-left">
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-sm font-extrabold text-brandDarkNavy font-sora">Recent Activity</h3>
-                <button type="button" onClick={() => setActiveTab('My Queries')} className="text-xs text-brandNavy font-bold hover:underline font-dmSans">
-                  View All
-                </button>
-              </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+            {staticCategories.map((cat) => {
+              const isMostUsed = cat.category_id === 1 || cat.category_id === 4;
+              return (
+                <div
+                  key={cat.category_id}
+                  onClick={() => handleCategoryClick(cat.category_id)}
+                  className={`cat-card p-5 cursor-pointer flex flex-col justify-between min-h-[200px] relative rounded-2xl border ${cat.bg} ${cat.hoverShadow}`}
+                >
+                  {isMostUsed && (
+                    <span className="absolute top-3 right-3 px-1.5 py-0.5 rounded bg-brandRed text-[8px] font-extrabold text-white tracking-wide uppercase select-none">
+                      Most Used
+                    </span>
+                  )}
 
-              {/* Activity Timeline List */}
-              <div className="space-y-4 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-100">
-                {/* Act 1 */}
-                <div className="flex items-start space-x-3.5 relative z-10">
-                  <div className="w-8.5 h-8.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                    </svg>
+                  <div className={`w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-sm icon-scale ${cat.glowClass}`}>
+                    {cat.icon}
                   </div>
+
                   <div>
-                    <p className="text-[11px] font-bold text-brandDarkNavy leading-tight">Payment query #QRY1234 has been resolved</p>
-                    <span className="text-[9px] text-gray-400 font-semibold mt-0.5 block">Today, 10:30 AM</span>
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-[13px] font-extrabold font-sora text-brandDarkNavy leading-none">{cat.name}</h4>
+                      <span className="cat-arrow text-gray-400">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                        </svg>
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-1.5 font-semibold leading-relaxed line-clamp-2">{cat.description}</p>
+                    <span className="inline-flex items-center gap-1 mt-2.5 px-2 py-0.5 rounded-full bg-white/70 border border-current/10 text-[8px] font-bold text-gray-500">
+                      <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50 inline-block" />
+                      {cat.ticketCount} tickets
+                    </span>
                   </div>
                 </div>
-
-                {/* Act 2 */}
-                <div className="flex items-start space-x-3.5 relative z-10">
-                  <div className="w-8.5 h-8.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-bold text-brandDarkNavy leading-tight">Delivery issue #QRY1231 has been updated</p>
-                    <span className="text-[9px] text-gray-400 font-semibold mt-0.5 block">Yesterday, 04:15 PM</span>
-                  </div>
-                </div>
-
-                {/* Act 3 */}
-                <div className="flex items-start space-x-3.5 relative z-10">
-                  <div className="w-8.5 h-8.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-bold text-brandDarkNavy leading-tight">Documentation request #QRY1228 has been raised</p>
-                    <span className="text-[9px] text-gray-400 font-semibold mt-0.5 block">27 May 2026, 11:20 AM</span>
-                  </div>
-                </div>
-
-                {/* Act 4 */}
-                <div className="flex items-start space-x-3.5 relative z-10">
-                  <div className="w-8.5 h-8.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-bold text-brandDarkNavy leading-tight">Message received on #QRY1225</p>
-                    <span className="text-[9px] text-gray-400 font-semibold mt-0.5 block">26 May 2026, 03:40 PM</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom Go to My Queries */}
-              <button
-                type="button"
-                onClick={() => setActiveTab('My Queries')}
-                className="w-full mt-6 py-2.5 rounded-2xl bg-rose-50 hover:bg-rose-100/60 text-xs font-bold text-brandRed hover:text-[#C2112C] transition-colors flex items-center justify-center space-x-1.5 font-dmSans"
-              >
-                <span>Go to My Queries</span>
-                <span>&rarr;</span>
-              </button>
-            </div>
-
-            {/* Quick Tips Card */}
-            <div className="bg-amber-50/30 border border-amber-100/50 rounded-3xl p-6 text-left">
-              <h3 className="text-sm font-extrabold text-brandDarkNavy font-sora flex items-center space-x-1.5">
-                <span>💡</span>
-                <span>Quick Tips</span>
-              </h3>
-              
-              <ul className="mt-4 space-y-2.5 text-[10px] font-bold text-amber-800/90 list-none font-dmSans">
-                <li className="flex items-start space-x-1.5">
-                  <span className="text-amber-500 shrink-0">&#x2b;</span>
-                  <span>Search your query using ID or keywords</span>
-                </li>
-                <li className="flex items-start space-x-1.5">
-                  <span className="text-amber-500 shrink-0">&#x2b;</span>
-                  <span>Provide accurate details for faster resolution</span>
-                </li>
-                <li className="flex items-start space-x-1.5">
-                  <span className="text-amber-500 shrink-0">&#x2b;</span>
-                  <span>Check your messages for updates</span>
-                </li>
-                <li className="flex items-start space-x-1.5">
-                  <span className="text-amber-500 shrink-0">&#x2b;</span>
-                  <span>Raise a new query if issue persists</span>
-                </li>
-              </ul>
-            </div>
-
+              );
+            })}
           </div>
         </div>
+
       </div>
     );
   };
 
+  /* ══════════════════════════════════════════
+     MY QUERIES TAB
+  ══════════════════════════════════════════ */
   const renderMyQueries = () => {
-    // Ticket filtering logic
     const filteredTickets = tickets.filter(ticket => {
       const matchesSearch =
         ticket.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         ticket.ticket_id.toString().includes(searchQuery) ||
-        (ticket.description &&
-          ticket.description.toLowerCase().includes(searchQuery.toLowerCase()));
-
-      const matchesStatus =
-        statusFilter === 'All' || ticket.status === statusFilter;
-
-      const matchesPriority =
-        priorityFilter === 'All' || ticket.priority === priorityFilter;
-
+        (ticket.description && ticket.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesStatus = statusFilter === 'All' || ticket.status === statusFilter;
+      const matchesPriority = priorityFilter === 'All' || ticket.priority === priorityFilter;
       return matchesSearch && matchesStatus && matchesPriority;
     });
 
     return (
-      <div className="space-y-8 animate-slide-up-fade text-left">
-
-        {/* Header */}
+      <div className="space-y-8 text-left">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-extrabold text-brandDarkNavy font-sora">
-              My Queries
-            </h1>
-
-            <p className="text-sm text-gray-400 mt-1">
-              Manage and track all your raised tickets.
-            </p>
+            <h1 className="text-3xl font-extrabold text-brandDarkNavy font-sora">My Queries</h1>
+            <p className="text-sm text-gray-500 mt-1">Manage and track all your raised tickets.</p>
           </div>
-
           <button
             onClick={() => setIsModalOpen(true)}
             className={`px-5 py-3 rounded-2xl text-xs font-bold text-white shadow-md transition-all flex items-center space-x-2 ${buttonColor}`}
@@ -827,222 +602,111 @@ const UserDashboard = () => {
           </button>
         </div>
 
-        {/* Search + Filters */}
         <div className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
-
-          <input
-            type="text"
-            placeholder="Search tickets..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none w-full lg:max-w-sm"
-          />
-
+          <input type="text" placeholder="Search tickets..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+            className="px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none w-full lg:max-w-sm" />
           <div className="flex gap-3">
-
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none"
-            >
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+              className="px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none">
               <option value="All">All Status</option>
               <option value="Open">Open</option>
               <option value="In Progress">In Progress</option>
               <option value="Resolved">Resolved</option>
             </select>
-
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none"
-            >
+            <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)}
+              className="px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none">
               <option value="All">All Priority</option>
               <option value="Low">Low</option>
               <option value="Medium">Medium</option>
               <option value="High">High</option>
               <option value="Urgent">Urgent</option>
             </select>
-
           </div>
         </div>
 
-        {/* Ticket Cards */}
         {loading ? (
           <div className="text-sm text-gray-400">Loading tickets...</div>
         ) : filteredTickets.length === 0 ? (
           <div className="bg-white rounded-3xl border border-gray-100 py-20 text-center">
-            <p className="text-gray-500 font-bold">
-              No matching tickets found
-            </p>
+            <p className="text-gray-500 font-bold">No matching tickets found</p>
           </div>
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
               {filteredTickets.map((query) => {
-                const catObj = categories.find(
-                  (c) => c.category_id === query.category_id
-                );
-
-                const categoryName = catObj
-                  ? catObj.name
-                  : `Category #${query.category_id}`;
-
+                const catObj = categories.find(c => c.category_id === query.category_id);
+                const categoryName = catObj ? catObj.name : `Category #${query.category_id}`;
                 return (
                   <div
                     key={query.ticket_id}
                     onClick={() => setSelectedTicket(query)}
-                    className="group bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+                    className="ticket-card group bg-white rounded-2xl border border-gray-100 p-5 shadow-sm cursor-pointer"
                   >
-
-                    {/* Top */}
                     <div className="flex items-start justify-between mb-4">
-
                       <div>
-                        <p className="text-[10px] uppercase text-gray-400 font-bold">
-                          Ticket ID
-                        </p>
-
-                        <h3 className="text-lg font-extrabold text-brandDarkNavy mt-1">
-                          #{query.ticket_id}
-                        </h3>
+                        <p className="text-[10px] uppercase text-gray-400 font-bold">Ticket ID</p>
+                        <h3 className="text-lg font-extrabold text-brandDarkNavy mt-1">#{query.ticket_id}</h3>
                       </div>
-
-                      <span
-                        className={`px-3 py-1 rounded-xl text-[10px] font-bold border ${getStatusBadgeStyles(
-                          query.status
-                        )}`}
-                      >
+                      <span className={`px-3 py-1 rounded-xl text-[10px] font-bold border ${getStatusBadgeStyles(query.status)}`}>
                         {query.status}
                       </span>
-
                     </div>
-
-                    {/* Title */}
-                    <h2 className="text-[16px] font-extrabold text-brandDarkNavy leading-snug line-clamp-2">
-                      {query.title}
-                    </h2>
-
-                    {/* Description */}
-                    <p className="text-sm text-gray-500 mt-3 line-clamp-3 leading-relaxed min-h-[70px]">
-                      {query.description || "No description"}
-                    </p>
-
-                    {/* Bottom */}
+                    <h2 className="text-[16px] font-extrabold text-brandDarkNavy leading-snug line-clamp-2">{query.title}</h2>
+                    <p className="text-sm text-gray-500 mt-3 line-clamp-3 leading-relaxed min-h-[70px]">{query.description || 'No description'}</p>
                     <div className="mt-5 flex items-center justify-between">
-
                       <div>
-                        <p className="text-[10px] uppercase text-gray-400 font-bold">
-                          Category
-                        </p>
-
-                        <p className="text-sm font-bold text-brandDarkNavy mt-1">
-                          {categoryName}
-                        </p>
+                        <p className="text-[10px] uppercase text-gray-400 font-bold">Category</p>
+                        <p className="text-sm font-bold text-brandDarkNavy mt-1">{categoryName}</p>
                       </div>
-
                       <div className="text-right">
-                        <p className="text-[10px] uppercase text-gray-400 font-bold">
-                          Priority
-                        </p>
-
-                        <p className="text-sm font-bold text-brandDarkNavy mt-1">
-                          {query.priority}
-                        </p>
+                        <p className="text-[10px] uppercase text-gray-400 font-bold">Priority</p>
+                        <p className="text-sm font-bold text-brandDarkNavy mt-1">{query.priority}</p>
                       </div>
-
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Ticket Details Modal */}
             {selectedTicket && (
               <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-
-                <div className="bg-white w-full max-w-2xl rounded-3xl p-7 relative shadow-2xl">
-
-                  {/* Close */}
-                  <button
-                    onClick={() => setSelectedTicket(null)}
-                    className="absolute top-5 right-5 w-10 h-10 rounded-xl hover:bg-gray-100 flex items-center justify-center text-gray-500"
-                  >
-                    ✕
-                  </button>
-
-                  {/* Header */}
+                <div className="bg-white w-full max-w-2xl rounded-3xl p-7 relative shadow-2xl animate-scale-in">
+                  <button onClick={() => setSelectedTicket(null)}
+                    className="absolute top-5 right-5 w-10 h-10 rounded-xl hover:bg-gray-100 flex items-center justify-center text-gray-500">✕</button>
                   <div className="mb-7">
-                    <p className="text-[10px] uppercase text-gray-400 font-bold tracking-widest">
-                      Ticket Details
-                    </p>
-
-                    <h2 className="text-2xl font-extrabold text-brandDarkNavy mt-2">
-                      {selectedTicket.title}
-                    </h2>
+                    <p className="text-[10px] uppercase text-gray-400 font-bold tracking-widest">Ticket Details</p>
+                    <h2 className="text-2xl font-extrabold text-brandDarkNavy mt-2">{selectedTicket.title}</h2>
                   </div>
-
-                  {/* Grid */}
                   <div className="grid grid-cols-2 gap-4 mb-6">
-
-                    <div className="bg-gray-50 rounded-2xl p-4">
-                      <p className="text-[10px] uppercase text-gray-400 font-bold">
-                        Ticket ID
-                      </p>
-
-                      <p className="text-sm font-bold text-brandDarkNavy mt-1">
-                        #{selectedTicket.ticket_id}
-                      </p>
-                    </div>
-
-                    <div className="bg-gray-50 rounded-2xl p-4">
-                      <p className="text-[10px] uppercase text-gray-400 font-bold">
-                        Status
-                      </p>
-
-                      <p className="text-sm font-bold text-brandDarkNavy mt-1">
-                        {selectedTicket.status}
-                      </p>
-                    </div>
-
-                    <div className="bg-gray-50 rounded-2xl p-4">
-                      <p className="text-[10px] uppercase text-gray-400 font-bold">
-                        Priority
-                      </p>
-
-                      <p className="text-sm font-bold text-brandDarkNavy mt-1">
-                        {selectedTicket.priority}
-                      </p>
-                    </div>
-
-                    <div className="bg-gray-50 rounded-2xl p-4">
-                      <p className="text-[10px] uppercase text-gray-400 font-bold">
-                        Category
-                      </p>
-
-                      <p className="text-sm font-bold text-brandDarkNavy mt-1">
-                        {
-                          categories.find(
-                            (c) =>
-                              c.category_id === selectedTicket.category_id
-                          )?.name
-                        }
-                      </p>
-                    </div>
-
+                    {[
+                      { label: 'Ticket ID', val: `#${selectedTicket.ticket_id}` },
+                      { label: 'Status', val: selectedTicket.status },
+                      { label: 'Priority', val: selectedTicket.priority },
+                      { label: 'Category', val: categories.find(c => c.category_id === selectedTicket.category_id)?.name }
+                    ].map(({ label, val }) => (
+                      <div key={label} className="bg-gray-50 rounded-2xl p-4">
+                        <p className="text-[10px] uppercase text-gray-400 font-bold">{label}</p>
+                        <p className="text-sm font-bold text-brandDarkNavy mt-1">{val}</p>
+                      </div>
+                    ))}
                   </div>
-
-                  {/* Description */}
                   <div className="bg-gray-50 rounded-2xl p-5">
-                    <p className="text-[10px] uppercase text-gray-400 font-bold mb-2">
-                      Description
-                    </p>
-
-                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                      {selectedTicket.description}
-                    </p>
+                    <p className="text-[10px] uppercase text-gray-400 font-bold mb-2">Description</p>
+                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{selectedTicket.description}</p>
+                    {selectedTicket.attachment_path && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <button
+                          onClick={() => downloadAttachment(selectedTicket.attachment_path)}
+                          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-brandNavy bg-blue-50 hover:bg-blue-100 rounded-lg transition"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          Download Attachment
+                        </button>
+                      </div>
+                    )}
                   </div>
-
                 </div>
               </div>
             )}
@@ -1052,296 +716,176 @@ const UserDashboard = () => {
     );
   };
 
-  const renderMessages = () => {
-    return (
-      <div className="space-y-8 animate-slide-up-fade">
-        <div className="text-left">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-brandDarkNavy font-sora">
-            Messages Inbox
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Secure, real-time message stream with Reliance Retail support coordinators.
-          </p>
+  /* ══════════════════════════════════════════
+     MESSAGES TAB
+  ══════════════════════════════════════════ */
+  const renderMessages = () => (
+    <div className="space-y-8">
+      <div className="text-left">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-brandDarkNavy font-sora">Messages Inbox</h1>
+        <p className="text-sm text-gray-500 mt-1">Secure, real-time message stream with Reliance Retail support coordinators.</p>
+      </div>
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 md:p-12 text-center max-w-xl mx-auto mt-6">
+        <div className="w-16 h-16 rounded-2xl bg-brandNavy/8 text-brandNavy flex items-center justify-center mx-auto mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-8 h-8">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+          </svg>
         </div>
-
-        {/* High-fidelity inbox card */}
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 md:p-12 text-center max-w-xl mx-auto mt-6">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-6">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-8 h-8">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-            </svg>
-          </div>
-
-          <h3 className="text-lg font-extrabold text-brandDarkNavy font-sora mb-2">
-            No Active Message Streams
-          </h3>
-          <p className="text-xs text-gray-400 max-w-sm mx-auto leading-relaxed mb-6 font-semibold">
-            Official operational announcements and direct chat requests related to your active tickets will be displayed here. To open a new support stream, select an issue on the dashboard.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <button
-              type="button"
-              onClick={() => setActiveTab('Dashboard')}
-              className={`px-5 py-3 rounded-xl text-xs font-bold text-white transition-all w-full sm:w-auto shadow-md ${buttonColor}`}
-            >
-              Raise a Query
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('My Queries')}
-              className="px-5 py-3 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-800 hover:bg-gray-50 border border-gray-200 transition-colors w-full sm:w-auto"
-            >
-              Browse Ticket Logs
-            </button>
-          </div>
+        <h3 className="text-lg font-extrabold text-brandDarkNavy font-sora mb-2">No Active Message Streams</h3>
+        <p className="text-xs text-gray-500 max-w-sm mx-auto leading-relaxed mb-6 font-semibold">
+          Official operational announcements and direct chat requests related to your active tickets will appear here.
+        </p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <button onClick={() => switchTab('Dashboard')} className={`px-5 py-3 rounded-xl text-xs font-bold text-white transition-all w-full sm:w-auto shadow-md ${buttonColor}`}>
+            Raise a Query
+          </button>
+          <button onClick={() => switchTab('My Queries')} className="px-5 py-3 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-800 hover:bg-gray-50 border border-gray-200 transition-colors w-full sm:w-auto">
+            Browse Ticket Logs
+          </button>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
 
-  const renderAnalytics = () => {
-    return (
-      <div className="space-y-8 animate-slide-up-fade text-left">
+  /* ══════════════════════════════════════════
+     ANALYTICS TAB
+  ══════════════════════════════════════════ */
+  const renderAnalytics = () => (
+    <div className="space-y-8 text-left">
+      <div>
+        <h1 className="text-2xl md:text-3xl font-extrabold text-brandDarkNavy font-sora">Operational Insights</h1>
+        <p className="text-sm text-gray-500 mt-1">Real-time metric graphs detailing service performance and ticket resolution SLAs.</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {[
+          { label: 'SLA Compliance', val: '98.4%', color: 'text-emerald-600', bar: 'bg-emerald-500', barW: '98.4%', sub: 'Target: 95.0% SLA Threshold' },
+          { label: 'Resolution Speed', val: '4.2 Hours', color: isVendor ? 'text-brandRed' : 'text-brandNavy', bar: isVendor ? 'bg-brandRed' : 'bg-brandNavy', barW: '85%', sub: 'Average ticket close speed this month' },
+          { label: 'Customer Satisfaction', val: '4.8 / 5.0', color: 'text-amber-500', bar: 'bg-amber-400', barW: '96%', sub: 'Feedback score from operations desk' }
+        ].map(s => (
+          <div key={s.label} className="stat-card bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+            <span className="text-[10px] text-gray-400 font-extrabold uppercase font-sora tracking-widest">{s.label}</span>
+            <p className={`text-2xl font-extrabold font-sora mt-1 ${s.color}`}>{s.val}</p>
+            <p className="text-xs text-gray-500 mt-2 font-semibold font-dmSans">{s.sub}</p>
+            <div className="w-full bg-gray-100 h-1.5 rounded-full mt-4 overflow-hidden">
+              <div className={`${s.bar} h-full rounded-full bar-animate`} style={{ width: s.barW }} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-brandDarkNavy font-sora">
-            Operational Insights
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Real-time metric graphs detailing service performance and ticket resolution time SLAs.
-          </p>
+          <h3 className="font-extrabold text-base text-brandDarkNavy font-sora">Query Resolutions by Category</h3>
+          <p className="text-xs text-gray-500 mt-1 font-semibold">Monthly breakdown of successfully resolved tickets by category department.</p>
         </div>
-
-        {/* Value metrics widgets */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Widget 1 */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <span className="text-[10px] text-gray-400 font-extrabold uppercase font-sora tracking-widest">SLA Compliance</span>
-            <p className="text-2xl font-extrabold text-emerald-600 font-sora mt-1">98.4%</p>
-            <p className="text-xs text-gray-400 mt-2 font-semibold font-dmSans">Target: 95.0% SLA Threshold</p>
-            <div className="w-full bg-gray-100 h-1.5 rounded-full mt-4 overflow-hidden">
-              <div className="bg-emerald-500 h-full rounded-full" style={{ width: '98.4%' }} />
+        {[
+          { label: 'Payment Issues & Disputes', pct: 94 },
+          { label: 'Inventory & Store Audits', pct: 98 },
+          { label: 'Technical Support & APIs', pct: 100, emerald: true }
+        ].map(s => (
+          <div key={s.label} className="space-y-1.5">
+            <div className="flex justify-between text-xs font-bold text-gray-700">
+              <span>{s.label}</span><span className="font-extrabold">{s.pct}% Resolved</span>
+            </div>
+            <div className="w-full bg-gray-50 border border-gray-100/50 h-3 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full bar-animate ${s.emerald ? 'bg-emerald-500' : (isVendor ? 'bg-brandRed' : 'bg-brandNavy')}`} style={{ width: `${s.pct}%` }} />
             </div>
           </div>
+        ))}
+      </div>
+    </div>
+  );
 
-          {/* Widget 2 */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <span className="text-[10px] text-gray-400 font-extrabold uppercase font-sora tracking-widest">Resolution Speed</span>
-            <p className="text-2xl font-extrabold text-brandNavy font-sora mt-1">4.2 Hours</p>
-            <p className="text-xs text-gray-400 mt-2 font-semibold font-dmSans">Average ticket close speed this month</p>
-            <div className="w-full bg-gray-100 h-1.5 rounded-full mt-4 overflow-hidden">
-              <div className={`h-full rounded-full ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} style={{ width: '85%' }} />
+  /* ══════════════════════════════════════════
+     PROFILE TAB
+  ══════════════════════════════════════════ */
+  const renderProfile = () => (
+    <div className="space-y-8 text-left">
+      <div>
+        <h1 className="text-2xl md:text-3xl font-extrabold text-brandDarkNavy font-sora">Profile Settings</h1>
+        <p className="text-sm text-gray-500 mt-1">Manage your account credentials, partner details, and alert preferences.</p>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-between text-center lg:col-span-1 min-h-[300px]">
+          <div className="space-y-4">
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center font-bold text-xl text-white shadow-md mx-auto ${isVendor ? 'bg-gradient-to-br from-brandRed to-[#A50E23]' : 'bg-gradient-to-br from-brandNavy to-[#080E29]'}`}>
+              {getInitials(userName)}
+            </div>
+            <div>
+              <h3 className="font-extrabold text-lg text-brandDarkNavy font-sora">{userName}</h3>
+              <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">{roleLabel}</span>
+            </div>
+            <div className="bg-gray-50 border border-gray-100/80 rounded-xl px-4 py-2 inline-block">
+              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">User Account ID</span>
+              <span className="text-xs font-bold text-brandDarkNavy font-sora">VND-2026-8947</span>
             </div>
           </div>
-
-          {/* Widget 3 */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <span className="text-[10px] text-gray-400 font-extrabold uppercase font-sora tracking-widest">Customer Satisfaction</span>
-            <p className="text-2xl font-extrabold text-amber-500 font-sora mt-1">4.8 / 5.0</p>
-            <p className="text-xs text-gray-400 mt-2 font-semibold font-dmSans">Feedback score from operations desk</p>
-            <div className="w-full bg-gray-100 h-1.5 rounded-full mt-4 overflow-hidden">
-              <div className="bg-amber-400 h-full rounded-full" style={{ width: '96%' }} />
-            </div>
-          </div>
+          <button onClick={handleLogout}
+            className="mt-6 px-5 py-2.5 rounded-xl text-xs font-bold border border-gray-200 text-gray-500 hover:text-brandRed hover:bg-brandRed/5 hover:border-brandRed/10 transition-all duration-300 w-full">
+            Sign Out Account
+          </button>
         </div>
-
-        {/* Visual resolution charts */}
-        <div className="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
-          <div>
-            <h3 className="font-extrabold text-base text-brandDarkNavy font-sora">
-              Query Resolutions by Category
-            </h3>
-            <p className="text-xs text-gray-400 mt-1 font-semibold">Monthly breakdown of successfully resolved tickets by category department.</p>
+        <div className="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm lg:col-span-2 space-y-6">
+          <h3 className="font-extrabold text-base text-brandDarkNavy font-sora">Corporate Association Details</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-left">
+            {[
+              { label: 'Registered Name', val: userName },
+              { label: 'Registered Email', val: userEmail },
+              { label: 'Department Division', val: 'Supply Chain Operations' },
+              { label: 'Support Tier Level', val: 'Tier-1 Enterprise SLA' }
+            ].map(({ label, val }) => (
+              <div key={label}>
+                <label className="block text-[10px] font-extrabold text-gray-400 font-sora tracking-widest uppercase mb-2">{label}</label>
+                <input type="text" disabled value={val} className="w-full border border-gray-150 px-4 py-2.5 rounded-xl text-xs font-bold bg-gray-50 text-gray-500 outline-none" />
+              </div>
+            ))}
           </div>
-
-          <div className="space-y-5">
-            {/* Category 1 */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs font-bold text-gray-700">
-                <span>Payment Issues & Disputes</span>
-                <span className="font-extrabold">94% Resolved</span>
+          <hr className="border-gray-100" />
+          <div className="space-y-4 text-left">
+            <h3 className="font-extrabold text-sm text-brandDarkNavy font-sora">Notification Alert Rules</h3>
+            {[
+              { label: 'Email ticket progression digests', sub: 'Receive notification when ticket state updates.' },
+              { label: 'SMS critical urgency escalations', sub: 'Text alert when a query is marked Urgent.' }
+            ].map(({ label, sub }) => (
+              <div key={label} className="flex items-center justify-between py-1">
+                <div>
+                  <p className="text-xs font-bold text-gray-700">{label}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5 font-semibold font-dmSans">{sub}</p>
+                </div>
+                <div className={`w-10 h-6 rounded-full p-1 cursor-pointer flex items-center justify-end ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`}>
+                  <div className="w-4 h-4 bg-white rounded-full" />
+                </div>
               </div>
-              <div className="w-full bg-gray-50 border border-gray-100/50 h-3 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full transition-all duration-1000 ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} style={{ width: '94%' }} />
-              </div>
-            </div>
-
-            {/* Category 2 */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs font-bold text-gray-700">
-                <span>Inventory & Store Audits</span>
-                <span className="font-extrabold">98% Resolved</span>
-              </div>
-              <div className="w-full bg-gray-50 border border-gray-100/50 h-3 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full transition-all duration-1000 ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} style={{ width: '98%' }} />
-              </div>
-            </div>
-
-            {/* Category 3 */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs font-bold text-gray-700">
-                <span>Technical Support & APIs</span>
-                <span className="font-extrabold">100% Resolved</span>
-              </div>
-              <div className="w-full bg-gray-50 border border-gray-100/50 h-3 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-1000 bg-emerald-500" style={{ width: '100%' }} />
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
-    );
-  };
-
-  const renderProfile = () => {
-    return (
-      <div className="space-y-8 animate-slide-up-fade text-left">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-brandDarkNavy font-sora">
-            Profile Settings
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Manage your account credentials, partner details, and alert preferences.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6.5">
-          {/* Profile Card Summary */}
-          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-between text-center lg:col-span-1 min-h-[300px]">
-            <div className="space-y-4">
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center font-bold text-xl text-white shadow-md mx-auto ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'
-                }`}>
-                {getInitials(userName)}
-              </div>
-              <div>
-                <h3 className="font-extrabold text-lg text-brandDarkNavy font-sora">{userName}</h3>
-                <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">{roleLabel}</span>
-              </div>
-
-              <div className="bg-gray-50 border border-gray-100/80 rounded-xl px-4 py-2 inline-block">
-                <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">User Account ID</span>
-                <span className="text-xs font-bold text-brandDarkNavy font-sora">VND-2026-8947</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="mt-6 px-5 py-2.5 rounded-xl text-xs font-bold border border-gray-200 text-gray-500 hover:text-brandRed hover:bg-brandRed/5 hover:border-brandRed/10 transition-all duration-300 w-full"
-            >
-              Sign Out Account
-            </button>
-          </div>
-
-          {/* Form and Toggles */}
-          <div className="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm lg:col-span-2 space-y-6">
-            <h3 className="font-extrabold text-base text-brandDarkNavy font-sora">
-              Corporate Association Details
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-left">
-              <div>
-                <label className="block text-[10px] font-extrabold text-gray-400 font-sora tracking-widest uppercase mb-2">Registered Name</label>
-                <input
-                  type="text"
-                  disabled
-                  value={userName}
-                  className="w-full border border-gray-150 px-4 py-2.5 rounded-xl text-xs font-bold bg-gray-50 text-gray-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-extrabold text-gray-400 font-sora tracking-widest uppercase mb-2">Registered Email</label>
-                <input
-                  type="text"
-                  disabled
-                  value={userEmail}
-                  className="w-full border border-gray-150 px-4 py-2.5 rounded-xl text-xs font-bold bg-gray-50 text-gray-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-extrabold text-gray-400 font-sora tracking-widest uppercase mb-2">Department Division</label>
-                <input
-                  type="text"
-                  disabled
-                  value="Supply Chain Operations"
-                  className="w-full border border-gray-150 px-4 py-2.5 rounded-xl text-xs font-bold bg-gray-50 text-gray-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-extrabold text-gray-400 font-sora tracking-widest uppercase mb-2">Support Tier Level</label>
-                <input
-                  type="text"
-                  disabled
-                  value="Tier-1 Enterprise SLA"
-                  className="w-full border border-gray-150 px-4 py-2.5 rounded-xl text-xs font-bold bg-gray-50 text-gray-500 outline-none"
-                />
-              </div>
-            </div>
-
-            <hr className="border-gray-100" />
-
-            <div className="space-y-4 text-left">
-              <h3 className="font-extrabold text-sm text-brandDarkNavy font-sora">Notification Alert Rules</h3>
-
-              <div className="flex items-center justify-between py-1">
-                <div>
-                  <p className="text-xs font-bold text-gray-700">Email ticket progression digests</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5 font-semibold font-dmSans">Receive immediate notification when ticket state updates to In Progress or Resolved.</p>
-                </div>
-                <div className={`w-10 h-6.5 rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center justify-end ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'
-                  }`}>
-                  <div className="w-4.5 h-4.5 bg-white rounded-full transition-transform duration-300" />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between py-1">
-                <div>
-                  <p className="text-xs font-bold text-gray-700">SMS critical urgency escalations</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5 font-semibold font-dmSans font-medium">Send a real-time text alert when a coordinator marks a query as Urgent.</p>
-                </div>
-                <div className={`w-10 h-6.5 rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center justify-end ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'
-                  }`}>
-                  <div className="w-4.5 h-4.5 bg-white rounded-full transition-transform duration-300" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
+    </div>
+  );
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'Dashboard':
-        return renderDashboard();
-      case 'My Queries':
-        return renderMyQueries();
-      case 'Messages':
-        return renderMessages();
-      case 'Analytics':
-        return renderAnalytics();
-      case 'Profile':
-        return renderProfile();
-      default:
-        return renderDashboard();
+      case 'Dashboard': return renderDashboard();
+      case 'My Queries': return renderMyQueries();
+      case 'Messages': return renderMessages();
+      case 'Analytics': return renderAnalytics();
+      case 'Profile': return renderProfile();
+      default: return renderDashboard();
     }
   };
 
+  /* ══════════════════════════════════════════
+     MAIN RENDER
+  ══════════════════════════════════════════ */
   return (
-    <div className="min-h-screen bg-brandBg font-dmSans flex flex-col relative">
-      {/* ----------------- TOP NAVBAR ----------------- */}
-      <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-8 shrink-0 z-30 shadow-[0_1px_3px_0_rgba(0,0,0,0.02)]">
-        {/* Brand & Logo */}
+    <div className="min-h-screen bg-[#F6F7FB] font-dmSans flex flex-col relative">
+
+      {/* ── TOP NAVBAR ── */}
+      <header className="h-20 glass-navbar border-b border-gray-100/80 flex items-center justify-between px-8 shrink-0 z-30 sticky top-0 shadow-[0_1px_12px_rgba(0,0,0,.04)]">
         <div className="flex items-center space-x-4">
           <img src={relianceLogo} alt="Reliance Retail Logo" className="h-10 w-auto object-contain" />
           <span className="text-[10px] text-brandMuted uppercase ml-2 hidden lg:inline-block border-l pl-3 border-gray-200 tracking-widest font-extrabold font-sora">QMS Portal</span>
         </div>
 
-        {/* Global Ticket Search (Reference Inspired) */}
         <div className="hidden md:flex items-center relative flex-1 max-w-md mx-8">
           <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
@@ -1354,54 +898,45 @@ const UserDashboard = () => {
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
-              if (activeTab !== 'My Queries' && activeTab !== 'Dashboard') {
-                setActiveTab('My Queries');
-              }
+              if (activeTab !== 'My Queries' && activeTab !== 'Dashboard') switchTab('My Queries');
             }}
-            className="w-full pl-11 pr-16 py-3 bg-gray-50/50 border border-gray-200/80 rounded-2xl outline-none focus:border-brandNavy/60 focus:bg-white text-xs font-bold text-gray-700 transition-all font-dmSans placeholder-gray-400/80"
+            className="w-full pl-11 pr-16 py-3 bg-white/60 backdrop-blur border border-gray-200/70 rounded-2xl outline-none focus:border-brandNavy/50 focus:bg-white/90 text-xs font-bold text-gray-700 transition-all font-dmSans placeholder-gray-400/80 shadow-[inset_0_1px_3px_rgba(0,0,0,.03)]"
           />
           <div className="absolute right-0 inset-y-0 pr-4 flex items-center pointer-events-none">
             <kbd className="text-[10px] font-extrabold text-gray-400 bg-white border border-gray-200 px-2 py-0.5 rounded-lg shadow-sm font-sora">⌘ F</kbd>
           </div>
         </div>
 
-        {/* Navigation Actions & User Profile */}
-        <div className="flex items-center space-x-5">
-          {/* Messages Direct Link (Mail Icon) */}
+        <div className="flex items-center space-x-4">
           <button
-            type="button"
-            onClick={() => setActiveTab('Messages')}
+            onClick={() => switchTab('Messages')}
             className={`p-2.5 rounded-xl border border-gray-150/60 hover:bg-gray-50 text-gray-500 transition-all relative ${activeTab === 'Messages' ? 'bg-gray-50 text-brandNavy border-gray-200' : ''}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
             </svg>
-            <span className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ring-2 ring-white ${isVendor ? 'bg-brandRed' : 'bg-brandNavy animate-pulse'}`} />
+            <span className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ring-2 ring-white notif-pulse ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
           </button>
 
-          {/* Quick Notice Bell */}
           <button
-            type="button"
-            onClick={() => setActiveTab('Dashboard')}
+            onClick={() => switchTab('Dashboard')}
             className="p-2.5 rounded-xl border border-gray-150/60 hover:bg-gray-50 text-gray-500 transition-all relative"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
             </svg>
             {tickets.filter(t => t.priority === 'Urgent' || t.status === 'Open').length > 0 && (
-              <span className={`absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-full text-[8px] font-extrabold text-white ring-2 ring-white ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`}>
+              <span className={`absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-full text-[8px] font-extrabold text-white ring-2 ring-white ${notifPopped ? 'badge-pop' : ''} ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`}>
                 {tickets.filter(t => t.priority === 'Urgent' || t.status === 'Open').length}
               </span>
             )}
           </button>
 
-          {/* User Profile Card */}
-          <div className="flex items-center space-x-3.5 pl-3 border-l border-gray-100">
+          <div className="flex items-center space-x-3 pl-3 border-l border-gray-100">
             <div className="text-right hidden sm:block">
               <p className="text-xs font-extrabold text-brandDarkNavy font-sora">{userName}</p>
               <p className="text-[10px] text-gray-400 font-semibold mt-0.5">{userEmail}</p>
             </div>
-            {/* Custom Premium Avatar */}
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs text-white border shadow-sm font-sora ${isVendor ? 'bg-gradient-to-br from-brandRed to-[#A50E23] border-brandRed/20' : 'bg-gradient-to-br from-brandNavy to-[#080E29] border-brandNavy/20'}`}>
               {getInitials(userName)}
             </div>
@@ -1409,12 +944,12 @@ const UserDashboard = () => {
         </div>
       </header>
 
-      {/* ----------------- CORE WORKSPACE ----------------- */}
+      {/* ── CORE WORKSPACE ── */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar */}
-        <aside className="w-[240px] bg-white border-r border-gray-100 shrink-0 hidden md:flex flex-col justify-between p-5 z-20">
-          {/* Navigation Menu */}
-          <div className="space-y-1.5">
+
+        {/* ── SIDEBAR ── */}
+        <aside className="w-[240px] bg-white border-r border-gray-100/80 shrink-0 hidden md:flex flex-col justify-between p-5 z-20">
+          <div className="space-y-1">
             <div className="px-3 mb-4">
               <span className="text-[10px] text-gray-400 font-extrabold tracking-widest uppercase block">Menu</span>
             </div>
@@ -1423,54 +958,52 @@ const UserDashboard = () => {
               return (
                 <button
                   key={item.name}
-                  onClick={() => setActiveTab(item.name)}
-                  className={`w-full flex items-center space-x-3.5 px-3.5 py-3 rounded-2xl text-xs font-bold transition-all duration-300 relative ${isActive ? activeSidebarBg : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50/60'
+                  onClick={() => switchTab(item.name)}
+                  className={`sidebar-item w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold relative overflow-hidden ${isActive
+                      ? `${activeSidebarBg} ${activeSidebarGlow}`
+                      : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50/80'
                     }`}
                 >
-                  {/* Active highlight vertical strip */}
                   {isActive && (
-                    <div className={`absolute left-0 top-3 bottom-3 w-1.5 rounded-r-md ${activeSidebarLine}`} />
+                    <div className={`absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r-full ${activeSidebarLine}`} />
                   )}
-                  <span className={`${isActive ? '' : 'text-gray-400 hover:text-gray-600'}`}>{item.icon}</span>
+                  <span className={`flex items-center justify-center w-7 h-7 rounded-xl transition-all duration-200 icon-scale ${isActive
+                      ? (isVendor ? 'bg-brandRed/10 text-brandRed' : 'bg-brandNavy/10 text-brandNavy')
+                      : 'text-gray-400'
+                    }`}>
+                    {item.icon}
+                  </span>
                   <span>{item.name}</span>
                 </button>
               );
             })}
           </div>
 
-          {/* Bottom Sidebar promo widget */}
-          <div className="space-y-4">
-            <div className="bg-gray-50/70 border border-gray-150/60 rounded-3xl p-4 text-left font-dmSans">
+          <div className="space-y-3">
+            <div className="bg-gray-50/80 border border-gray-150/60 rounded-3xl p-4 text-left font-dmSans">
               <h4 className="text-xs font-bold text-brandDarkNavy font-sora">Need Help?</h4>
               <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">We're here to assist you</p>
-              
-              <div className="mt-3.5 space-y-2 text-[10px] font-bold text-gray-500">
-                <a href="#guide" className="flex items-center space-x-2 hover:text-brandNavy transition-colors">
-                  <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
-                  </svg>
-                  <span>User Guide</span>
-                </a>
-                <a href="#chat" className="flex items-center space-x-2 hover:text-brandNavy transition-colors">
-                  <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
-                  </svg>
-                  <span>Chat Support</span>
-                </a>
-                <a href="#contact" className="flex items-center space-x-2 hover:text-brandNavy transition-colors">
-                  <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.824-1.806-5.194-4.176-7-7l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
-                  </svg>
-                  <span>Contact Support</span>
-                </a>
+              <div className="mt-3 space-y-2 text-[10px] font-bold text-gray-500">
+                {[
+                  { href: '#guide', label: 'User Guide', iconPath: 'M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25' },
+                  { href: '#chat', label: 'Chat Support', iconPath: 'M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z' },
+                  { href: '#contact', label: 'Contact Support', iconPath: 'M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.824-1.806-5.194-4.176-7-7l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z' }
+                ].map(({ href, label, iconPath }) => (
+                  <a key={href} href={href} className="flex items-center space-x-2 hover:text-brandNavy transition-colors">
+                    <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d={iconPath} />
+                    </svg>
+                    <span>{label}</span>
+                  </a>
+                ))}
               </div>
             </div>
-            
+
             <button
               onClick={handleLogout}
-              className="w-full flex items-center space-x-3 px-3.5 py-3 rounded-2xl text-xs font-bold text-gray-500 hover:text-brandRed hover:bg-brandRed/5 transition-all duration-300 border border-transparent hover:border-brandRed/10"
+              className="sidebar-item w-full flex items-center space-x-3 px-3.5 py-3 rounded-2xl text-xs font-bold text-gray-500 hover:text-brandRed hover:bg-brandRed/5 border border-transparent hover:border-brandRed/10"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4.5 h-4.5 text-gray-400 hover:text-inherit">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4 text-gray-400">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
               </svg>
               <span>Sign Out Account</span>
@@ -1478,96 +1011,53 @@ const UserDashboard = () => {
           </div>
         </aside>
 
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
-          <div className="max-w-6xl mx-auto space-y-8 animate-slide-up-fade">
+        {/* ── MAIN CONTENT ── */}
+        <main className="flex-1 overflow-y-auto p-6 md:p-8 bg-[#F6F7FB]">
+          <div key={transitionKey} className="max-w-6xl mx-auto page-enter">
             {renderTabContent()}
           </div>
         </main>
       </div>
 
-      {/* ----------------- RAISE NEW QUERY MODAL ----------------- */}
+      {/* ── RAISE NEW QUERY MODAL ── */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-brandNavy/30 backdrop-blur-sm transition-opacity"
-            onClick={() => setIsModalOpen(false)}
-          />
-
-          {/* Modal Container */}
-          <div className="relative bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-gray-100 overflow-hidden z-10 animate-scale-in">
-            {/* Upper Red/Navy Accent bar */}
-            <div className={`h-2.5 w-full ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
-
-            <div className="p-6 sm:p-8">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6">
+          <div className="absolute inset-0 bg-brandNavy/30 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
+          <div className="relative bg-white w-full max-w-md rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-10 animate-scale-in">
+            <div className={`h-2 w-full ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
+            <div className="p-5 sm:p-6">
+              <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-xl font-extrabold text-brandDarkNavy font-sora">
-                    Raise New Query
-                  </h3>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Fill in details to submit a new ticket directly to operations.
-                  </p>
+                  <h3 className="text-lg font-extrabold text-brandDarkNavy font-sora">Raise New Query</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Submit a ticket to operations</p>
                 </div>
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
+                <button onClick={() => setIsModalOpen(false)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors flex-shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
 
-              {/* Form */}
-              <form onSubmit={handleSubmitTicket} className="space-y-5">
-                {/* Subject/Title */}
+              <form onSubmit={handleSubmitTicket} className="space-y-3.5">
                 <div>
-                  <label className="block text-[10px] font-bold text-brandDarkNavy font-sora tracking-widest uppercase mb-2">
-                    Subject / Title
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Discrepancy in Invoice payment #193"
-                    value={formSubject}
-                    onChange={(e) => setFormSubject(e.target.value)}
-                    className="w-full border border-gray-200 px-4 py-3 rounded-xl outline-none focus:border-brandNavy transition-all text-sm bg-gray-50/50"
-                  />
+                  <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Subject / Title</label>
+                  <input type="text" required placeholder="e.g. Invoice payment issue #193"
+                    value={formSubject} onChange={e => setFormSubject(e.target.value)}
+                    className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-sm bg-gray-50/50" />
                 </div>
 
-                {/* Category & Priority Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Category Selection */}
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-bold text-brandDarkNavy font-sora tracking-widest uppercase mb-2">
-                      Category
-                    </label>
-                    <select
-                      value={formCategory}
-                      onChange={(e) => setFormCategory(e.target.value)}
-                      className="w-full border border-gray-200 px-3 py-3 rounded-xl outline-none focus:border-brandNavy transition-all text-sm bg-gray-50/50 cursor-pointer font-medium text-gray-700"
-                    >
-                      {categories.map((cat) => (
-                        <option key={cat.category_id} value={cat.category_id}>
-                          {cat.name}
-                        </option>
-                      ))}
+                    <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Category</label>
+                    <select value={formCategory} onChange={e => setFormCategory(e.target.value)}
+                      className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-xs bg-gray-50/50 cursor-pointer font-medium text-gray-700">
+                      {categories.map(cat => <option key={cat.category_id} value={cat.category_id}>{cat.name}</option>)}
                     </select>
                   </div>
-
-                  {/* Priority Selector */}
                   <div>
-                    <label className="block text-[10px] font-bold text-brandDarkNavy font-sora tracking-widest uppercase mb-2">
-                      Priority Level
-                    </label>
-                    <select
-                      value={formPriority}
-                      onChange={(e) => setFormPriority(e.target.value)}
-                      className="w-full border border-gray-200 px-3 py-3 rounded-xl outline-none focus:border-brandNavy transition-all text-sm bg-gray-50/50 cursor-pointer font-medium text-gray-700"
-                    >
+                    <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Priority</label>
+                    <select value={formPriority} onChange={e => setFormPriority(e.target.value)}
+                      className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-xs bg-gray-50/50 cursor-pointer font-medium text-gray-700">
                       <option value="Low">Low</option>
                       <option value="Medium">Medium</option>
                       <option value="High">High</option>
@@ -1576,120 +1066,59 @@ const UserDashboard = () => {
                   </div>
                 </div>
 
-                {/* Description */}
                 <div>
-                  <label className="block text-[10px] font-bold text-brandDarkNavy font-sora tracking-widest uppercase mb-2">
-                    Detailed Description
-                  </label>
-                  <textarea
-                    required
-                    rows="3"
-                    placeholder="Provide exact details, ticket references, or item details here so our support agents can resolve it quickly..."
-                    value={formDescription}
-                    onChange={(e) => setFormDescription(e.target.value)}
-                    className="w-full border border-gray-200 px-4 py-3 rounded-xl outline-none focus:border-brandNavy transition-all text-sm bg-gray-50/50 resize-none font-medium text-gray-700"
-                  />
+                  <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Description</label>
+                  <textarea required rows="2" placeholder="Provide details, references, or item info..."
+                    value={formDescription} onChange={e => setFormDescription(e.target.value)}
+                    className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-sm bg-gray-50/50 resize-none font-medium text-gray-700" />
                 </div>
 
-                {/* Drag and Drop File Attachment zone (matching 1st image) */}
                 <div>
-                  <label className="block text-[10px] font-bold text-brandDarkNavy font-sora tracking-widest uppercase mb-2">
-                    Attachment Option
-                  </label>
+                  <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Attachment</label>
                   <div
-                    onDragOver={handleDragOver}
-                    onDrop={handleDrop}
+                    onDragOver={handleDragOver} onDrop={handleDrop}
                     onClick={() => document.getElementById('dashboard-file-upload').click()}
-                    className="border-2 border-dashed border-gray-200 rounded-3xl p-6 text-center cursor-pointer hover:bg-gray-50/50 hover:border-brandNavy/30 transition-all flex flex-col items-center justify-center min-h-[160px] relative"
+                    className="border-2 border-dashed border-gray-200 rounded-xl p-3 text-center cursor-pointer hover:bg-gray-50/50 hover:border-brandNavy/30 transition-all flex flex-col items-center justify-center min-h-[90px]"
                   >
-                    <input
-                      id="dashboard-file-upload"
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.jpg,.jpeg,.png,.xlsx"
-                      onChange={handleFileChange}
-                    />
-
+                    <input id="dashboard-file-upload" type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.xlsx" onChange={handleFileChange} />
                     {!attachment ? (
                       <>
-                        {/* Blue Upload Icon */}
-                        <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-brandNavy flex items-center justify-center mb-3">
-                          <svg className="w-6 h-6 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <div className="w-9 h-9 rounded-lg bg-brandNavy/10 text-brandNavy flex items-center justify-center mb-2">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
                           </svg>
                         </div>
-
-                        <p className="text-sm font-extrabold text-brandDarkNavy font-sora">
-                          Drop files here or click to upload
-                        </p>
-                        <p className="text-[11px] text-gray-400 mt-1 font-semibold">
-                          Maximum file size: 25MB
-                        </p>
-
-                        {/* Allowed formats badges */}
-                        <div className="flex items-center gap-1.5 mt-4">
-                          <span className="px-2.5 py-1 rounded-xl bg-gray-50 text-[9px] font-bold text-gray-500">PDF</span>
-                          <span className="px-2.5 py-1 rounded-xl bg-gray-50 text-[9px] font-bold text-gray-500">JPG</span>
-                          <span className="px-2.5 py-1 rounded-xl bg-gray-50 text-[9px] font-bold text-gray-500">PNG</span>
-                          <span className="px-2.5 py-1 rounded-xl bg-gray-50 text-[9px] font-bold text-gray-500">XLSX</span>
-                        </div>
+                        <p className="text-xs font-bold text-brandDarkNavy font-sora">Click to upload or drag</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5 font-medium">PDF, JPG, PNG, XLSX (25MB max)</p>
                       </>
                     ) : (
                       <div className="flex flex-col items-center">
-                        <svg className="w-9 h-9 text-emerald-500 mb-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <svg className="w-7 h-7 text-brandRed mb-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                         </svg>
-                        <p className="text-xs font-bold text-brandDarkNavy truncate max-w-[240px] font-sora">
-                          {attachment.name}
-                        </p>
-                        <p className="text-[10px] text-gray-400 mt-0.5 font-bold">
-                          {(attachment.size / (1024 * 1024)).toFixed(2)} MB
-                        </p>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setAttachment(null);
-                          }}
-                          className="mt-3 text-[10px] font-extrabold text-brandRed hover:underline uppercase tracking-wider"
-                        >
-                          Remove Attachment
+                        <p className="text-xs font-bold text-brandDarkNavy truncate max-w-[160px] font-sora">{attachment.name}</p>
+                        <p className="text-[9px] text-gray-400 mt-0.5 font-bold">{(attachment.size / (1024 * 1024)).toFixed(2)} MB</p>
+                        <button type="button" onClick={e => { e.stopPropagation(); setAttachment(null); }}
+                          className="mt-1.5 text-[9px] font-extrabold text-brandRed hover:underline uppercase tracking-wider">
+                          Remove
                         </button>
                       </div>
                     )}
                   </div>
-                  {attachmentError && (
-                    <p className="text-xs text-brandRed font-bold mt-1.5">{attachmentError}</p>
-                  )}
+                  {attachmentError && <p className="text-xs text-brandRed font-bold mt-1">{attachmentError}</p>}
                 </div>
 
-                {/* Submit button */}
-                <div className="pt-2 flex items-center justify-end space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="px-5 py-2.5 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-800 hover:bg-gray-50 border border-gray-200 transition-colors"
-                  >
+                <div className="pt-1 flex items-center justify-end gap-2">
+                  <button type="button" onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 rounded-lg text-xs font-bold text-gray-600 hover:text-gray-800 hover:bg-gray-100 border border-gray-200 transition-colors">
                     Cancel
                   </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting || !formSubject || !formDescription}
-                    className={`px-6 py-2.5 rounded-xl text-xs font-bold text-white shadow-md transition-all duration-300 flex items-center space-x-1.5 ${buttonColor} ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
-                      }`}
-                  >
+                  <button type="submit" disabled={isSubmitting || !formSubject || !formDescription}
+                    className={`px-5 py-2 rounded-lg text-xs font-bold text-white shadow-sm transition-all duration-300 flex items-center gap-1.5 ${buttonColor} ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}>
                     {isSubmitting ? (
-                      <>
-                        <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
-                        <span>Submitting...</span>
-                      </>
+                      <><div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" /><span>Submitting...</span></>
                     ) : (
-                      <>
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
-                        </svg>
-                        <span>Raise Query</span>
-                      </>
+                      <><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" /></svg><span>Submit</span></>
                     )}
                   </button>
                 </div>
@@ -1700,5 +1129,6 @@ const UserDashboard = () => {
       )}
     </div>
   );
-}
+};
+
 export default UserDashboard;

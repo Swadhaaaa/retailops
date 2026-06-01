@@ -1,9 +1,20 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import duckdb
 from datetime import datetime
+import os
+from werkzeug.utils import secure_filename
+import uuid
 
 tickets_bp = Blueprint('tickets', __name__)
+
+# Configure upload folder
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'uploads')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'xlsx', 'txt', 'csv'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 # GENERATE CUSTOM TICKET ID
@@ -35,15 +46,25 @@ def generate_ticket_id(conn):
 def create_ticket():
 
     try:
-
-        data = request.get_json()
-
         current_user = get_jwt_identity()
-
         conn = duckdb.connect('tickets.db')
-
-        # Generate Ticket ID
         ticket_id = generate_ticket_id(conn)
+
+        title = request.form.get('title')
+        description = request.form.get('description')
+        category_id = request.form.get('category_id')
+        priority = request.form.get('priority')
+
+        attachment_path = None
+
+        if 'attachment' in request.files:
+            file = request.files['attachment']
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                unique_filename = f"{uuid.uuid4()}_{filename}"
+                file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+                file.save(file_path)
+                attachment_path = unique_filename
 
         conn.execute("""
             INSERT INTO tickets (
@@ -54,18 +75,20 @@ def create_ticket():
                 priority,
                 status,
                 raised_by,
-                created_at
+                created_at,
+                attachment_path
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [
             ticket_id,
-            data.get('title'),
-            data.get('description'),
-            data.get('category_id'),
-            data.get('priority'),
+            title,
+            description,
+            category_id,
+            priority,
             'Open',
             current_user,
-            datetime.now()
+            datetime.now(),
+            attachment_path
         ])
 
         conn.close()
@@ -102,7 +125,8 @@ def get_tickets():
                 status,
                 raised_by,
                 assigned_to,
-                created_at
+                created_at,
+                attachment_path
             FROM tickets
             WHERE raised_by = ?
             ORDER BY created_at DESC
@@ -122,7 +146,8 @@ def get_tickets():
                 'status': ticket[5],
                 'raised_by': ticket[6],
                 'assigned_to': ticket[7],
-                'created_at': str(ticket[8])
+                'created_at': str(ticket[8]),
+                'attachment_path': ticket[9]
             })
 
         return jsonify(result)
@@ -152,7 +177,8 @@ def get_single_ticket(ticket_id):
                 status,
                 raised_by,
                 assigned_to,
-                created_at
+                created_at,
+                attachment_path
             FROM tickets
             WHERE ticket_id = ?
         """, [ticket_id]).fetchone()
@@ -173,7 +199,8 @@ def get_single_ticket(ticket_id):
             'status': ticket[5],
             'raised_by': ticket[6],
             'assigned_to': ticket[7],
-            'created_at': str(ticket[8])
+            'created_at': str(ticket[8]),
+            'attachment_path': ticket[9]
         })
 
     except Exception as e:
@@ -201,7 +228,8 @@ def admin_get_all_tickets():
                 status,
                 raised_by,
                 assigned_to,
-                created_at
+                created_at,
+                attachment_path
             FROM tickets
             ORDER BY created_at DESC
         """).fetchall()
@@ -220,7 +248,8 @@ def admin_get_all_tickets():
                 'status': ticket[5],
                 'raised_by': ticket[6],
                 'assigned_to': ticket[7],
-                'created_at': str(ticket[8])
+                'created_at': str(ticket[8]),
+                'attachment_path': ticket[9]
             })
 
         return jsonify(result)
@@ -261,3 +290,16 @@ def assign_agent(ticket_id):
         return jsonify({
             'error': str(e)
         }), 500
+
+
+# DOWNLOAD ATTACHMENT
+@tickets_bp.route('/download/<filename>', methods=['GET'])
+@jwt_required()
+def download_attachment(filename):
+    try:
+        file_path = os.path.join(UPLOAD_FOLDER, secure_filename(filename))
+        if not os.path.exists(file_path):
+            return jsonify({'error': 'File not found'}), 404
+        return send_file(file_path, as_attachment=True)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
