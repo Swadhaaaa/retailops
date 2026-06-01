@@ -128,7 +128,7 @@ const LoginPage = () => {
               Manage Retail <span className="text-[#E31837]"> Queries </span> Efficiently.
             </h1>
             <p className="text-xs xl:text-sm text-brandMuted leading-relaxed">
-              Raise, track, manage, and resolve vendor queries efficiently through one centralized platform.
+              Raise, track, manage, and resolve user queries efficiently through one centralized platform.
             </p>
           </div>
         </div>
@@ -141,7 +141,7 @@ const LoginPage = () => {
 
       {/* ----------------- RIGHT PANEL & TRANSITIONS ----------------- */}
       <div className="flex-1 relative z-0 overflow-hidden">
-        <CursorGradientBg>
+        <CursorGradientBg selectedRole={role}>
           <div className="flex items-center justify-center p-6 lg:p-12 h-full relative">
 
         {/* BACKGROUND ACCENT SHAPE */}
@@ -161,38 +161,27 @@ const LoginPage = () => {
             <div className="space-y-4 mb-8">
               {roles.map((item) => {
                 const isSelected = role === item.id;
-                let activeBorder = 'border-brandNavy';
-                let activeBg = 'bg-brandNavy/[0.02]';
-
-                if (item.id === 'vendor') {
-                  activeBorder = 'border-brandRed';
-                  activeBg = 'bg-brandRed/[0.02]';
+                let cardStyles = 'border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700';
+                
+                if (isSelected) {
+                  if (item.id === 'vendor') {
+                    cardStyles = 'bg-brandRed border-brandRed text-white shadow-lg shadow-brandRed/20';
+                  } else {
+                    cardStyles = 'bg-brandNavy border-brandNavy text-white shadow-lg shadow-brandNavy/20';
+                  }
                 }
 
                 return (
                   <div
                     key={item.id}
                     onClick={() => handleRoleSelect(item.id)}
-                    className={`relative flex items-center justify-between border rounded-2xl p-5 cursor-pointer transition-all duration-300 ${isSelected
-                        ? `${activeBorder} ${activeBg} shadow-md`
-                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                      }`}
+                    className={`relative flex items-center justify-between border rounded-2xl p-5 cursor-pointer transition-all duration-300 ${cardStyles}`}
                   >
-                    {/* Left Accent Bar */}
-                    {isSelected && (
-                      <div
-                        className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-2xl ${item.id === 'vendor' ? 'bg-brandRed' : 'bg-brandNavy'
-                          }`}
-                      />
-                    )}
-
                     <div className="flex items-center space-x-4 pl-1">
                       {/* Role Icon Container */}
                       <div
                         className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors duration-300 ${isSelected
-                            ? item.id === 'vendor'
-                              ? 'bg-brandRed/10 text-brandRed'
-                              : 'bg-brandNavy/10 text-brandNavy'
+                            ? 'bg-white/20 text-white'
                             : 'bg-gray-100 text-gray-500'
                           }`}
                       >
@@ -201,10 +190,10 @@ const LoginPage = () => {
 
                       {/* Description */}
                       <div className="text-left">
-                        <h3 className={`font-bold text-[16px] font-sora ${isSelected ? 'text-brandDarkNavy' : 'text-gray-700'}`}>
+                        <h3 className={`font-bold text-[16px] font-sora ${isSelected ? 'text-white' : 'text-gray-700'}`}>
                           {item.title}
                         </h3>
-                        <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">
+                        <p className={`text-xs mt-0.5 line-clamp-1 ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>
                           {item.desc}
                         </p>
                       </div>
@@ -212,7 +201,7 @@ const LoginPage = () => {
 
                     {/* Arrow Indicator */}
                     <div className={`transition-all duration-300 ${isSelected ? 'translate-x-1 opacity-100' : 'opacity-0'}`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className={`w-4 h-4 ${role === 'vendor' ? 'text-brandRed' : 'text-brandNavy'}`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4 text-current">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
                       </svg>
                     </div>

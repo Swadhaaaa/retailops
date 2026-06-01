@@ -52,7 +52,7 @@ const BlobTransition = ({ selectedSubRole, loggedUser, onComplete }) => {
     }
   }, [phase, onComplete]);
 
-  // Vendor gets red transition blob, Business and Admin get navy
+  // User gets red transition blob, Business and Admin get navy
   const isVendor = selectedSubRole === 'vendor';
   const blobColorClass = isVendor ? 'bg-brandRed' : 'bg-brandNavy';
 

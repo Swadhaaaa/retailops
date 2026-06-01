@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const CursorGradientBg = ({ children }) => {
+const CursorGradientBg = ({ children, selectedRole }) => {
   const containerRef = useRef(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [interpolatedPos, setInterpolatedPos] = useState({ x: 0, y: 0 });
@@ -52,6 +52,14 @@ const CursorGradientBg = ({ children }) => {
     };
   }, [mousePos]);
 
+  // Determine gradient colors based on the selected role
+  let gradientBackground = 'radial-gradient(circle, rgba(201, 235, 255, 0.75) 0%, rgba(213, 197, 255, 0.55) 35%, rgba(199, 210, 254, 0.25) 70%, transparent 100%)';
+  if (selectedRole === 'vendor') {
+    gradientBackground = 'radial-gradient(circle, rgba(227, 24, 55, 0.22) 0%, rgba(239, 68, 68, 0.13) 35%, rgba(254, 202, 202, 0.05) 70%, transparent 100%)';
+  } else if (selectedRole === 'admin') {
+    gradientBackground = 'radial-gradient(circle, rgba(15, 27, 76, 0.22) 0%, rgba(139, 156, 199, 0.14) 35%, rgba(139, 156, 199, 0.06) 70%, transparent 100%)';
+  }
+
   return (
     <div
       ref={containerRef}
@@ -64,8 +72,8 @@ const CursorGradientBg = ({ children }) => {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: `linear-gradient(rgba(71, 85, 239, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(71, 85, 239, 0.05) 1px, transparent 1px)`,
-          backgroundSize: '32px 32px',
+          backgroundImage: `linear-gradient(to right, rgba(0, 0, 0, 0.035) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 0, 0, 0.035) 1px, transparent 1px)`,
+          backgroundSize: '6rem 4rem',
           zIndex: 1,
         }}
       />
@@ -76,11 +84,11 @@ const CursorGradientBg = ({ children }) => {
         style={{
           left: `${interpolatedPos.x}px`,
           top: `${interpolatedPos.y}px`,
-          width: '400px',
-          height: '400px',
+          width: '350px',
+          height: '350px',
           transform: 'translate(-50%, -50%)',
-          background: 'radial-gradient(circle, rgba(147, 112, 219, 0.12) 0%, rgba(100, 150, 255, 0.06) 30%, transparent 70%)',
-          filter: 'blur(80px)',
+          background: gradientBackground,
+          filter: 'blur(90px)',
           zIndex: 0,
           transition: 'none',
         }}

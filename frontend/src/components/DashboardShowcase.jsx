@@ -38,7 +38,7 @@ const DashboardShowcase = () => {
         <div className="space-y-2 mt-4">
           <div className="flex justify-between items-center pb-2 border-b border-white/10 text-[10px]">
             <span className="font-semibold tracking-wider uppercase text-white/60">
-              Recent Vendor Queries
+              Recent User Queries
             </span>
 
             <span className="flex items-center text-brandRed font-bold animate-pulse text-[9px]">

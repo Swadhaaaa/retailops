@@ -218,10 +218,10 @@ const AdminDashboard = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h1 className="text-2xl md:text-3xl font-extrabold text-brandDarkNavy font-sora">
-                  Good morning, {userName.split(' ')[0]} 👋
+                  Good morning, {userName.split(' ')[0]} 
                 </h1>
                 <p className="text-sm text-gray-400 mt-1">
-                  System Overview: Managing store tickets and vendor queries.
+                  System Overview: Managing store tickets and user queries.
                 </p>
               </div>
             </div>
@@ -309,7 +309,7 @@ const AdminDashboard = () => {
               <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between flex-wrap gap-4">
                 <div>
                   <h2 className="text-lg font-extrabold text-brandDarkNavy font-sora">
-                    All User & Vendor Queries
+                    All User Queries
                   </h2>
                   <p className="text-xs text-gray-400">View raised tickets across the system, assign agents, and manage escalation status.</p>
                 </div>
@@ -325,14 +325,14 @@ const AdminDashboard = () => {
                 ) : tickets.length === 0 ? (
                   <div className="py-16 text-center text-gray-500">
                     <p className="font-bold font-sora text-[15px]">No user queries found in the database</p>
-                    <p className="text-xs text-gray-400 mt-1">Queries raised by vendors will appear here in real-time.</p>
+                    <p className="text-xs text-gray-400 mt-1">Queries raised by users will appear here in real-time.</p>
                   </div>
                 ) : (
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-gray-50/50 text-[10px] text-gray-400 font-bold font-sora tracking-widest border-b border-gray-100 uppercase">
                         <th className="py-4 px-6">ID</th>
-                        <th className="py-4 px-6">User / Vendor</th>
+                        <th className="py-4 px-6">User</th>
                         <th className="py-4 px-6">Subject</th>
                         <th className="py-4 px-6">Category</th>
                         <th className="py-4 px-6">Assigned Agent</th>
@@ -356,7 +356,7 @@ const AdminDashboard = () => {
                             </div>
                           </td>
 
-                          {/* Vendor */}
+                          {/* User */}
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-800">
                               {query.raised_by}

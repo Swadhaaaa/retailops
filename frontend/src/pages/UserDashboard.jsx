@@ -6,47 +6,185 @@ import api from '../utils/api';
 import relianceLogo from '../assets/reliance_logo.png';
 
 
-const getCategoryIcon = (catId) => {
-  switch (catId) {
-    case 1: // Payment Issues
-      return (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
-        </svg>
-      );
-    case 2: // Inventory Issues
-      return (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
-        </svg>
-      );
-    case 3: // Technical Support
-      return (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.43l-1.003.828c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.43l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-        </svg>
-      );
-    case 4: // Delivery Issues
-      return (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.129-1.125v-3.097c0-.626-.25-1.226-.694-1.671l-2.73-2.73a1.125 1.125 0 0 0-.796-.329H13.5m4.5 9v-5.25m0 5.25h-6.75M13.5 9h2.25M13.5 6h2.25M13.5 3h2.25M2.25 10.5h11.25m-11.25 0V3.75c0-.621.504-1.125 1.125-1.125h9.75c.621 0 1.125.504 1.125 1.125v6.75m-12 0h12" />
-        </svg>
-      );
-    case 5: // Documentation
-      return (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25h-2.25a1.5 1.5 0 0 0-1.5 1.5v2.25m0-10.5v10.5m-9-7.5h3m-3 3h6m-6 3h6" />
-        </svg>
-      );
-    default:
-      return (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
-        </svg>
-      );
+const staticCategories = [
+  {
+    category_id: 1,
+    name: 'Payment Issues',
+    description: 'Invoice and payment related issues',
+    bg: 'bg-emerald-50/50 hover:bg-emerald-50 text-emerald-600 border-emerald-100/60 hover:border-emerald-300 hover:shadow-emerald-50',
+    icon: (
+      <svg className="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
+      </svg>
+    )
+  },
+  {
+    category_id: 2,
+    name: 'Inventory Issues',
+    description: 'Stock and inventory problems',
+    bg: 'bg-blue-50/50 hover:bg-blue-50 text-blue-600 border-blue-100/60 hover:border-blue-300 hover:shadow-blue-50',
+    icon: (
+      <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+      </svg>
+    )
+  },
+  {
+    category_id: 3,
+    name: 'Technical Support',
+    description: 'System and technical support',
+    bg: 'bg-indigo-50/50 hover:bg-indigo-50 text-indigo-600 border-indigo-100/60 hover:border-indigo-300 hover:shadow-indigo-50',
+    icon: (
+      <svg className="w-8 h-8 text-indigo-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.43l-1.003.828c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.43l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+      </svg>
+    )
+  },
+  {
+    category_id: 4,
+    name: 'Delivery Issues',
+    description: 'Shipment and delivery concerns',
+    bg: 'bg-purple-50/50 hover:bg-purple-50 text-purple-600 border-purple-100/60 hover:border-purple-300 hover:shadow-purple-50',
+    icon: (
+      <svg className="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.129-1.125v-3.097c0-.626-.25-1.226-.694-1.671l-2.73-2.73a1.125 1.125 0 0 0-.796-.329H13.5m4.5 9v-5.25m0 5.25h-6.75M13.5 9h2.25M13.5 6h2.25M13.5 3h2.25M2.25 10.5h11.25m-11.25 0V3.75c0-.621.504-1.125 1.125-1.125h9.75c.621 0 1.125.504 1.125 1.125v6.75m-12 0h12" />
+      </svg>
+    )
+  },
+  {
+    category_id: 5,
+    name: 'Documentation',
+    description: 'Document and compliance issues',
+    bg: 'bg-teal-50/50 hover:bg-teal-50 text-teal-600 border-teal-100/60 hover:border-teal-300 hover:shadow-teal-50',
+    icon: (
+      <svg className="w-8 h-8 text-teal-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25h-2.25a1.5 1.5 0 0 0-1.5 1.5v2.25m0-10.5v10.5m-9-7.5h3m-3 3h6m-6 3h6" />
+      </svg>
+    )
+  },
+  {
+    category_id: 6,
+    name: 'Order Discrepancies',
+    description: 'Mismatched order quantities or items',
+    bg: 'bg-amber-50/50 hover:bg-amber-50 text-amber-600 border-amber-100/60 hover:border-amber-300 hover:shadow-amber-50',
+    icon: (
+      <svg className="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+      </svg>
+    )
+  },
+  {
+    category_id: 7,
+    name: 'User Onboarding',
+    description: 'Registration and profile setup queries',
+    bg: 'bg-cyan-50/50 hover:bg-cyan-50 text-cyan-600 border-cyan-100/60 hover:border-cyan-300 hover:shadow-cyan-50',
+    icon: (
+      <svg className="w-8 h-8 text-cyan-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+      </svg>
+    )
+  },
+  {
+    category_id: 8,
+    name: 'Quality Control',
+    description: 'Product quality and damage complaints',
+    bg: 'bg-rose-50/50 hover:bg-rose-50 text-rose-600 border-rose-100/60 hover:border-rose-300 hover:shadow-rose-50',
+    icon: (
+      <svg className="w-8 h-8 text-rose-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296a3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+      </svg>
+    )
+  },
+  {
+    category_id: 9,
+    name: 'Pricing & Billing',
+    description: 'Pricing disputes and billing inquiries',
+    bg: 'bg-yellow-50/50 hover:bg-yellow-50 text-yellow-600 border-yellow-100/60 hover:border-yellow-300 hover:shadow-yellow-50',
+    icon: (
+      <svg className="w-8 h-8 text-yellow-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879-.659c1.546-1.159 3.816-1.159 5.362 0l1.178.884M15 10.125c-.77-.19-1.56-.233-2.339-.127-.776.106-1.554.407-2.23.896-.68.491-1.144 1.189-1.309 1.994-.165.805-.034 1.637.38 2.333.415.696 1.077 1.218 1.83 1.488.752.27 1.57.29 2.337.062a7.485 7.485 0 0 0 2.112-.888M9 10.125C9.77 9.935 10.56 9.892 11.339 9.998c.776-.106 1.554-.407 2.23-.896.68-.491 1.144-1.189 1.309-1.994.165-.805.034-1.637-.38-2.333-.415-.696-1.077-1.218-1.83-1.488-.752-.27-1.57-.29-2.337-.062a7.485 7.485 0 0 0-2.112.888" />
+      </svg>
+    )
+  },
+  {
+    category_id: 10,
+    name: 'SLA Violations',
+    description: 'SLA delays and performance escalations',
+    bg: 'bg-red-50/50 hover:bg-red-50 text-red-600 border-red-100/60 hover:border-red-300 hover:shadow-red-50',
+    icon: (
+      <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+      </svg>
+    )
+  },
+  {
+    category_id: 11,
+    name: 'Logistics Support',
+    description: 'Transport, routing, and carrier issues',
+    bg: 'bg-orange-50/50 hover:bg-orange-50 text-orange-600 border-orange-100/60 hover:border-orange-300 hover:shadow-orange-50',
+    icon: (
+      <svg className="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.129-1.125v-3.097c0-.626-.25-1.226-.694-1.671l-2.73-2.73a1.125 1.125 0 0 0-.796-.329H13.5m4.5 9v-5.25m0 5.25h-6.75M13.5 9h2.25" />
+      </svg>
+    )
+  },
+  {
+    category_id: 12,
+    name: 'Database & Sync',
+    description: 'Data mismatch and sync issues',
+    bg: 'bg-violet-50/50 hover:bg-violet-50 text-violet-600 border-violet-100/60 hover:border-violet-300 hover:shadow-violet-50',
+    icon: (
+      <svg className="w-8 h-8 text-violet-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V10.125" />
+      </svg>
+    )
+  },
+  {
+    category_id: 13,
+    name: 'Account & Security',
+    description: 'Security settings and account recovery',
+    bg: 'bg-gray-50/50 hover:bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-400 hover:shadow-gray-50',
+    icon: (
+      <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+      </svg>
+    )
+  },
+  {
+    category_id: 14,
+    name: 'Refunds & Returns',
+    description: 'Product return requests and refunds',
+    bg: 'bg-lime-50/50 hover:bg-lime-50 text-lime-600 border-lime-100/60 hover:border-lime-300 hover:shadow-lime-50',
+    icon: (
+      <svg className="w-8 h-8 text-lime-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+      </svg>
+    )
+  },
+  {
+    category_id: 15,
+    name: 'Compliance & Audits',
+    description: 'Regulatory, policy, and audit support',
+    bg: 'bg-fuchsia-50/50 hover:bg-fuchsia-50 text-fuchsia-600 border-fuchsia-100/60 hover:border-fuchsia-300 hover:shadow-fuchsia-50',
+    icon: (
+      <svg className="w-8 h-8 text-fuchsia-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M11.35 11.75a3.25 3.25 0 1 1-6.5 0 3.25 3.25 0 0 1 6.5 0Zm0 0c0 1.25-.37 2.41-1 3.38L14 18.5m-8.5-8a8.5 8.5 0 1 1 17 0 8.5 8.5 0 0 1-17 0Z" />
+      </svg>
+    )
   }
+];
+
+
+const getCategoryIcon = (catId) => {
+  const staticCat = staticCategories.find(c => c.category_id === catId);
+  if (staticCat) return staticCat.icon;
+  return (
+    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+    </svg>
+  );
 };
 
 const UserDashboard = () => {
@@ -56,17 +194,21 @@ const UserDashboard = () => {
 
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [tickets, setTickets] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState(staticCategories);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
 
   // Form State
   const [formSubject, setFormSubject] = useState('');
-  const [formCategory, setFormCategory] = useState('');
+  const [formCategory, setFormCategory] = useState('1');
   const [formPriority, setFormPriority] = useState('Medium');
   const [formDescription, setFormDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Attachment State
+  const [attachment, setAttachment] = useState(null);
+  const [attachmentError, setAttachmentError] = useState('');
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -113,7 +255,7 @@ const UserDashboard = () => {
   // Determine current role info
   const subRole = selectedSubRole || 'business'; // default to business
   const isVendor = subRole === 'vendor';
-  const roleLabel = isVendor ? 'Vendor User' : 'Business User';
+  const roleLabel = isVendor ? 'User' : 'Business User';
 
   // Role-based styling accents
   const primaryBrandColor = isVendor ? 'text-brandRed bg-brandRed/10' : 'text-brandNavy bg-brandNavy/10';
@@ -122,7 +264,7 @@ const UserDashboard = () => {
   const activeSidebarLine = isVendor ? 'bg-brandRed' : 'bg-brandNavy';
 
   // Greeting name
-  const userName = user?.name || (isVendor ? 'Vendor Partner' : 'Retail Executive');
+  const userName = user?.name || (isVendor ? 'User Partner' : 'Retail Executive');
   const userEmail = user?.email || 'user@relianceretail.com';
 
   // Get initials for avatar
@@ -142,9 +284,8 @@ const UserDashboard = () => {
       setTickets(ticketsRes.data);
 
       const categoriesRes = await api.get('/categories/');
-      setCategories(categoriesRes.data);
-      if (categoriesRes.data.length > 0) {
-        setFormCategory(categoriesRes.data[0].category_id);
+      if (categoriesRes.data && categoriesRes.data.length > 0) {
+        setFormCategory(staticCategories[0].category_id.toString());
       }
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -169,9 +310,14 @@ const UserDashboard = () => {
 
     setIsSubmitting(true);
     try {
+      let finalDescription = formDescription;
+      if (attachment) {
+        finalDescription += `\n\n[Attachment: ${attachment.name} (${(attachment.size / (1024 * 1024)).toFixed(2)} MB)]`;
+      }
+
       await api.post('/tickets/', {
         title: formSubject,
-        description: formDescription,
+        description: finalDescription,
         category_id: parseInt(formCategory, 10),
         priority: formPriority
       });
@@ -180,9 +326,8 @@ const UserDashboard = () => {
       setFormSubject('');
       setFormDescription('');
       setFormPriority('Medium');
-      if (categories.length > 0) {
-        setFormCategory(categories[0].category_id);
-      }
+      setAttachment(null);
+      setFormCategory(staticCategories[0].category_id.toString());
       setIsModalOpen(false);
 
       // Refresh data
@@ -196,8 +341,39 @@ const UserDashboard = () => {
   };
 
   const handleCategoryClick = (categoryId) => {
-    setFormCategory(categoryId);
+    setFormCategory(categoryId.toString());
     setIsModalOpen(true);
+  };
+
+  // Handle file select
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      setAttachmentError('Maximum file size is 25MB');
+      setAttachment(null);
+      return;
+    }
+    setAttachmentError('');
+    setAttachment(file);
+  };
+
+  // Handle Drag & Drop
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) {
+      setAttachmentError('Maximum file size is 25MB');
+      setAttachment(null);
+      return;
+    }
+    setAttachmentError('');
+    setAttachment(file);
   };
 
   // Sidebar Items
@@ -218,15 +394,25 @@ const UserDashboard = () => {
     },
     {
       name: 'Messages', icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+        <div className="relative">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+          </svg>
+          <span className="absolute -top-1.5 -right-2 px-1 py-0.5 rounded-full bg-rose-500 text-[8px] font-extrabold text-white">2</span>
+        </div>
+      )
+    },
+    {
+      name: 'Documents', icon: (
+        <svg xmlns="http://www.w3.org/2050/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" />
         </svg>
       )
     },
     {
-      name: 'Analytics', icon: (
+      name: 'Downloads', icon: (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v5.625C7.5 19.346 6.996 19.875 6.375 19.875h-2.25A1.375 1.375 0 0 1 3 18.5v-5.375zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v10.125c0 .621-.504 1.125-1.125 1.125h-2.25a1.375 1.375 0 0 1-1.375-1.375V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v14.625c0 .621-.504 1.125-1.125 1.125h-2.25a1.375 1.375 0 0 1-1.375-1.375V4.125z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
         </svg>
       )
     },
@@ -254,485 +440,347 @@ const UserDashboard = () => {
     }
   };
 
-  // Filter stats
-  const totalCount = tickets.length;
-  const openCount = tickets.filter(t => t.status === 'Open').length;
-  const progressCount = tickets.filter(t => t.status === 'In Progress').length;
-  const resolvedCount = tickets.filter(t => t.status === 'Resolved').length;
-
   // Custom Tab Rendering
   const renderDashboard = () => {
-    // We will calculate statistics dynamically here to make sure they are accurate!
-    const totalCount = tickets.length;
     const openCount = tickets.filter(t => t.status === 'Open').length;
     const progressCount = tickets.filter(t => t.status === 'In Progress').length;
     const resolvedCount = tickets.filter(t => t.status === 'Resolved').length;
 
-    // Calculate dynamic SLA or Resolution rate (default 98.4%)
-    const resolutionRate = totalCount > 0 ? Math.round((resolvedCount / totalCount) * 100) : 98;
-
-    // Calculate dynamic ticket bar height percentages for the analytics chart
-    // Days: Sun, Mon, Tue, Wed, Thu, Fri, Sat
-    // Group tickets by day of creation, or if empty use beautiful fallback distribution
-    const dayCounts = [0, 0, 0, 0, 0, 0, 0];
-    tickets.forEach(t => {
-      // parse date or use random spread to distribute nicely if no created_at
-      const date = t.created_at ? new Date(t.created_at) : null;
-      if (date && !isNaN(date.getTime())) {
-        dayCounts[date.getDay()] += 1;
-      } else {
-        // dynamic visual distribution based on ticket ID to ensure a nice chart
-        dayCounts[t.ticket_id % 7] += 1;
-      }
-    });
-
-    // Determine max day count to scale bars properly
-    const maxDayCount = Math.max(...dayCounts, 1);
-    const dayHeights = dayCounts.map(c => Math.max(10, Math.round((c / maxDayCount) * 80))); // min 10% for visual beauty
-
-    // If all dayCounts are 0, use pre-defined harmonious percentages for demo beauty
-    const fallbackHeights = [35, 62, 48, 85, 52, 40, 65];
-    const actualHeights = totalCount > 0 ? dayHeights : fallbackHeights;
-
     return (
-      <div className="space-y-8 animate-slide-up-fade text-left">
-        {/* Header Greeting & Action Bar */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 pb-2">
+      <div className="space-y-6 animate-slide-up-fade text-left">
+        {/* Welcome Header Banner */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-brandDarkNavy font-sora tracking-tight">
-              Dashboard
+            <h1 className="text-2xl lg:text-3xl font-extrabold text-brandDarkNavy font-sora">
+              Good Morning, {userName}! 👋
             </h1>
-            <p className="text-xs text-gray-400 mt-1.5 font-semibold">
-              Good morning, {userName.split(' ')[0]} 👋 Raise, track, and resolve your support queries with ease.
+            <p className="text-xs text-gray-400 mt-1.5 font-semibold font-dmSans">
+              Raise a query, track existing requests, or check recent updates.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3.5">
-            {/* CSV Export Button (enterprise utility) */}
-            <button
-              type="button"
-              onClick={exportTicketsCSV}
-              className="px-4.5 py-3 rounded-2xl text-xs font-bold text-gray-600 bg-white border border-gray-150/70 hover:bg-gray-50 transition-all flex items-center space-x-2 shadow-sm"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4 text-gray-400">
+          
+          {/* Last Login Card */}
+          <div className="bg-white border border-gray-150/60 rounded-2xl px-5 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.01)] flex items-center space-x-3.5 shrink-0 self-start lg:self-center">
+            <div className="p-2 rounded-xl bg-gray-50 text-gray-400">
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+              </svg>
+            </div>
+            <div>
+              <span className="text-[9px] uppercase tracking-wider text-gray-400 font-extrabold block">Last Login</span>
+              <span className="text-xs font-bold text-brandDarkNavy font-sora">29 May 2026 | 10:30 AM</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 4 Action Cards Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Action 1: Raise a Query */}
+          <div
+            onClick={() => setIsModalOpen(true)}
+            className="bg-white border border-gray-100/80 rounded-3xl p-5 shadow-[0_4px_12px_rgba(0,0,0,0.01)] hover:shadow-[0_8px_20px_rgba(15,27,76,0.03)] hover:-translate-y-1.5 transition-all duration-300 flex items-center space-x-4 cursor-pointer"
+          >
+            <div className="w-12 h-12 rounded-full bg-rose-500 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-rose-500/10 select-none shrink-0">
+              +
+            </div>
+            <div>
+              <h3 className="text-[13px] font-extrabold text-brandDarkNavy font-sora leading-none">Raise a Query</h3>
+              <p className="text-[10px] text-gray-405 mt-1.5 font-semibold leading-normal font-dmSans">Select a category and raise a new query</p>
+            </div>
+          </div>
+
+          {/* Action 2: View My Queries */}
+          <div
+            onClick={() => setActiveTab('My Queries')}
+            className="bg-white border border-gray-100/80 rounded-3xl p-5 shadow-[0_4px_12px_rgba(0,0,0,0.01)] hover:shadow-[0_8px_20px_rgba(15,27,76,0.03)] hover:-translate-y-1.5 transition-all duration-300 flex items-center space-x-4 cursor-pointer"
+          >
+            <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-md shadow-blue-500/10 shrink-0">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-[13px] font-extrabold text-brandDarkNavy font-sora leading-none">View My Queries</h3>
+              <p className="text-[10px] text-gray-405 mt-1.5 font-semibold leading-normal font-dmSans">Track and view all your queries</p>
+            </div>
+          </div>
+
+          {/* Action 3: Messages */}
+          <div
+            onClick={() => setActiveTab('Messages')}
+            className="bg-white border border-gray-100/80 rounded-3xl p-5 shadow-[0_4px_12px_rgba(0,0,0,0.01)] hover:shadow-[0_8px_20px_rgba(15,27,76,0.03)] hover:-translate-y-1.5 transition-all duration-300 flex items-center space-x-4 cursor-pointer"
+          >
+            <div className="w-12 h-12 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-md shadow-indigo-500/10 shrink-0">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-[13px] font-extrabold text-brandDarkNavy font-sora leading-none">Messages</h3>
+              <p className="text-[10px] text-gray-405 mt-1.5 font-semibold leading-normal font-dmSans">Check replies and notifications</p>
+            </div>
+          </div>
+
+          {/* Action 4: Download Documents */}
+          <div
+            onClick={() => setActiveTab('Profile')}
+            className="bg-white border border-gray-100/80 rounded-3xl p-5 shadow-[0_4px_12px_rgba(0,0,0,0.01)] hover:shadow-[0_8px_20px_rgba(15,27,76,0.03)] hover:-translate-y-1.5 transition-all duration-300 flex items-center space-x-4 cursor-pointer"
+          >
+            <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/10 shrink-0">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
               </svg>
-              <span>Export Ticket Data</span>
-            </button>
-
-            {/* Raise Query Button */}
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(true)}
-              className={`px-5 py-3 rounded-2xl text-xs font-bold text-white shadow-md transition-all flex items-center space-x-2 ${buttonColor}`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              <span>Raise Query</span>
-            </button>
+            </div>
+            <div>
+              <h3 className="text-[13px] font-extrabold text-brandDarkNavy font-sora leading-none">Download Documents</h3>
+              <p className="text-[10px] text-gray-405 mt-1.5 font-semibold leading-normal font-dmSans">View and download important documents</p>
+            </div>
           </div>
         </div>
 
-        {/* ----------------- 4-METRICS ROW ----------------- */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {/* Card 1: Total Tickets (Dynamic Solid/Gradient Visual based on active brand role) */}
-          <div className={`p-6 rounded-3xl text-white relative overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-1 ${isVendor
-            ? 'bg-gradient-to-br from-brandRed to-[#B51025] shadow-brandRed/15'
-            : 'bg-gradient-to-br from-brandNavy to-[#0A1338] shadow-brandNavy/15'
-            }`}>
-            <div className="absolute -right-6 -bottom-6 w-20 h-20 rounded-full bg-white/5 blur-sm" />
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-white/70 uppercase tracking-widest font-extrabold font-sora">Total Queries</span>
-              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center border border-white/10">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
-                  <path fillRule="evenodd" d="M5.22 14.78a.75.75 0 0 0 1.06 0l7.22-7.22v5.69a.75.75 0 0 0 1.5 0v-7.5a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0 0 1.5h5.69l-7.22 7.22a.75.75 0 0 0 0 1.06Z" clipRule="evenodd" />
-                </svg>
-              </div>
-            </div>
-            <p className="text-4xl font-extrabold text-white font-sora leading-none mt-5">{totalCount}</p>
-            <p className="text-[9px] text-white/80 font-bold uppercase tracking-wider mt-4">Synced in Real-time</p>
-          </div>
-
-          {/* Card 2: Open Tickets */}
-          <div className="p-6 rounded-3xl bg-white border border-gray-150/60 shadow-[0_4px_20px_-4px_rgba(15,27,76,0.02)] transition-all duration-300 hover:shadow-[0_16px_32px_-6px_rgba(15,27,76,0.06)] hover:-translate-y-1 flex flex-col justify-between min-h-[140px]">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-gray-400 uppercase tracking-widest font-extrabold font-sora">Open Queries</span>
-              <div className="w-7 h-7 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-gray-400">
-                  <path fillRule="evenodd" d="M5.22 14.78a.75.75 0 0 0 1.06 0l7.22-7.22v5.69a.75.75 0 0 0 1.5 0v-7.5a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0 0 1.5h5.69l-7.22 7.22a.75.75 0 0 0 0 1.06Z" clipRule="evenodd" />
-                </svg>
-              </div>
-            </div>
-            <p className={`text-4xl font-extrabold font-sora leading-none mt-5 ${isVendor ? 'text-brandRed' : 'text-brandNavy'}`}>{openCount}</p>
-            <p className="text-[9px] text-amber-500 font-extrabold uppercase tracking-wider flex items-center gap-1 mt-4">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
-              <span>Requires Attention</span>
-            </p>
-          </div>
-
-          {/* Card 3: In Progress Tickets */}
-          <div className="p-6 rounded-3xl bg-white border border-gray-150/60 shadow-[0_4px_20px_-4px_rgba(15,27,76,0.02)] transition-all duration-300 hover:shadow-[0_16px_32px_-6px_rgba(15,27,76,0.06)] hover:-translate-y-1 flex flex-col justify-between min-h-[140px]">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-gray-400 uppercase tracking-widest font-extrabold font-sora">In Progress</span>
-              <div className="w-7 h-7 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-gray-400">
-                  <path fillRule="evenodd" d="M5.22 14.78a.75.75 0 0 0 1.06 0l7.22-7.22v5.69a.75.75 0 0 0 1.5 0v-7.5a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0 0 1.5h5.69l-7.22 7.22a.75.75 0 0 0 0 1.06Z" clipRule="evenodd" />
-                </svg>
-              </div>
-            </div>
-            <p className="text-4xl font-extrabold text-amber-500 font-sora leading-none mt-5">{progressCount}</p>
-            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-4">Under Operations Review</p>
-          </div>
-
-          {/* Card 4: Resolved Tickets */}
-          <div className="p-6 rounded-3xl bg-white border border-gray-150/60 shadow-[0_4px_20px_-4px_rgba(15,27,76,0.02)] transition-all duration-300 hover:shadow-[0_16px_32px_-6px_rgba(15,27,76,0.06)] hover:-translate-y-1 flex flex-col justify-between min-h-[140px]">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-gray-400 uppercase tracking-widest font-extrabold font-sora">Resolved Queries</span>
-              <div className="w-7 h-7 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-gray-400">
-                  <path fillRule="evenodd" d="M5.22 14.78a.75.75 0 0 0 1.06 0l7.22-7.22v5.69a.75.75 0 0 0 1.5 0v-7.5a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0 0 1.5h5.69l-7.22 7.22a.75.75 0 0 0 0 1.06Z" clipRule="evenodd" />
-                </svg>
-              </div>
-            </div>
-            <p className="text-4xl font-extrabold text-emerald-600 font-sora leading-none mt-5">{resolvedCount}</p>
-            <p className="text-[9px] text-emerald-500 font-extrabold uppercase tracking-wider mt-4">{resolutionRate}% Resolved Rate</p>
-          </div>
-        </div>
-
-        {/* ----------------- CORE WIDGET GRID LAYOUT ----------------- */}
+        {/* Core Layout Columns */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-
-          {/* ================= COLUMN 1 (LEFT GRID SPAN 8) ================= */}
+          {/* Left Column (8 / 12 span) */}
           <div className="lg:col-span-8 space-y-6">
-
-            {/* Widget 1: Query Analytics Bar Chart (Reference inspired) */}
-            <div className="p-6 bg-white border border-gray-150/60 rounded-3xl shadow-[0_4px_20px_-4px_rgba(15,27,76,0.02)]">
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h3 className="font-extrabold text-sm text-brandDarkNavy font-sora">Query Analytics</h3>
-                  <p className="text-[10px] text-gray-400 font-semibold mt-0.5">Ticket submission distribution trends across weekdays</p>
-                </div>
-                <div className="flex items-center space-x-2 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                  <span className={`w-2.5 h-2.5 rounded-full ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
-                  <span>Queries raised</span>
-                </div>
+            
+            {/* Widget: My Active Queries */}
+            <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-[0_4px_12px_rgba(0,0,0,0.01)]">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-sm font-extrabold text-brandDarkNavy font-sora">My Active Queries</h3>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('My Queries')}
+                  className="text-xs text-brandNavy font-extrabold hover:underline flex items-center space-x-1"
+                >
+                  <span>View All Queries</span>
+                  <span>&rarr;</span>
+                </button>
               </div>
 
-              {/* Responsive custom-built CSS bar chart */}
-              <div className="h-44 flex items-end justify-between px-2 pt-6 relative border-b border-gray-100">
-                {/* Horizontal grid guide lines */}
-                <div className="absolute left-0 right-0 top-6 border-t border-gray-100/50 pointer-events-none" />
-                <div className="absolute left-0 right-0 top-20 border-t border-gray-100/50 pointer-events-none" />
-                <div className="absolute left-0 right-0 top-32 border-t border-gray-100/50 pointer-events-none" />
+              {/* 4 Stat pill cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {/* Stat 1: Open */}
+                <div className="bg-teal-50/20 border border-teal-100/50 rounded-2xl p-4 text-left">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[26px] font-extrabold text-emerald-600 font-sora">{openCount || 3}</span>
+                    <span className="p-1 rounded-lg bg-teal-50 text-emerald-600">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9 3.75h.008v.008H12v-.008z" />
+                      </svg>
+                    </span>
+                  </div>
+                  <h4 className="text-[11px] font-extrabold text-brandDarkNavy mt-3">Open</h4>
+                  <p className="text-[8px] text-gray-400 mt-0.5 font-bold">Require your attention</p>
+                </div>
 
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => {
-                  const barHeight = actualHeights[idx];
-                  const ticketNum = dayCounts[idx];
+                {/* Stat 2: In Progress */}
+                <div className="bg-blue-50/20 border border-blue-100/50 rounded-2xl p-4 text-left">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[26px] font-extrabold text-blue-600 font-sora">{progressCount || 2}</span>
+                    <span className="p-1 rounded-lg bg-blue-50 text-blue-600">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                      </svg>
+                    </span>
+                  </div>
+                  <h4 className="text-[11px] font-extrabold text-brandDarkNavy mt-3">In Progress</h4>
+                  <p className="text-[8px] text-gray-400 mt-0.5 font-bold">Being worked on</p>
+                </div>
 
+                {/* Stat 3: Awaiting Response */}
+                <div className="bg-amber-50/20 border border-amber-100/50 rounded-2xl p-4 text-left">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[26px] font-extrabold text-amber-600 font-sora">1</span>
+                    <span className="p-1 rounded-lg bg-amber-50 text-amber-600">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                      </svg>
+                    </span>
+                  </div>
+                  <h4 className="text-[11px] font-extrabold text-brandDarkNavy mt-3">Awaiting Response</h4>
+                  <p className="text-[8px] text-gray-400 mt-0.5 font-bold">Response from you pending</p>
+                </div>
+
+                {/* Stat 4: Resolved */}
+                <div className="bg-purple-50/20 border border-purple-100/50 rounded-2xl p-4 text-left">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[26px] font-extrabold text-purple-600 font-sora">{resolvedCount || 18}</span>
+                    <span className="p-1 rounded-lg bg-purple-50 text-purple-600">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+                      </svg>
+                    </span>
+                  </div>
+                  <h4 className="text-[11px] font-extrabold text-brandDarkNavy mt-3">Resolved</h4>
+                  <p className="text-[8px] text-gray-400 mt-0.5 font-bold">Closed queries</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Widget: Choose a Category Grid */}
+            <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-[0_4px_12px_rgba(0,0,0,0.01)]">
+              <div>
+                <h3 className="text-sm font-extrabold text-brandDarkNavy font-sora">Choose a Category to Raise a Query</h3>
+                <p className="text-[10px] text-gray-400 mt-0.5 font-semibold font-dmSans">Select the most relevant category for your issue</p>
+              </div>
+
+              {/* 2x4 Categories Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5">
+                {staticCategories.slice(0, 8).map((cat) => {
+                  const isMostUsed = cat.category_id === 1 || cat.category_id === 4;
                   return (
-                    <div key={day} className="flex flex-col items-center flex-1 group relative z-10">
-                      {/* Bar tooltip details on hover */}
-                      <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-30 pointer-events-none">
-                        <div className="bg-brandDarkNavy text-white px-2.5 py-1.5 rounded-xl text-[9px] font-bold shadow-md whitespace-nowrap text-center">
-                          <span className="block font-sora">{ticketNum} Tickets</span>
-                          <span className="text-white/60 font-semibold mt-0.5 text-[8px]">{barHeight}% relative density</span>
-                        </div>
-                        {/* Little tooltip pointer */}
-                        <div className="w-1.5 h-1.5 bg-brandDarkNavy rotate-45 mx-auto -mt-1" />
+                    <div
+                      key={cat.category_id}
+                      onClick={() => handleCategoryClick(cat.category_id)}
+                      className={`p-4 transition-all duration-300 cursor-pointer flex flex-col justify-between min-h-[170px] relative rounded-2xl border ${cat.bg}`}
+                    >
+                      {/* Most Used Badge */}
+                      {isMostUsed && (
+                        <span className="absolute top-2.5 right-2.5 px-1.5 py-0.5 rounded bg-emerald-500 text-[8px] font-extrabold text-white tracking-wide uppercase select-none">
+                          Most Used
+                        </span>
+                      )}
+
+                      {/* Icon */}
+                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                        {cat.icon}
                       </div>
 
-                      {/* Animated pill bar with hover trigger */}
-                      <div className="w-6.5 sm:w-8 md:w-10 bg-gray-50 border border-gray-100/50 rounded-t-full h-32 flex items-end overflow-hidden">
-                        <div
-                          style={{ height: `${barHeight}%` }}
-                          className={`w-full rounded-t-full transition-all duration-1000 ${isVendor
-                            ? 'bg-gradient-to-t from-[#B51025] to-brandRed group-hover:opacity-90'
-                            : 'bg-gradient-to-t from-[#0A1338] to-brandNavy group-hover:opacity-90'
-                            }`}
-                        />
+                      {/* Content */}
+                      <div>
+                        <h4 className="text-[12px] font-extrabold font-sora text-brandDarkNavy leading-none">
+                          {cat.name}
+                        </h4>
+                        <p className="text-[9px] text-gray-400 mt-1 font-semibold leading-relaxed line-clamp-2">
+                          {cat.description}
+                        </p>
                       </div>
-
-                      {/* Day Label */}
-                      <span className="text-[10px] text-gray-400 font-extrabold uppercase mt-3 tracking-wider font-sora group-hover:text-brandDarkNavy transition-colors">{day}</span>
                     </div>
                   );
                 })}
               </div>
-            </div>
 
-            {/* Widget 2: Recent Collaboration & Activity (Reference inspired) */}
-            <div className="p-6 bg-white border border-gray-150/60 rounded-3xl shadow-[0_4px_20px_-4px_rgba(15,27,76,0.02)]">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="font-extrabold text-sm text-brandDarkNavy font-sora">Recent Active Collaboration</h3>
-                  <p className="text-[10px] text-gray-400 font-semibold mt-0.5">Tickets receiving operational updates</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('My Queries')}
-                  className={`text-[10px] font-extrabold uppercase tracking-wider hover:underline flex items-center gap-1 ${isVendor ? 'text-brandRed' : 'text-brandNavy'}`}
-                >
-                  <span>View All Tickets</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-2.5 h-2.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                  </svg>
-                </button>
-              </div>
-
-              {tickets.length === 0 ? (
-                <div className="py-8 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-100">
-                  <svg className="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <p className="text-gray-400 text-xs font-bold font-sora">No recent queries raised</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-100">
-                  {tickets.slice(0, 3).map((t, index) => {
-                    const catObj = categories.find(c => c.category_id === t.category_id);
-                    const categoryName = catObj ? catObj.name : `Category #${t.category_id}`;
-
-                    // Circular support executive initials mock for collaboration feel
-                    const mockExecInitials = ["AS", "RJ", "MK", "SL"][t.ticket_id % 4];
-                    const mockExecNames = ["Aishwarya Sharma", "Rahul Joshi", "Meera Kulkarni", "Sanjay Lal"][t.ticket_id % 4];
-
-                    return (
-                      <div
-                        key={t.ticket_id}
-                        onClick={() => {
-                          setSearchQuery(t.ticket_id.toString());
-                          setActiveTab('My Queries');
-                        }}
-                        className="py-4 first:pt-0 last:pb-0 flex items-center justify-between gap-4 cursor-pointer group hover:bg-gray-50/20 transition-all rounded-xl px-1"
-                      >
-                        <div className="flex items-center space-x-3.5">
-                          {/* Executive Initials circle */}
-                          <div className={`w-8.5 h-8.5 rounded-full flex items-center justify-center font-bold text-[10px] text-white shrink-0 shadow-sm transition-transform group-hover:scale-105 ${index === 0 ? 'bg-indigo-500' : index === 1 ? 'bg-rose-500' : 'bg-amber-500'
-                            }`}>
-                            {mockExecInitials}
-                          </div>
-
-                          <div>
-                            <p className="text-xs font-extrabold text-brandDarkNavy font-sora leading-snug group-hover:text-brandNavy transition-colors line-clamp-1">
-                              {t.title}
-                            </p>
-                            <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[10px] text-gray-400 font-semibold font-dmSans">
-                              <span className="text-brandDarkNavy/70">#{t.ticket_id}</span>
-                              <span>&bull;</span>
-                              <span>Assigned to {mockExecNames}</span>
-                              <span>&bull;</span>
-                              <span className="text-[9px] bg-gray-100 border border-gray-150 px-1.5 py-0.5 rounded-md font-extrabold">{categoryName}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Status badge */}
-                        <div className="shrink-0">
-                          <span className={`text-[9px] font-extrabold px-2.5 py-1.5 rounded-xl border whitespace-nowrap block text-center ${t.status === 'Open'
-                            ? 'bg-blue-50/60 text-blue-700 border-blue-100'
-                            : t.status === 'In Progress'
-                              ? 'bg-amber-50/60 text-amber-700 border-amber-100'
-                              : t.status === 'Resolved'
-                                ? 'bg-emerald-50/60 text-emerald-700 border-emerald-100'
-                                : 'bg-gray-50/60 text-gray-700 border-gray-100'
-                            }`}>
-                            {t.status}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ================= COLUMN 2 & 3 (RIGHT GRID SPAN 4) ================= */}
-          <div className="lg:col-span-4 space-y-6">
-
-            {/* Widget 3: Compact Operations Alert Card (Reference Reminders) */}
-            <div className="p-6 bg-white border border-gray-150/60 rounded-3xl shadow-[0_4px_20px_-4px_rgba(15,27,76,0.02)]">
-              <span className={`text-[9px] font-extrabold uppercase tracking-widest block ${isVendor ? 'text-brandRed' : 'text-brandNavy'}`}>Operations Reminder</span>
-              <h3 className="font-extrabold text-sm text-brandDarkNavy font-sora mt-1.5 leading-snug">End-of-Month clearance SLA target</h3>
-              <p className="text-[10px] text-gray-400 font-semibold mt-2 leading-relaxed">
-                Logistics escalations raised between May 28 and June 3 enjoy a priority 2-hour SLA.
-              </p>
-              <div className="mt-5 flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (categories.length > 0) {
-                      handleCategoryClick(categories[0].category_id);
-                    }
-                  }}
-                  className={`flex-1 py-2.5 rounded-xl text-[10px] font-extrabold text-white transition-all text-center shadow-md ${buttonColor}`}
-                >
-                  Raise Urgent Ticket
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('My Queries')}
-                  className="px-3 py-2.5 rounded-xl text-[10px] font-extrabold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  View SLA Tickets
-                </button>
-              </div>
-            </div>
-
-            {/* Widget 4: SLA Compliance Circular Progress Gauge */}
-            <div className="p-6 bg-white border border-gray-150/60 rounded-3xl shadow-[0_4px_20px_-4px_rgba(15,27,76,0.02)] text-center">
-              <h3 className="font-extrabold text-sm text-brandDarkNavy font-sora text-left">SLA Performance Progress</h3>
-              <p className="text-[10px] text-gray-400 font-semibold text-left mt-0.5">Ratio of query completions inside targeted times</p>
-
-              <div className="relative flex items-center justify-center my-6">
-                {/* SVG circular progress ring */}
-                <svg className="w-32 h-32 transform -rotate-90">
-                  <circle
-                    cx="64"
-                    cy="64"
-                    r="48"
-                    className="stroke-gray-100"
-                    strokeWidth="8"
-                    fill="transparent"
-                  />
-                  <circle
-                    cx="64"
-                    cy="64"
-                    r="48"
-                    className={`transition-all duration-1000 ${isVendor ? 'stroke-brandRed' : 'stroke-brandNavy'}`}
-                    strokeWidth="8"
-                    fill="transparent"
-                    strokeDasharray={2 * Math.PI * 48}
-                    strokeDashoffset={2 * Math.PI * 48 * (1 - resolutionRate / 100)}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                {/* Center text overlay */}
-                <div className="absolute flex flex-col items-center justify-center">
-                  <span className="text-2xl font-extrabold text-brandDarkNavy font-sora">{resolutionRate}%</span>
-                  <span className="text-[8px] text-emerald-600 font-extrabold uppercase mt-0.5 tracking-wider font-sora">SLA Compliant</span>
-                </div>
-              </div>
-
-              <p className="text-[10px] text-gray-400 font-semibold leading-relaxed">
-                4.2 Hours average resolution speed this month. Outstanding compliance to SLA thresholds.
-              </p>
-            </div>
-
-            {/* Widget 5: Quick-Raise Categories List Sidebar */}
-            <div className="p-6 bg-white border border-gray-150/60 rounded-3xl shadow-[0_4px_20px_-4px_rgba(15,27,76,0.02)]">
-              <div className="flex items-center justify-between mb-4.5">
-                <div>
-                  <h3 className="font-extrabold text-sm text-brandDarkNavy font-sora">Quick-Raise Query</h3>
-                  <p className="text-[10px] text-gray-400 font-semibold mt-0.5">Select category to raise ticket instantly</p>
-                </div>
+              {/* Bottom "View All Categories" link */}
+              <div className="mt-5 text-center">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(true)}
-                  className={`p-1.5 rounded-lg bg-gray-50 border border-gray-150 text-gray-400 hover:text-brandNavy transition-all`}
+                  className="px-6 py-2.5 rounded-full border border-gray-150 hover:bg-gray-50 text-xs font-bold text-gray-600 transition-colors inline-flex items-center space-x-1.5 font-dmSans"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
+                  <span>View All Categories</span>
+                  <span>&rarr;</span>
                 </button>
-              </div>
-
-              {loading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="h-10 bg-gray-50 border border-gray-100 rounded-xl animate-pulse" />
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-2.5">
-                  {categories.map((cat) => {
-                    const isSelected = parseInt(formCategory, 10) === cat.category_id;
-                    const activeBg = isVendor ? 'bg-brandRed/5 text-brandRed border-brandRed/20' : 'bg-brandNavy/5 text-brandNavy border-brandNavy/20';
-
-                    return (
-                      <div
-                        key={cat.category_id}
-                        onClick={() => handleCategoryClick(cat.category_id)}
-                        className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-300 cursor-pointer group shadow-sm text-left ${isSelected ? activeBg : 'bg-white border-gray-100 hover:border-gray-200 hover:-translate-x-1.5'
-                          }`}
-                      >
-                        <div className="flex items-center space-x-3">
-                          {/* Mini Category Icon */}
-                          <div className={`w-7.5 h-7.5 rounded-lg flex items-center justify-center transition-colors ${isSelected
-                            ? isVendor ? 'bg-brandRed/10 text-brandRed' : 'bg-brandNavy/10 text-brandNavy'
-                            : 'bg-gray-50 text-gray-400 group-hover:bg-gray-100 group-hover:text-gray-600'
-                            }`}>
-                            {React.cloneElement(getCategoryIcon(cat.category_id), { className: 'w-4.5 h-4.5' })}
-                          </div>
-
-                          <div>
-                            <h4 className="text-[11px] font-extrabold text-brandDarkNavy font-sora leading-tight">{cat.name}</h4>
-                            <p className="text-[8px] text-gray-400 mt-0.5 line-clamp-1 pr-4">{cat.description}</p>
-                          </div>
-                        </div>
-
-                        {/* Mini raise arrow */}
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className={`w-3.5 h-3.5 transition-transform duration-300 opacity-40 group-hover:opacity-100 ${isVendor ? 'text-brandRed group-hover:translate-x-0.5' : 'text-brandNavy group-hover:translate-x-0.5'
-                          }`}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                        </svg>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Widget 6: Live Operations status countdown (Time Tracker reference) */}
-            <div className={`p-6 rounded-3xl text-white relative overflow-hidden shadow-lg transition-all duration-300 hover:shadow-brandDarkNavy/20 ${isVendor
-              ? 'bg-gradient-to-br from-brandRed to-brandDarkNavy border border-brandRed/10 shadow-brandRed/10'
-              : 'bg-gradient-to-br from-brandNavy to-[#060D29] border border-brandNavy/10 shadow-brandNavy/10'
-              }`}>
-              <div className="absolute right-0 top-0 bottom-0 w-2/5 opacity-5 pointer-events-none">
-                <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" fill="currentColor">
-                  <path d="M0,0 C30,40 70,60 100,100 L100,0 Z" />
-                </svg>
-              </div>
-              <div className="relative z-10 text-left">
-                <span className="text-[8px] text-white/70 uppercase tracking-widest font-extrabold font-sora">Operations Clock</span>
-                <h3 className="font-extrabold text-sm text-white font-sora mt-1">Live SLA Desk Tracking</h3>
-
-                {/* Live clock readout */}
-                <div className="my-5 flex items-center justify-between">
-                  <div className="text-3xl font-extrabold font-sora tracking-wider text-white select-none leading-none">
-                    {liveTime}
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[8px] text-white/70 font-extrabold uppercase tracking-wider font-sora">Active</span>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-white/10 flex items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // Trigger dynamic alert modal setup
-                      setFormPriority('Urgent');
-                      setIsModalOpen(true);
-                    }}
-                    className="flex-1 py-2 rounded-xl text-[9px] font-extrabold text-brandDarkNavy bg-white hover:bg-gray-50 transition-colors text-center shadow-md shadow-brandDarkNavy/10"
-                  >
-                    Urgent Escalation
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('Messages')}
-                    className="flex-1 py-2 rounded-xl text-[9px] font-extrabold text-white bg-white/10 hover:bg-white/15 border border-white/10 transition-colors text-center"
-                  >
-                    Open Live Chat
-                  </button>
-                </div>
               </div>
             </div>
 
           </div>
 
+          {/* Right Column (4 / 12 span) */}
+          <div className="lg:col-span-4 space-y-6">
+            
+            {/* Recent Activity Card */}
+            <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-[0_4px_12px_rgba(0,0,0,0.01)] text-left">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-sm font-extrabold text-brandDarkNavy font-sora">Recent Activity</h3>
+                <button type="button" onClick={() => setActiveTab('My Queries')} className="text-xs text-brandNavy font-bold hover:underline font-dmSans">
+                  View All
+                </button>
+              </div>
+
+              {/* Activity Timeline List */}
+              <div className="space-y-4 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-100">
+                {/* Act 1 */}
+                <div className="flex items-start space-x-3.5 relative z-10">
+                  <div className="w-8.5 h-8.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center shrink-0">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-brandDarkNavy leading-tight">Payment query #QRY1234 has been resolved</p>
+                    <span className="text-[9px] text-gray-400 font-semibold mt-0.5 block">Today, 10:30 AM</span>
+                  </div>
+                </div>
+
+                {/* Act 2 */}
+                <div className="flex items-start space-x-3.5 relative z-10">
+                  <div className="w-8.5 h-8.5 rounded-full bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center shrink-0">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-brandDarkNavy leading-tight">Delivery issue #QRY1231 has been updated</p>
+                    <span className="text-[9px] text-gray-400 font-semibold mt-0.5 block">Yesterday, 04:15 PM</span>
+                  </div>
+                </div>
+
+                {/* Act 3 */}
+                <div className="flex items-start space-x-3.5 relative z-10">
+                  <div className="w-8.5 h-8.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center shrink-0">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-brandDarkNavy leading-tight">Documentation request #QRY1228 has been raised</p>
+                    <span className="text-[9px] text-gray-400 font-semibold mt-0.5 block">27 May 2026, 11:20 AM</span>
+                  </div>
+                </div>
+
+                {/* Act 4 */}
+                <div className="flex items-start space-x-3.5 relative z-10">
+                  <div className="w-8.5 h-8.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-brandDarkNavy leading-tight">Message received on #QRY1225</p>
+                    <span className="text-[9px] text-gray-400 font-semibold mt-0.5 block">26 May 2026, 03:40 PM</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Go to My Queries */}
+              <button
+                type="button"
+                onClick={() => setActiveTab('My Queries')}
+                className="w-full mt-6 py-2.5 rounded-2xl bg-rose-50 hover:bg-rose-100/60 text-xs font-bold text-brandRed hover:text-[#C2112C] transition-colors flex items-center justify-center space-x-1.5 font-dmSans"
+              >
+                <span>Go to My Queries</span>
+                <span>&rarr;</span>
+              </button>
+            </div>
+
+            {/* Quick Tips Card */}
+            <div className="bg-amber-50/30 border border-amber-100/50 rounded-3xl p-6 text-left">
+              <h3 className="text-sm font-extrabold text-brandDarkNavy font-sora flex items-center space-x-1.5">
+                <span>💡</span>
+                <span>Quick Tips</span>
+              </h3>
+              
+              <ul className="mt-4 space-y-2.5 text-[10px] font-bold text-amber-800/90 list-none font-dmSans">
+                <li className="flex items-start space-x-1.5">
+                  <span className="text-amber-500 shrink-0">&#x2b;</span>
+                  <span>Search your query using ID or keywords</span>
+                </li>
+                <li className="flex items-start space-x-1.5">
+                  <span className="text-amber-500 shrink-0">&#x2b;</span>
+                  <span>Provide accurate details for faster resolution</span>
+                </li>
+                <li className="flex items-start space-x-1.5">
+                  <span className="text-amber-500 shrink-0">&#x2b;</span>
+                  <span>Check your messages for updates</span>
+                </li>
+                <li className="flex items-start space-x-1.5">
+                  <span className="text-amber-500 shrink-0">&#x2b;</span>
+                  <span>Raise a new query if issue persists</span>
+                </li>
+              </ul>
+            </div>
+
+          </div>
         </div>
       </div>
     );
@@ -1171,7 +1219,7 @@ const UserDashboard = () => {
               </div>
 
               <div className="bg-gray-50 border border-gray-100/80 rounded-xl px-4 py-2 inline-block">
-                <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">Vendor Account ID</span>
+                <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">User Account ID</span>
                 <span className="text-xs font-bold text-brandDarkNavy font-sora">VND-2026-8947</span>
               </div>
             </div>
@@ -1390,31 +1438,37 @@ const UserDashboard = () => {
             })}
           </div>
 
-          {/* Bottom Sidebar promo widget (Reference inspired Mobile App card) & Signout */}
-          <div className="space-y-5">
-            {/* Premium mobile promo card */}
-            <div className={`p-4 rounded-3xl border text-left overflow-hidden relative group transition-all duration-300 ${isVendor ? 'bg-gradient-to-br from-brandRed/10 to-transparent border-brandRed/10' : 'bg-gradient-to-br from-brandNavy/10 to-transparent border-brandNavy/10'}`}>
-              {/* Background abstract shape */}
-              <div className={`absolute -right-6 -bottom-6 w-16 h-16 rounded-full opacity-10 blur-sm group-hover:scale-110 transition-transform ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
-              <span className={`text-[9px] font-extrabold uppercase tracking-widest block ${isVendor ? 'text-brandRed' : 'text-brandNavy'}`}>New Release</span>
-              <h4 className="text-[11px] font-extrabold text-brandDarkNavy font-sora mt-1 leading-snug">Download mobile App</h4>
-              <p className="text-[9px] text-gray-400 font-semibold mt-1 leading-normal">Track operational escalations on your phone.</p>
-              <button
-                type="button"
-                onClick={() => alert("QMS Mobile App download initialized. Available on iOS & Android soon!")}
-                className={`mt-3.5 w-full py-2 rounded-xl text-[9px] font-extrabold text-white transition-all shadow-sm flex items-center justify-center space-x-1 ${isVendor ? 'bg-brandRed hover:bg-[#C2112C]' : 'bg-brandNavy hover:bg-brandDarkNavy'}`}
-              >
-                <span>Download App</span>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                  <path fillRule="evenodd" d="M10 3a.75.75 0 0 1 .75.75v10.638l3.96-4.158a.75.75 0 1 1 1.08 1.04l-5.25 5.5a.75.75 0 0 1-1.08 0l-5.25-5.5a.75.75 0 1 1 1.08-1.04l3.96 4.158V3.75A.75.75 0 0 1 10 3Z" clipRule="evenodd" />
-                </svg>
-              </button>
+          {/* Bottom Sidebar promo widget */}
+          <div className="space-y-4">
+            <div className="bg-gray-50/70 border border-gray-150/60 rounded-3xl p-4 text-left font-dmSans">
+              <h4 className="text-xs font-bold text-brandDarkNavy font-sora">Need Help?</h4>
+              <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">We're here to assist you</p>
+              
+              <div className="mt-3.5 space-y-2 text-[10px] font-bold text-gray-500">
+                <a href="#guide" className="flex items-center space-x-2 hover:text-brandNavy transition-colors">
+                  <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                  </svg>
+                  <span>User Guide</span>
+                </a>
+                <a href="#chat" className="flex items-center space-x-2 hover:text-brandNavy transition-colors">
+                  <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+                  </svg>
+                  <span>Chat Support</span>
+                </a>
+                <a href="#contact" className="flex items-center space-x-2 hover:text-brandNavy transition-colors">
+                  <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.824-1.806-5.194-4.176-7-7l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
+                  </svg>
+                  <span>Contact Support</span>
+                </a>
+              </div>
             </div>
-
-            {/* Logout button */}
+            
             <button
               onClick={handleLogout}
-              className="w-full flex items-center space-x-3.5 px-3.5 py-3 rounded-2xl text-xs font-bold text-gray-500 hover:text-brandRed hover:bg-brandRed/5 transition-all duration-300 border border-transparent hover:border-brandRed/10"
+              className="w-full flex items-center space-x-3 px-3.5 py-3 rounded-2xl text-xs font-bold text-gray-500 hover:text-brandRed hover:bg-brandRed/5 transition-all duration-300 border border-transparent hover:border-brandRed/10"
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4.5 h-4.5 text-gray-400 hover:text-inherit">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
@@ -1529,12 +1583,84 @@ const UserDashboard = () => {
                   </label>
                   <textarea
                     required
-                    rows="4"
+                    rows="3"
                     placeholder="Provide exact details, ticket references, or item details here so our support agents can resolve it quickly..."
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
                     className="w-full border border-gray-200 px-4 py-3 rounded-xl outline-none focus:border-brandNavy transition-all text-sm bg-gray-50/50 resize-none font-medium text-gray-700"
                   />
+                </div>
+
+                {/* Drag and Drop File Attachment zone (matching 1st image) */}
+                <div>
+                  <label className="block text-[10px] font-bold text-brandDarkNavy font-sora tracking-widest uppercase mb-2">
+                    Attachment Option
+                  </label>
+                  <div
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onClick={() => document.getElementById('dashboard-file-upload').click()}
+                    className="border-2 border-dashed border-gray-200 rounded-3xl p-6 text-center cursor-pointer hover:bg-gray-50/50 hover:border-brandNavy/30 transition-all flex flex-col items-center justify-center min-h-[160px] relative"
+                  >
+                    <input
+                      id="dashboard-file-upload"
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.png,.xlsx"
+                      onChange={handleFileChange}
+                    />
+
+                    {!attachment ? (
+                      <>
+                        {/* Blue Upload Icon */}
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-brandNavy flex items-center justify-center mb-3">
+                          <svg className="w-6 h-6 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                          </svg>
+                        </div>
+
+                        <p className="text-sm font-extrabold text-brandDarkNavy font-sora">
+                          Drop files here or click to upload
+                        </p>
+                        <p className="text-[11px] text-gray-400 mt-1 font-semibold">
+                          Maximum file size: 25MB
+                        </p>
+
+                        {/* Allowed formats badges */}
+                        <div className="flex items-center gap-1.5 mt-4">
+                          <span className="px-2.5 py-1 rounded-xl bg-gray-50 text-[9px] font-bold text-gray-500">PDF</span>
+                          <span className="px-2.5 py-1 rounded-xl bg-gray-50 text-[9px] font-bold text-gray-500">JPG</span>
+                          <span className="px-2.5 py-1 rounded-xl bg-gray-50 text-[9px] font-bold text-gray-500">PNG</span>
+                          <span className="px-2.5 py-1 rounded-xl bg-gray-50 text-[9px] font-bold text-gray-500">XLSX</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center">
+                        <svg className="w-9 h-9 text-emerald-500 mb-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                        </svg>
+                        <p className="text-xs font-bold text-brandDarkNavy truncate max-w-[240px] font-sora">
+                          {attachment.name}
+                        </p>
+                        <p className="text-[10px] text-gray-400 mt-0.5 font-bold">
+                          {(attachment.size / (1024 * 1024)).toFixed(2)} MB
+                        </p>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAttachment(null);
+                          }}
+                          className="mt-3 text-[10px] font-extrabold text-brandRed hover:underline uppercase tracking-wider"
+                        >
+                          Remove Attachment
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {attachmentError && (
+                    <p className="text-xs text-brandRed font-bold mt-1.5">{attachmentError}</p>
+                  )}
                 </div>
 
                 {/* Submit button */}
