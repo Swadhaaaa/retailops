@@ -88,7 +88,7 @@ const CursorGradientBg = ({ children, selectedRole }) => {
           height: '350px',
           transform: 'translate(-50%, -50%)',
           background: gradientBackground,
-          filter: 'blur(90px)',
+          filter: 'blur(40px)',
           zIndex: 0,
           transition: 'none',
         }}
