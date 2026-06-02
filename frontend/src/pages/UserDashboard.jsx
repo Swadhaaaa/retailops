@@ -173,6 +173,7 @@ const staticCategories = [
   { category_id: 17, name: 'Store Operations', description: 'In-store operational queries and escalations', ticketCount: 22, glowClass: 'icon-glow-emerald', bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]', icon: (<svg className="w-8 h-8 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349M3.75 21V9.349m0 0a3.001 3.001 0 0 0 3.75-.615A2.993 2.993 0 0 0 9.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 0 0 2.25 1.016c.896 0 1.7-.393 2.25-1.015a3.001 3.001 0 0 0 3.75.614m-16.5 0a3.004 3.004 0 0 1-.621-4.72L4.318 3.44A1.5 1.5 0 0 1 5.378 3h13.243a1.5 1.5 0 0 1 1.06.44l1.19 1.189a3 3 0 0 1-.621 4.72" /></svg>) },
   { category_id: 18, name: 'HR & Workforce', description: 'Staff queries, attendance, and HR support', ticketCount: 10, glowClass: 'icon-glow-purple', bg: 'bg-brandRed/8 hover:bg-brandRed/12 text-brandRed border-brandRed/20 hover:border-brandRed/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(227,24,55,.12)]', icon: (<svg className="w-8 h-8 text-brandRed" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" /></svg>) },
   { category_id: 19, name: 'IT Infrastructure', description: 'Network, hardware, and system outages', ticketCount: 7, glowClass: 'icon-glow-cyan', bg: 'bg-brandGold/12 hover:bg-brandGold/16 text-brandGold border-brandGold/30 hover:border-brandGold/50', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,166,35,.12)]', icon: (<svg className="w-8 h-8 text-brandGold" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-16.5-3a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3m-19.5 0a4.5 4.5 0 0 1 .9-2.7L5.737 5.1a3.375 3.375 0 0 1 2.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 0 1 .9 2.7m0 0a3 3 0 0 1-3 3m0 3h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Zm-3 6h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Z" /></svg>) },
+  { category_id: 19, name: 'IT Infrastructure', description: 'Network, hardware, and system outages', ticketCount: 7, glowClass: 'icon-glow-cyan', bg: 'bg-brandGold/12 hover:bg-brandGold/16 text-brandGold border-brandGold/30 hover:border-brandGold/50', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,166,35,.12)]', icon: (<svg className="w-8 h-8 text-brandGold" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-16.5-3a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3m-19.5 0a4.5 4.5 0 0 1 .9-2.7L5.737 5.1a3.375 3.375 0 0 1 2.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 0 1 .9 2.7m0 0a3 3 0 0 1-3 3m0 3h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Zm-3 6h.008v.008h-.008v-.008Zm-6h.008v.008h-.008v-.008Z" /></svg>) },
   { category_id: 20, name: 'Finance & Reporting', description: 'Financial reports, budgets, and reconciliation', ticketCount: 9, glowClass: 'icon-glow-lime', bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]', icon: (<svg className="w-8 h-8 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" /></svg>) },
 ];
 
@@ -198,6 +199,117 @@ const formatTicketDate = (dateStr) => {
   }
 };
 
+const getCategoryPlaceholders = (catId) => {
+  const id = parseInt(catId, 10);
+  switch (id) {
+    case 1:
+      return {
+        subject: 'e.g. Invoice payment delay for #193',
+        description: 'e.g. Please explain why payment for invoice #193 has not been processed. It was approved on May 15.'
+      };
+    case 2:
+      return {
+        subject: 'e.g. Mismatch in stock count for item SKU-99',
+        description: 'e.g. The physical stock count for item SKU-99 shows 15 units, but the system shows 30 units.'
+      };
+    case 3:
+      return {
+        subject: 'e.g. Unable to login to the portal',
+        description: 'e.g. I am getting a timeout error every time I try to log in to the retail portal.'
+      };
+    case 4:
+      return {
+        subject: 'e.g. Shipment delayed for order #4829',
+        description: 'e.g. Order #4829 was scheduled to arrive yesterday but the carrier tracking is not updating.'
+      };
+    case 5:
+      return {
+        subject: 'e.g. Request for updated tax certificates',
+        description: 'e.g. We need the latest GST certificate from our vendor profiles to verify tax benefits.'
+      };
+    case 6:
+      return {
+        subject: 'e.g. Missing items in delivery challan',
+        description: 'e.g. The delivery challan mentions 5 boxes of item B, but only 3 boxes were received.'
+      };
+    case 7:
+      return {
+        subject: 'e.g. New user credentials request',
+        description: 'e.g. Please create a new retail store executive user account for Jane Doe.'
+      };
+    case 8:
+      return {
+        subject: 'e.g. Damaged products received in batch 12',
+        description: 'e.g. 10 bottles of cooking oil in batch 12 were found leaking upon arrival.'
+      };
+    case 9:
+      return {
+        subject: 'e.g. Dispute on invoice tax calculation',
+        description: 'e.g. The tax rate on invoice #8812 was calculated at 18% instead of the agreed 12%.'
+      };
+    case 10:
+      return {
+        subject: 'e.g. Delayed response on ticket #204',
+        description: 'e.g. Ticket #204 has been in "Open" status for over 48 hours without any assignment.'
+      };
+    case 11:
+      return {
+        subject: 'e.g. Truck routing issue at gate 2',
+        description: 'e.g. Delivery truck MH-12-AB-3456 is stuck at gate 2 due to a system authorization error.'
+      };
+    case 12:
+      return {
+        subject: 'e.g. Product catalog sync failure',
+        description: 'e.g. The daily product catalog updates from the central database are not reflecting on the store terminal.'
+      };
+    case 13:
+      return {
+        subject: 'e.g. Two-factor authentication reset',
+        description: 'e.g. Please reset the 2FA for user email admin@retail.com as they changed their mobile device.'
+      };
+    case 14:
+      return {
+        subject: 'e.g. Return request for defective batch',
+        description: 'e.g. We need to initiate a return request for 50 defective units of product XYZ.'
+      };
+    case 15:
+      return {
+        subject: 'e.g. Policy document verification',
+        description: 'e.g. Please verify if our store complies with the new environment policy guidelines.'
+      };
+    case 16:
+      return {
+        subject: 'e.g. Vendor agreement renewal query',
+        description: 'e.g. The annual contract with vendor ABC is expiring next month. Need renewal terms.'
+      };
+    case 17:
+      return {
+        subject: 'e.g. Store register checkout error',
+        description: 'e.g. Cash register 3 is throwing a connection error when processing credit card payments.'
+      };
+    case 18:
+      return {
+        subject: 'e.g. Attendance register correction',
+        description: 'e.g. Correction needed in attendance register for employee ID 582 for May 24.'
+      };
+    case 19:
+      return {
+        subject: 'e.g. Wi-Fi outage in store warehouse',
+        description: 'e.g. The Wi-Fi connection in section B of the warehouse has been disconnected since this morning.'
+      };
+    case 20:
+      return {
+        subject: 'e.g. Monthly reconciliation report dispute',
+        description: 'e.g. Discrepancy found in the monthly sales reconciliation report for store region West.'
+      };
+    default:
+      return {
+        subject: 'e.g. Enter a brief subject / title',
+        description: 'e.g. Provide details, references, or item info...'
+      };
+  }
+};
+
 /* ─────────────────────────────────────────────
    COMPONENT
 ───────────────────────────────────────────── */
@@ -207,7 +319,6 @@ const UserDashboard = () => {
   const { user, logout } = useContext(AuthContext);
   const { selectedSubRole } = useContext(RoleContext);
   const navigate = useNavigate();
-
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [transitionKey, setTransitionKey] = useState(0);
   const [tickets, setTickets] = useState([]);
@@ -216,6 +327,7 @@ const UserDashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoryLocked, setIsCategoryLocked] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [isSubmittedSuccessfully, setIsSubmittedSuccessfully] = useState(false);
 
   const [formSubject, setFormSubject] = useState('');
   const [formCategory, setFormCategory] = useState('1');
@@ -330,6 +442,7 @@ const UserDashboard = () => {
     setAttachment(null);
     setAttachmentError('');
     setFormCategory(staticCategories[0].category_id.toString());
+    setIsSubmittedSuccessfully(false);
   };
 
   const handleSubmitTicket = async (e) => {
@@ -348,8 +461,13 @@ const UserDashboard = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      handleCloseModal();
+      setIsSubmittedSuccessfully(true);
       await fetchDashboardData();
+
+      // Automatically close modal after 3 seconds
+      setTimeout(() => {
+        handleCloseModal();
+      }, 3000);
     } catch (err) {
       console.error('Error raising ticket:', err);
       alert('Failed to submit the query. Please try again.');
@@ -416,20 +534,6 @@ const UserDashboard = () => {
           </svg>
           <span className="absolute -top-1.5 -right-2 px-1 py-0.5 rounded-full bg-brandRed text-[8px] font-extrabold text-white">2</span>
         </div>
-      )
-    },
-    {
-      name: 'Documents', icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" />
-        </svg>
-      )
-    },
-    {
-      name: 'Downloads', icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-        </svg>
       )
     },
     {
@@ -558,10 +662,6 @@ const UserDashboard = () => {
                       </span>
                     </div>
                     <p className="text-[10px] text-gray-500 mt-1.5 font-semibold leading-relaxed line-clamp-2">{cat.description}</p>
-                    <span className="inline-flex items-center gap-1 mt-2.5 px-2 py-0.5 rounded-full bg-white/70 border border-current/10 text-[8px] font-bold text-gray-500">
-                      <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50 inline-block" />
-                      {cat.ticketCount} tickets
-                    </span>
                   </div>
                 </div>
               );
@@ -982,112 +1082,131 @@ const UserDashboard = () => {
           <div className="absolute inset-0 bg-brandNavy/30 backdrop-blur-sm" onClick={handleCloseModal} />
           <div className={`relative bg-white w-full ${isCategoryLocked ? 'max-w-xl' : 'max-w-md'} rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-10 animate-scale-in transition-all duration-300`}>
             <div className={`h-2 w-full ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
-            <div className="p-5 sm:p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-extrabold text-brandDarkNavy font-sora">Raise New Query</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">Submit a ticket to operations</p>
-                </div>
-                <button onClick={handleCloseModal} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors flex-shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+            
+            {isSubmittedSuccessfully ? (
+              <div className="p-8 text-center flex flex-col items-center justify-center min-h-[350px] animate-fade-in font-dmSans">
+                <div className="checkmark-wrapper">
+                  <svg className="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                    <circle className="checkmark-circle" cx="26" cy="26" r="25" fill="none" />
+                    <path className="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
                   </svg>
+                </div>
+                <h3 className="text-xl font-extrabold text-brandDarkNavy font-sora mt-4">
+                  Query Submitted Successfully!
+                </h3>
+                <p className="text-xs text-gray-500 mt-2 font-semibold max-w-xs leading-relaxed">
+                  Your ticket has been raised. Support coordinators will update you shortly.
+                </p>
+                <button
+                  onClick={handleCloseModal}
+                  className={`mt-6 px-6 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md ${buttonColor}`}
+                >
+                  Close Window
                 </button>
               </div>
-
-              <form onSubmit={handleSubmitTicket} className="space-y-3.5">
-                <div>
-                  <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Subject / Title</label>
-                  <input type="text" required placeholder="e.g. Invoice payment issue #193"
-                    value={formSubject} onChange={e => setFormSubject(e.target.value)}
-                    className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-sm bg-gray-50/50" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
+            ) : (
+              <div className="p-5 sm:p-6">
+                <div className="flex items-start justify-between mb-4">
                   <div>
-                    <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5 flex items-center justify-between">
-                      <span>Category</span>
-                      {isCategoryLocked && (
-                        <span className="inline-flex items-center gap-1 text-[8px] font-extrabold text-brandNavy bg-brandNavy/10 px-1.5 py-0.5 rounded border border-brandNavy/20 select-none uppercase tracking-wider">
-                          Locked
-                        </span>
-                      )}
-                    </label>
-                    <select value={formCategory} onChange={e => setFormCategory(e.target.value)} disabled={isCategoryLocked}
-                      className={`w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none transition-all text-xs bg-gray-50/50 cursor-pointer font-medium text-gray-700 ${isCategoryLocked ? 'bg-gray-150/70 border-gray-200/50 text-gray-400 cursor-not-allowed' : 'focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20'}`}>
-                      {categories.map(cat => <option key={cat.category_id} value={cat.category_id}>{cat.name}</option>)}
-                    </select>
+                    <h3 className="text-lg font-extrabold text-brandDarkNavy font-sora">Raise New Query</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">Submit a ticket to operations</p>
                   </div>
+                  <button onClick={handleCloseModal} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <form onSubmit={handleSubmitTicket} className="space-y-3.5">
                   <div>
-                    <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Priority</label>
-                    <select value={formPriority} onChange={e => setFormPriority(e.target.value)}
-                      className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-xs bg-gray-50/50 cursor-pointer font-medium text-gray-700">
-                      <option value="Low">Low</option>
-                      <option value="Medium">Medium</option>
-                      <option value="High">High</option>
-                      <option value="Urgent">Urgent</option>
-                    </select>
+                    <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Subject / Title</label>
+                    <input type="text" required placeholder={getCategoryPlaceholders(formCategory).subject}
+                      value={formSubject} onChange={e => setFormSubject(e.target.value)}
+                      className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-sm bg-gray-50/50" />
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Description</label>
-                  <textarea required rows={isCategoryLocked ? 4 : 2} placeholder="Provide details, references, or item info..."
-                    value={formDescription} onChange={e => setFormDescription(e.target.value)}
-                    className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-sm bg-gray-50/50 resize-none font-medium text-gray-700" />
-                </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">
+                        Category
+                      </label>
+                      <select value={formCategory} onChange={e => setFormCategory(e.target.value)} disabled={isCategoryLocked}
+                        className={`w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none transition-all text-xs bg-gray-50/50 cursor-pointer font-medium text-gray-700 ${isCategoryLocked ? 'bg-gray-150/70 border-gray-200/50 text-gray-400 cursor-not-allowed' : 'focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20'}`}>
+                        {categories.map(cat => <option key={cat.category_id} value={cat.category_id}>{cat.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Priority</label>
+                      <select value={formPriority} onChange={e => setFormPriority(e.target.value)}
+                        className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-xs bg-gray-50/50 cursor-pointer font-medium text-gray-700">
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                        <option value="Urgent">Urgent</option>
+                      </select>
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Attachment</label>
-                  <div
-                    onDragOver={handleDragOver} onDrop={handleDrop}
-                    onClick={() => document.getElementById('dashboard-file-upload').click()}
-                    className="border-2 border-dashed border-gray-200 rounded-xl p-3 text-center cursor-pointer hover:bg-gray-50/50 hover:border-brandNavy/30 transition-all flex flex-col items-center justify-center min-h-[90px]"
-                  >
-                    <input id="dashboard-file-upload" type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.xlsx" onChange={handleFileChange} />
-                    {!attachment ? (
-                      <>
-                        <div className="w-9 h-9 rounded-lg bg-brandNavy/10 text-brandNavy flex items-center justify-center mb-2">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                  <div>
+                    <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Description</label>
+                    <textarea required rows={isCategoryLocked ? 4 : 2} placeholder={getCategoryPlaceholders(formCategory).description}
+                      value={formDescription} onChange={e => setFormDescription(e.target.value)}
+                      className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-sm bg-gray-50/50 resize-none font-medium text-gray-700" />
+                  </div>
+
+                  <div>
+                    <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Attachment</label>
+                    <div
+                      onDragOver={handleDragOver} onDrop={handleDrop}
+                      onClick={() => document.getElementById('dashboard-file-upload').click()}
+                      className="border-2 border-dashed border-gray-200 rounded-xl p-3 text-center cursor-pointer hover:bg-gray-50/50 hover:border-brandNavy/30 transition-all flex flex-col items-center justify-center min-h-[90px]"
+                    >
+                      <input id="dashboard-file-upload" type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.xlsx" onChange={handleFileChange} />
+                      {!attachment ? (
+                        <>
+                          <div className="w-9 h-9 rounded-lg bg-brandNavy/10 text-brandNavy flex items-center justify-center mb-2">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                            </svg>
+                          </div>
+                          <p className="text-xs font-bold text-brandDarkNavy font-sora">Click to upload or drag</p>
+                          <p className="text-[10px] text-gray-400 mt-0.5 font-medium">PDF, JPG, PNG, XLSX (25MB max)</p>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center">
+                          <svg className="w-7 h-7 text-brandRed mb-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                           </svg>
+                          <p className="text-xs font-bold text-brandDarkNavy truncate max-w-[160px] font-sora">{attachment.name}</p>
+                          <p className="text-[9px] text-gray-400 mt-0.5 font-bold">{(attachment.size / (1024 * 1024)).toFixed(2)} MB</p>
+                          <button type="button" onClick={e => { e.stopPropagation(); setAttachment(null); }}
+                            className="mt-1.5 text-[9px] font-extrabold text-brandRed hover:underline uppercase tracking-wider">
+                            Remove
+                          </button>
                         </div>
-                        <p className="text-xs font-bold text-brandDarkNavy font-sora">Click to upload or drag</p>
-                        <p className="text-[10px] text-gray-400 mt-0.5 font-medium">PDF, JPG, PNG, XLSX (25MB max)</p>
-                      </>
-                    ) : (
-                      <div className="flex flex-col items-center">
-                        <svg className="w-7 h-7 text-brandRed mb-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                        </svg>
-                        <p className="text-xs font-bold text-brandDarkNavy truncate max-w-[160px] font-sora">{attachment.name}</p>
-                        <p className="text-[9px] text-gray-400 mt-0.5 font-bold">{(attachment.size / (1024 * 1024)).toFixed(2)} MB</p>
-                        <button type="button" onClick={e => { e.stopPropagation(); setAttachment(null); }}
-                          className="mt-1.5 text-[9px] font-extrabold text-brandRed hover:underline uppercase tracking-wider">
-                          Remove
-                        </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
+                    {attachmentError && <p className="text-xs text-brandRed font-bold mt-1">{attachmentError}</p>}
                   </div>
-                  {attachmentError && <p className="text-xs text-brandRed font-bold mt-1">{attachmentError}</p>}
-                </div>
 
-                <div className="pt-1 flex items-center justify-end gap-2">
-                  <button type="button" onClick={handleCloseModal}
-                    className="px-4 py-2 rounded-lg text-xs font-bold text-gray-600 hover:text-gray-800 hover:bg-gray-100 border border-gray-200 transition-colors">
-                    Cancel
-                  </button>
-                  <button type="submit" disabled={isSubmitting || !formSubject || !formDescription}
-                    className={`px-5 py-2 rounded-lg text-xs font-bold text-white shadow-sm transition-all duration-300 flex items-center gap-1.5 ${buttonColor} ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}>
-                    {isSubmitting ? (
-                      <><div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" /><span>Submitting...</span></>
-                    ) : (
-                      <><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" /></svg><span>Submit</span></>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
+                  <div className="pt-1 flex items-center justify-end gap-2">
+                    <button type="button" onClick={handleCloseModal}
+                      className="px-4 py-2 rounded-lg text-xs font-bold text-gray-600 hover:text-gray-800 hover:bg-gray-100 border border-gray-200 transition-colors">
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={isSubmitting || !formSubject || !formDescription}
+                      className={`px-5 py-2 rounded-lg text-xs font-bold text-white shadow-sm transition-all duration-300 flex items-center gap-1.5 ${buttonColor} ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                      {isSubmitting ? (
+                        <><div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" /><span>Submitting...</span></>
+                      ) : (
+                        <><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" /></svg><span>Submit</span></>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1096,60 +1215,60 @@ const UserDashboard = () => {
       {selectedTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brandNavy/35 backdrop-blur-sm overflow-y-auto animate-fade-in">
           <div className="absolute inset-0 bg-brandNavy/10 backdrop-blur-[1px]" onClick={() => setSelectedTicket(null)} />
-          <div className="relative bg-white w-full max-w-4xl md:max-w-[950px] rounded-3xl shadow-2xl border border-gray-100/90 overflow-hidden z-10 animate-scale-in flex flex-col font-dmSans">
-            <div className={`h-2.5 w-full ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
+          <div className="relative bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-gray-100/90 overflow-hidden z-10 animate-scale-in flex flex-col font-dmSans">
+            <div className={`h-2 w-full ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
             
             <button onClick={() => setSelectedTicket(null)}
-              className="absolute top-5 right-5 w-10 h-10 rounded-xl hover:bg-gray-100 active:bg-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              className="absolute top-4 right-4 w-8 h-8 rounded-lg hover:bg-gray-100 active:bg-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
               </svg>
             </button>
 
-            <div className="p-6 md:p-8 pb-5 flex flex-col md:flex-row md:items-center justify-between border-b border-gray-100">
+            <div className="p-4 pb-3 flex items-center justify-between border-b border-gray-100">
               <div>
-                <span className="text-[10px] uppercase text-gray-400 font-extrabold tracking-widest font-sora block mb-1">
+                <span className="text-[9px] uppercase text-gray-400 font-extrabold tracking-widest font-sora block mb-0.5">
                   Ticket Details
                 </span>
-                <div className="flex flex-wrap items-baseline gap-2 md:gap-3">
-                  <h2 className="text-2xl md:text-3xl font-black text-brandDarkNavy font-sora tracking-tight leading-tight pr-6">
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <h2 className="text-lg md:text-xl font-black text-brandDarkNavy font-sora tracking-tight leading-tight pr-6">
                     {selectedTicket.title}
                   </h2>
-                  <span className="text-xs font-extrabold text-gray-400 bg-gray-50 border border-gray-200/60 px-2 py-0.5 rounded-lg font-sora select-none">
+                  <span className="text-[10px] font-extrabold text-gray-400 bg-gray-50 border border-gray-200/60 px-1.5 py-0.5 rounded font-sora select-none">
                     #{selectedTicket.ticket_id}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 p-6 md:p-8 bg-gray-50/30">
+            <div className="grid grid-cols-2 gap-2.5 p-4 bg-gray-50/30">
               {/* Category */}
-              <div className="bg-white border border-gray-150/70 rounded-2xl p-5 flex items-center space-x-4 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
-                <div className="w-12 h-12 rounded-xl bg-brandNavy/5 text-brandNavy flex items-center justify-center flex-shrink-0 border border-brandNavy/10">
+              <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-3 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
+                <div className="w-8 h-8 rounded-lg bg-brandNavy/5 text-brandNavy flex items-center justify-center flex-shrink-0 border border-brandNavy/10">
                   {getCategoryIcon(selectedTicket.category_id)}
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Category</p>
-                  <p className="text-sm font-bold text-brandDarkNavy mt-1 truncate" title={categories.find(c => c.category_id === selectedTicket.category_id)?.name}>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Category</p>
+                  <p className="text-xs font-bold text-brandDarkNavy mt-0.5 break-words" title={categories.find(c => c.category_id === selectedTicket.category_id)?.name}>
                     {categories.find(c => c.category_id === selectedTicket.category_id)?.name || `Category #${selectedTicket.category_id}`}
                   </p>
                 </div>
               </div>
 
               {/* Status */}
-              <div className="bg-white border border-gray-150/70 rounded-2xl p-5 flex items-center space-x-4 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0 border ${
+              <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-3 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0 border ${
                   selectedTicket.status === 'Resolved' ? 'text-emerald-600 bg-emerald-50/50 border-emerald-100' :
                   selectedTicket.status === 'In Progress' ? 'text-amber-500 bg-amber-50/50 border-amber-100' :
                   selectedTicket.status === 'Open' ? 'text-brandNavy bg-blue-50/50 border-blue-100' : 'text-brandRed bg-rose-50/50 border-rose-100'
                 }`}>
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Status</p>
-                  <span className={`inline-block text-[11px] font-extrabold mt-1 px-2.5 py-0.5 rounded-lg border ${
+                  <p className="text-[9px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Status</p>
+                  <span className={`inline-block text-[10px] font-extrabold mt-0.5 px-2 py-0.5 rounded border ${
                     selectedTicket.status === 'Resolved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' :
                     selectedTicket.status === 'In Progress' ? 'bg-amber-50 text-amber-700 border-amber-200/50' :
                     selectedTicket.status === 'Open' ? 'bg-blue-50 text-blue-700 border-blue-200/50' :
@@ -1161,20 +1280,20 @@ const UserDashboard = () => {
               </div>
 
               {/* Priority */}
-              <div className="bg-white border border-gray-150/70 rounded-2xl p-5 flex items-center space-x-4 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0 border ${
+              <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-3 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0 border ${
                   selectedTicket.priority === 'Urgent' ? 'text-brandRed bg-rose-50/50 border-rose-100 animate-pulse' :
                   selectedTicket.priority === 'High' ? 'text-orange-500 bg-orange-50/50 border-orange-100' :
                   selectedTicket.priority === 'Medium' ? 'text-amber-500 bg-amber-50/50 border-amber-100' :
                   'text-gray-500 bg-gray-50/50 border-gray-150'
                 }`}>
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a1.5 1.5 0 0 0 1.154-1.464V6.105a1.5 1.5 0 0 0-1.654-1.49l-2.908.685a9 9 0 0 1-6.2 0l-.108-.054a9 9 0 0 0-6.2 0L3 5.75m0 9.25V5.75" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Priority</p>
-                  <span className={`inline-block text-[11px] font-extrabold mt-1 px-2.5 py-0.5 rounded-lg border ${
+                  <p className="text-[9px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Priority</p>
+                  <span className={`inline-block text-[10px] font-extrabold mt-0.5 px-2 py-0.5 rounded border ${
                     selectedTicket.priority === 'Urgent' ? 'bg-red-50 text-red-700 border-red-200/50' :
                     selectedTicket.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200/50' :
                     selectedTicket.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border-amber-200/50' :
@@ -1186,15 +1305,15 @@ const UserDashboard = () => {
               </div>
 
               {/* Submitted Date */}
-              <div className="bg-white border border-gray-150/70 rounded-2xl p-5 flex items-center space-x-4 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
-                <div className="w-12 h-12 rounded-xl bg-gray-50 text-gray-500 flex items-center justify-center flex-shrink-0 border border-gray-100">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-3 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
+                <div className="w-8 h-8 rounded-lg bg-gray-50 text-gray-500 flex items-center justify-center flex-shrink-0 border border-gray-100">
+                  <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
                   </svg>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Submitted</p>
-                  <p className="text-xs font-bold text-brandDarkNavy mt-1 truncate" title={selectedTicket.created_at}>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Submitted</p>
+                  <p className="text-xs font-bold text-brandDarkNavy mt-0.5 break-words" title={selectedTicket.created_at}>
                     {formatTicketDate(selectedTicket.created_at)}
                   </p>
                 </div>
@@ -1202,31 +1321,31 @@ const UserDashboard = () => {
             </div>
 
             {/* Divider */}
-            <div className="border-t border-gray-100 mx-6 md:mx-8" />
+            <div className="border-t border-gray-100 mx-4" />
 
-            <div className="p-6 md:p-8 pt-6 flex-1 flex flex-col space-y-6">
+            <div className="p-4 flex-1 flex flex-col space-y-4">
               {/* Description Block */}
               <div>
-                <h4 className="text-[10px] uppercase text-gray-400 font-extrabold tracking-widest font-sora mb-3">Description</h4>
-                <div className="bg-gray-50/70 border border-gray-200/80 rounded-2xl p-6 text-sm text-gray-600 leading-relaxed whitespace-pre-wrap font-medium break-words">
+                <h4 className="text-[9px] uppercase text-gray-400 font-extrabold tracking-widest font-sora mb-2">Description</h4>
+                <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-4 text-xs text-gray-600 leading-relaxed whitespace-pre-wrap font-medium break-words">
                   {selectedTicket.description}
                 </div>
               </div>
 
               {/* Attachment File Card */}
               {selectedTicket.attachment_path && (
-                <div className="pt-2">
-                  <h4 className="text-[10px] uppercase text-gray-400 font-extrabold tracking-widest font-sora mb-3">Attachments</h4>
-                  <div className="border border-gray-200/85 hover:border-gray-300 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white gap-4 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.015)]">
-                    <div className="flex items-center space-x-4 min-w-0">
-                      <div className="w-12 h-12 rounded-xl bg-brandNavy/5 text-brandNavy flex items-center justify-center flex-shrink-0 border border-brandNavy/10">
-                        <svg className="w-6 h-6 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <div className="pt-1">
+                  <h4 className="text-[9px] uppercase text-gray-400 font-extrabold tracking-widest font-sora mb-2">Attachments</h4>
+                  <div className="border border-gray-200/85 hover:border-gray-300 rounded-xl p-3 flex items-center justify-between bg-white gap-3 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.015)]">
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-brandNavy/5 text-brandNavy flex items-center justify-center flex-shrink-0 border border-brandNavy/10">
+                        <svg className="w-4.5 h-4.5 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" />
                         </svg>
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[9px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Attachment File</p>
-                        <p className="text-sm font-bold text-brandDarkNavy truncate max-w-[280px] sm:max-w-[420px] md:max-w-[550px] mt-0.5" title={selectedTicket.attachment_path.split('_').slice(1).join('_') || selectedTicket.attachment_path}>
+                        <p className="text-[8px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Attachment File</p>
+                        <p className="text-xs font-bold text-brandDarkNavy truncate max-w-[180px] sm:max-w-[240px] mt-0.5" title={selectedTicket.attachment_path.split('_').slice(1).join('_') || selectedTicket.attachment_path}>
                           {selectedTicket.attachment_path.split('_').slice(1).join('_') || selectedTicket.attachment_path}
                         </p>
                       </div>
@@ -1234,9 +1353,9 @@ const UserDashboard = () => {
                     
                     <button
                       onClick={() => downloadAttachment(selectedTicket.attachment_path)}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-brandNavy bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 transition-all duration-200 shrink-0 shadow-sm"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-brandNavy bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 transition-all duration-200 shrink-0 shadow-sm"
                     >
-                      <svg className="w-4 h-4 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
                       </svg>
                       Download File
@@ -1247,7 +1366,7 @@ const UserDashboard = () => {
             </div>
 
             {/* Footer Close Actions */}
-            <div className="p-6 md:p-8 pt-4 pb-5 flex justify-end gap-3 bg-gray-50/50 border-t border-gray-100">
+            <div className="p-4 flex justify-end gap-3 bg-gray-50/50 border-t border-gray-100">
               <button
                 onClick={() => setSelectedTicket(null)}
                 className="px-6 py-3 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200 hover:border-gray-300 transition-all duration-200"
@@ -1258,6 +1377,7 @@ const UserDashboard = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };
