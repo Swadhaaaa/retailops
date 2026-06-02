@@ -185,6 +185,19 @@ const getCategoryIcon = (catId) => {
   );
 };
 
+const formatTicketDate = (dateStr) => {
+  if (!dateStr) return 'Today';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const formattedDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const formattedTime = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    return `${formattedDate}, ${formattedTime}`;
+  } catch (e) {
+    return dateStr;
+  }
+};
+
 /* ─────────────────────────────────────────────
    COMPONENT
 ───────────────────────────────────────────── */
@@ -201,6 +214,7 @@ const UserDashboard = () => {
   const [categories, setCategories] = useState(staticCategories);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCategoryLocked, setIsCategoryLocked] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
 
   const [formSubject, setFormSubject] = useState('');
@@ -301,6 +315,23 @@ const UserDashboard = () => {
 
   const handleLogout = () => { logout(); navigate('/'); };
 
+  const handleCategoryClick = (categoryId) => {
+    setFormCategory(categoryId.toString());
+    setIsCategoryLocked(true);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setIsCategoryLocked(false);
+    setFormSubject('');
+    setFormDescription('');
+    setFormPriority('Medium');
+    setAttachment(null);
+    setAttachmentError('');
+    setFormCategory(staticCategories[0].category_id.toString());
+  };
+
   const handleSubmitTicket = async (e) => {
     e.preventDefault();
     if (!formSubject || !formDescription || !formCategory) return;
@@ -317,9 +348,7 @@ const UserDashboard = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      setFormSubject(''); setFormDescription(''); setFormPriority('Medium');
-      setAttachment(null); setFormCategory(staticCategories[0].category_id.toString());
-      setIsModalOpen(false);
+      handleCloseModal();
       await fetchDashboardData();
     } catch (err) {
       console.error('Error raising ticket:', err);
@@ -434,7 +463,7 @@ const UserDashboard = () => {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <h1 className="text-2xl lg:text-3xl font-extrabold text-brandDarkNavy font-sora">
-                Good Morning, {userName}! 👋
+                Good Morning, {userName}! 
               </h1>
               <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brandNavy/8 border border-brandNavy/20 text-[9px] font-bold text-brandNavy ml-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-brandNavy live-dot inline-block" />
@@ -446,28 +475,16 @@ const UserDashboard = () => {
               <span className="ml-2 text-gray-400">· 3 tickets updated today</span>
             </p>
           </div>
-          {/* Last Login Card */}
-          <div className="bg-white border border-gray-150/60 rounded-2xl px-5 py-3 shadow-[0_4px_12px_rgba(0,0,0,.02)] flex items-center space-x-3.5 shrink-0 self-start lg:self-center">
-            <div className="p-2 rounded-xl bg-gray-50 text-gray-400">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-              </svg>
-            </div>
-            <div>
-              <span className="text-[9px] uppercase tracking-wider text-gray-400 font-extrabold block">Last Login</span>
-              <span className="text-xs font-bold text-brandDarkNavy font-sora">29 May 2026 | 10:30 AM</span>
-            </div>
-          </div>
         </div>
 
-        {/* ── 4 Action Cards ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* ── 3 Action Cards ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[
             {
               label: 'Raise a Query', desc: 'Select a category and raise a new query',
               bg: 'bg-brandRed', shadow: 'shadow-brandRed/20', glowHover: 'hover:shadow-[0_14px_28px_rgba(227,24,55,.18)]',
               borderHover: 'hover:border-brandRed/30',
-              onClick: () => setIsModalOpen(true),
+              onClick: () => { setIsCategoryLocked(false); setIsModalOpen(true); },
               icon: <span className="text-xl font-bold text-white icon-scale">+</span>
             },
             {
@@ -489,17 +506,6 @@ const UserDashboard = () => {
               icon: (
                 <svg className="w-5 h-5 text-white icon-scale" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
-                </svg>
-              )
-            },
-            {
-              label: 'Download Documents', desc: 'View and download important documents',
-              bg: 'bg-brandRed', shadow: 'shadow-brandRed/20', glowHover: 'hover:shadow-[0_14px_28px_rgba(227,24,55,.18)]',
-              borderHover: 'hover:border-brandRed/30',
-              onClick: () => switchTab('Profile'),
-              icon: (
-                <svg className="w-5 h-5 text-white icon-scale" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
                 </svg>
               )
             }
@@ -531,18 +537,12 @@ const UserDashboard = () => {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
             {staticCategories.map((cat) => {
-              const isMostUsed = cat.category_id === 1 || cat.category_id === 4;
               return (
                 <div
                   key={cat.category_id}
                   onClick={() => handleCategoryClick(cat.category_id)}
                   className={`cat-card p-5 cursor-pointer flex flex-col justify-between min-h-[200px] relative rounded-2xl border ${cat.bg} ${cat.hoverShadow}`}
                 >
-                  {isMostUsed && (
-                    <span className="absolute top-3 right-3 px-1.5 py-0.5 rounded bg-brandRed text-[8px] font-extrabold text-white tracking-wide uppercase select-none">
-                      Most Used
-                    </span>
-                  )}
 
                   <div className={`w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-sm icon-scale ${cat.glowClass}`}>
                     {cat.icon}
@@ -595,7 +595,7 @@ const UserDashboard = () => {
             <p className="text-sm text-gray-500 mt-1">Manage and track all your raised tickets.</p>
           </div>
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => { setIsCategoryLocked(false); setIsModalOpen(true); }}
             className={`px-5 py-3 rounded-2xl text-xs font-bold text-white shadow-md transition-all flex items-center space-x-2 ${buttonColor}`}
           >
             <span>Create Ticket</span>
@@ -667,49 +667,6 @@ const UserDashboard = () => {
                 );
               })}
             </div>
-
-            {selectedTicket && (
-              <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                <div className="bg-white w-full max-w-2xl rounded-3xl p-7 relative shadow-2xl animate-scale-in">
-                  <button onClick={() => setSelectedTicket(null)}
-                    className="absolute top-5 right-5 w-10 h-10 rounded-xl hover:bg-gray-100 flex items-center justify-center text-gray-500">✕</button>
-                  <div className="mb-7">
-                    <p className="text-[10px] uppercase text-gray-400 font-bold tracking-widest">Ticket Details</p>
-                    <h2 className="text-2xl font-extrabold text-brandDarkNavy mt-2">{selectedTicket.title}</h2>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    {[
-                      { label: 'Ticket ID', val: `#${selectedTicket.ticket_id}` },
-                      { label: 'Status', val: selectedTicket.status },
-                      { label: 'Priority', val: selectedTicket.priority },
-                      { label: 'Category', val: categories.find(c => c.category_id === selectedTicket.category_id)?.name }
-                    ].map(({ label, val }) => (
-                      <div key={label} className="bg-gray-50 rounded-2xl p-4">
-                        <p className="text-[10px] uppercase text-gray-400 font-bold">{label}</p>
-                        <p className="text-sm font-bold text-brandDarkNavy mt-1">{val}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="bg-gray-50 rounded-2xl p-5">
-                    <p className="text-[10px] uppercase text-gray-400 font-bold mb-2">Description</p>
-                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{selectedTicket.description}</p>
-                    {selectedTicket.attachment_path && (
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <button
-                          onClick={() => downloadAttachment(selectedTicket.attachment_path)}
-                          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-brandNavy bg-blue-50 hover:bg-blue-100 rounded-lg transition"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                          </svg>
-                          Download Attachment
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
           </>
         )}
       </div>
@@ -1022,8 +979,8 @@ const UserDashboard = () => {
       {/* ── RAISE NEW QUERY MODAL ── */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="absolute inset-0 bg-brandNavy/30 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-          <div className="relative bg-white w-full max-w-md rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-10 animate-scale-in">
+          <div className="absolute inset-0 bg-brandNavy/30 backdrop-blur-sm" onClick={handleCloseModal} />
+          <div className={`relative bg-white w-full ${isCategoryLocked ? 'max-w-xl' : 'max-w-md'} rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-10 animate-scale-in transition-all duration-300`}>
             <div className={`h-2 w-full ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
             <div className="p-5 sm:p-6">
               <div className="flex items-start justify-between mb-4">
@@ -1031,7 +988,7 @@ const UserDashboard = () => {
                   <h3 className="text-lg font-extrabold text-brandDarkNavy font-sora">Raise New Query</h3>
                   <p className="text-xs text-gray-500 mt-0.5">Submit a ticket to operations</p>
                 </div>
-                <button onClick={() => setIsModalOpen(false)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors flex-shrink-0">
+                <button onClick={handleCloseModal} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors flex-shrink-0">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                   </svg>
@@ -1048,9 +1005,16 @@ const UserDashboard = () => {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Category</label>
-                    <select value={formCategory} onChange={e => setFormCategory(e.target.value)}
-                      className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-xs bg-gray-50/50 cursor-pointer font-medium text-gray-700">
+                    <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5 flex items-center justify-between">
+                      <span>Category</span>
+                      {isCategoryLocked && (
+                        <span className="inline-flex items-center gap-1 text-[8px] font-extrabold text-brandNavy bg-brandNavy/10 px-1.5 py-0.5 rounded border border-brandNavy/20 select-none uppercase tracking-wider">
+                          Locked
+                        </span>
+                      )}
+                    </label>
+                    <select value={formCategory} onChange={e => setFormCategory(e.target.value)} disabled={isCategoryLocked}
+                      className={`w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none transition-all text-xs bg-gray-50/50 cursor-pointer font-medium text-gray-700 ${isCategoryLocked ? 'bg-gray-150/70 border-gray-200/50 text-gray-400 cursor-not-allowed' : 'focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20'}`}>
                       {categories.map(cat => <option key={cat.category_id} value={cat.category_id}>{cat.name}</option>)}
                     </select>
                   </div>
@@ -1068,7 +1032,7 @@ const UserDashboard = () => {
 
                 <div>
                   <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Description</label>
-                  <textarea required rows="2" placeholder="Provide details, references, or item info..."
+                  <textarea required rows={isCategoryLocked ? 4 : 2} placeholder="Provide details, references, or item info..."
                     value={formDescription} onChange={e => setFormDescription(e.target.value)}
                     className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-sm bg-gray-50/50 resize-none font-medium text-gray-700" />
                 </div>
@@ -1109,7 +1073,7 @@ const UserDashboard = () => {
                 </div>
 
                 <div className="pt-1 flex items-center justify-end gap-2">
-                  <button type="button" onClick={() => setIsModalOpen(false)}
+                  <button type="button" onClick={handleCloseModal}
                     className="px-4 py-2 rounded-lg text-xs font-bold text-gray-600 hover:text-gray-800 hover:bg-gray-100 border border-gray-200 transition-colors">
                     Cancel
                   </button>
@@ -1123,6 +1087,173 @@ const UserDashboard = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TICKET DETAILS MODAL ── */}
+      {selectedTicket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brandNavy/35 backdrop-blur-sm overflow-y-auto animate-fade-in">
+          <div className="absolute inset-0 bg-brandNavy/10 backdrop-blur-[1px]" onClick={() => setSelectedTicket(null)} />
+          <div className="relative bg-white w-full max-w-4xl md:max-w-[950px] rounded-3xl shadow-2xl border border-gray-100/90 overflow-hidden z-10 animate-scale-in flex flex-col font-dmSans">
+            <div className={`h-2.5 w-full ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
+            
+            <button onClick={() => setSelectedTicket(null)}
+              className="absolute top-5 right-5 w-10 h-10 rounded-xl hover:bg-gray-100 active:bg-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div className="p-6 md:p-8 pb-5 flex flex-col md:flex-row md:items-center justify-between border-b border-gray-100">
+              <div>
+                <span className="text-[10px] uppercase text-gray-400 font-extrabold tracking-widest font-sora block mb-1">
+                  Ticket Details
+                </span>
+                <div className="flex flex-wrap items-baseline gap-2 md:gap-3">
+                  <h2 className="text-2xl md:text-3xl font-black text-brandDarkNavy font-sora tracking-tight leading-tight pr-6">
+                    {selectedTicket.title}
+                  </h2>
+                  <span className="text-xs font-extrabold text-gray-400 bg-gray-50 border border-gray-200/60 px-2 py-0.5 rounded-lg font-sora select-none">
+                    #{selectedTicket.ticket_id}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 p-6 md:p-8 bg-gray-50/30">
+              {/* Category */}
+              <div className="bg-white border border-gray-150/70 rounded-2xl p-5 flex items-center space-x-4 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
+                <div className="w-12 h-12 rounded-xl bg-brandNavy/5 text-brandNavy flex items-center justify-center flex-shrink-0 border border-brandNavy/10">
+                  {getCategoryIcon(selectedTicket.category_id)}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Category</p>
+                  <p className="text-sm font-bold text-brandDarkNavy mt-1 truncate" title={categories.find(c => c.category_id === selectedTicket.category_id)?.name}>
+                    {categories.find(c => c.category_id === selectedTicket.category_id)?.name || `Category #${selectedTicket.category_id}`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Status */}
+              <div className="bg-white border border-gray-150/70 rounded-2xl p-5 flex items-center space-x-4 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0 border ${
+                  selectedTicket.status === 'Resolved' ? 'text-emerald-600 bg-emerald-50/50 border-emerald-100' :
+                  selectedTicket.status === 'In Progress' ? 'text-amber-500 bg-amber-50/50 border-amber-100' :
+                  selectedTicket.status === 'Open' ? 'text-brandNavy bg-blue-50/50 border-blue-100' : 'text-brandRed bg-rose-50/50 border-rose-100'
+                }`}>
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Status</p>
+                  <span className={`inline-block text-[11px] font-extrabold mt-1 px-2.5 py-0.5 rounded-lg border ${
+                    selectedTicket.status === 'Resolved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' :
+                    selectedTicket.status === 'In Progress' ? 'bg-amber-50 text-amber-700 border-amber-200/50' :
+                    selectedTicket.status === 'Open' ? 'bg-blue-50 text-blue-700 border-blue-200/50' :
+                    'bg-rose-50 text-rose-700 border-rose-200/50'
+                  }`}>
+                    {selectedTicket.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* Priority */}
+              <div className="bg-white border border-gray-150/70 rounded-2xl p-5 flex items-center space-x-4 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0 border ${
+                  selectedTicket.priority === 'Urgent' ? 'text-brandRed bg-rose-50/50 border-rose-100 animate-pulse' :
+                  selectedTicket.priority === 'High' ? 'text-orange-500 bg-orange-50/50 border-orange-100' :
+                  selectedTicket.priority === 'Medium' ? 'text-amber-500 bg-amber-50/50 border-amber-100' :
+                  'text-gray-500 bg-gray-50/50 border-gray-150'
+                }`}>
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a1.5 1.5 0 0 0 1.154-1.464V6.105a1.5 1.5 0 0 0-1.654-1.49l-2.908.685a9 9 0 0 1-6.2 0l-.108-.054a9 9 0 0 0-6.2 0L3 5.75m0 9.25V5.75" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Priority</p>
+                  <span className={`inline-block text-[11px] font-extrabold mt-1 px-2.5 py-0.5 rounded-lg border ${
+                    selectedTicket.priority === 'Urgent' ? 'bg-red-50 text-red-700 border-red-200/50' :
+                    selectedTicket.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200/50' :
+                    selectedTicket.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border-amber-200/50' :
+                    'bg-gray-50 text-gray-700 border-gray-200/50'
+                  }`}>
+                    {selectedTicket.priority}
+                  </span>
+                </div>
+              </div>
+
+              {/* Submitted Date */}
+              <div className="bg-white border border-gray-150/70 rounded-2xl p-5 flex items-center space-x-4 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
+                <div className="w-12 h-12 rounded-xl bg-gray-50 text-gray-500 flex items-center justify-center flex-shrink-0 border border-gray-100">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Submitted</p>
+                  <p className="text-xs font-bold text-brandDarkNavy mt-1 truncate" title={selectedTicket.created_at}>
+                    {formatTicketDate(selectedTicket.created_at)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-gray-100 mx-6 md:mx-8" />
+
+            <div className="p-6 md:p-8 pt-6 flex-1 flex flex-col space-y-6">
+              {/* Description Block */}
+              <div>
+                <h4 className="text-[10px] uppercase text-gray-400 font-extrabold tracking-widest font-sora mb-3">Description</h4>
+                <div className="bg-gray-50/70 border border-gray-200/80 rounded-2xl p-6 text-sm text-gray-600 leading-relaxed whitespace-pre-wrap font-medium break-words">
+                  {selectedTicket.description}
+                </div>
+              </div>
+
+              {/* Attachment File Card */}
+              {selectedTicket.attachment_path && (
+                <div className="pt-2">
+                  <h4 className="text-[10px] uppercase text-gray-400 font-extrabold tracking-widest font-sora mb-3">Attachments</h4>
+                  <div className="border border-gray-200/85 hover:border-gray-300 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white gap-4 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.015)]">
+                    <div className="flex items-center space-x-4 min-w-0">
+                      <div className="w-12 h-12 rounded-xl bg-brandNavy/5 text-brandNavy flex items-center justify-center flex-shrink-0 border border-brandNavy/10">
+                        <svg className="w-6 h-6 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" />
+                        </svg>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Attachment File</p>
+                        <p className="text-sm font-bold text-brandDarkNavy truncate max-w-[280px] sm:max-w-[420px] md:max-w-[550px] mt-0.5" title={selectedTicket.attachment_path.split('_').slice(1).join('_') || selectedTicket.attachment_path}>
+                          {selectedTicket.attachment_path.split('_').slice(1).join('_') || selectedTicket.attachment_path}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => downloadAttachment(selectedTicket.attachment_path)}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-brandNavy bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 transition-all duration-200 shrink-0 shadow-sm"
+                    >
+                      <svg className="w-4 h-4 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                      </svg>
+                      Download File
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Close Actions */}
+            <div className="p-6 md:p-8 pt-4 pb-5 flex justify-end gap-3 bg-gray-50/50 border-t border-gray-100">
+              <button
+                onClick={() => setSelectedTicket(null)}
+                className="px-6 py-3 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200 hover:border-gray-300 transition-all duration-200"
+              >
+                Close Details
+              </button>
             </div>
           </div>
         </div>
