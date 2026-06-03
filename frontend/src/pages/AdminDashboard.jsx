@@ -417,79 +417,22 @@ const AdminDashboard = () => {
         </div>
 
         {/* Stat Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {/* Total Queries */}
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow text-left">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400 font-bold font-sora uppercase">Total Tickets</span>
-              <div className="p-2 rounded-xl bg-gray-100 text-gray-600">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-12.75h.008v.008H7.5V5.25zm0 3h.008v.008H7.5v-.008zm0 3h.008v.008H7.5v-.008zm0 3h.008v.008H7.5v-.008zm0 3h.008v.008H7.5V17.25zm9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9.75-3.75h.008v.008H6.75v-.008zm0-3h.008v.008H6.75v-.008zm0-3h.008v.008H6.75V5.25zm9.75 11.25h.008v.008h-.008v-.008zm0-3h.008v.008h-.008v-.008zm0-3h.008v.008h-.008v-.008z" />
-                </svg>
-              </div>
-            </div>
-            <div className="mt-4">
-              <h3 className="text-3xl font-extrabold text-brandDarkNavy font-sora">
-                {loading ? '...' : totalCount}
-              </h3>
-              <p className="text-xs text-emerald-600 font-semibold mt-1 flex items-center space-x-1">
-                <span>Active in DuckDB</span>
-              </p>
-            </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-xl border border-gray-200 flex flex-col justify-center text-left shadow-sm">
+            <span className="text-sm font-medium text-gray-500">Total</span>
+            <h3 className="text-2xl font-bold text-gray-900 mt-1">{loading ? '...' : totalCount}</h3>
           </div>
-
-          {/* Open Queries */}
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow text-left">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400 font-bold font-sora uppercase">Open Tickets</span>
-              <div className="p-2 rounded-xl bg-brandRed/10 text-brandRed">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9 3.75h.008v.008H12v-.008z" />
-                </svg>
-              </div>
-            </div>
-            <div className="mt-4">
-              <h3 className="text-3xl font-extrabold text-brandDarkNavy font-sora">
-                {loading ? '...' : openCount}
-              </h3>
-              <p className="text-xs text-brandRed font-semibold mt-1">Pending allocation</p>
-            </div>
+          <div className="bg-white p-4 rounded-xl border border-blue-200 flex flex-col justify-center text-left shadow-sm">
+            <span className="text-sm font-medium text-blue-500">Open</span>
+            <h3 className="text-2xl font-bold text-blue-600 mt-1">{loading ? '...' : openCount}</h3>
           </div>
-
-          {/* In Progress */}
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow text-left">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400 font-bold font-sora uppercase">In Progress</span>
-              <div className="p-2 rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                </svg>
-              </div>
-            </div>
-            <div className="mt-4">
-              <h3 className="text-3xl font-extrabold text-brandDarkNavy font-sora">
-                {loading ? '...' : progressCount}
-              </h3>
-              <p className="text-xs text-amber-600 font-semibold mt-1">Currently being resolved</p>
-            </div>
+          <div className="bg-white p-4 rounded-xl border border-orange-200 flex flex-col justify-center text-left shadow-sm">
+            <span className="text-sm font-medium text-orange-500">In Progress</span>
+            <h3 className="text-2xl font-bold text-orange-600 mt-1">{loading ? '...' : progressCount}</h3>
           </div>
-
-          {/* Resolved Queries */}
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow text-left">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400 font-bold font-sora uppercase">Resolved Tickets</span>
-              <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
-                </svg>
-              </div>
-            </div>
-            <div className="mt-4">
-              <h3 className="text-3xl font-extrabold text-brandDarkNavy font-sora">
-                {loading ? '...' : resolvedCount}
-              </h3>
-              <p className="text-xs text-emerald-600 font-semibold mt-1">Closed successfully</p>
-            </div>
+          <div className="bg-white p-4 rounded-xl border border-green-200 flex flex-col justify-center text-left shadow-sm">
+            <span className="text-sm font-medium text-green-500">Resolved</span>
+            <h3 className="text-2xl font-bold text-green-600 mt-1">{loading ? '...' : resolvedCount}</h3>
           </div>
         </div>
 

@@ -4,6 +4,7 @@ import { RoleContext } from '../context/RoleContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import relianceLogo from '../assets/reliance_logo.png';
+import DefaultCategoryIcon from '../components/DefaultCategoryIcon';
 
 /* ─────────────────────────────────────────────
    GLOBAL STYLES injected once
@@ -151,39 +152,57 @@ const injectGlobalStyles = () => {
 };
 
 /* ─────────────────────────────────────────────
+   DYNAMIC CATEGORY STYLE HELPER
+   Alternates red and blue design language based on ID
+───────────────────────────────────────────── */
+const getCategoryStyles = (categoryId) => {
+  const index = parseInt(categoryId, 10) || 0;
+  if (index % 2 === 0) {
+    return {
+      bg: 'bg-brandRed/8 hover:bg-brandRed/12 text-brandRed border-brandRed/20 hover:border-brandRed/40',
+      hoverShadow: 'hover:shadow-[0_8px_24px_rgba(227,24,55,.12)]',
+      glowClass: 'icon-glow-rose',
+      textColor: 'text-brandRed'
+    };
+  } else {
+    return {
+      bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40',
+      hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]',
+      glowClass: 'icon-glow-blue',
+      textColor: 'text-brandNavy'
+    };
+  }
+};
+
+/* ─────────────────────────────────────────────
    STATIC CATEGORIES
 ───────────────────────────────────────────── */
 const staticCategories = [
-  { category_id: 1, name: 'Payment Issues', description: 'Invoice and payment related issues', ticketCount: 24, glowClass: 'icon-glow-indigo', bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]', icon: (<svg className="w-8 h-8 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" /></svg>) },
-  { category_id: 2, name: 'Inventory Issues', description: 'Stock and inventory problems', ticketCount: 18, glowClass: 'icon-glow-blue', bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]', icon: (<svg className="w-8 h-8 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>) },
-  { category_id: 3, name: 'Technical Support', description: 'System and technical support', ticketCount: 9, glowClass: 'icon-glow-indigo', bg: 'bg-brandRed/8 hover:bg-brandRed/12 text-brandRed border-brandRed/20 hover:border-brandRed/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(227,24,55,.12)]', icon: (<svg className="w-8 h-8 text-brandRed" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.43l-1.003.828c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.43l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>) },
-  { category_id: 4, name: 'Delivery Issues', description: 'Shipment and delivery concerns', ticketCount: 31, glowClass: 'icon-glow-purple', bg: 'bg-brandGold/12 hover:bg-brandGold/16 text-brandGold border-brandGold/30 hover:border-brandGold/50', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,166,35,.12)]', icon: (<svg className="w-8 h-8 text-brandGold" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.129-1.125v-3.097c0-.626-.25-1.226-.694-1.671l-2.73-2.73a1.125 1.125 0 0 0-.796-.329H13.5m4.5 9v-5.25m0 5.25h-6.75M13.5 9h2.25M13.5 6h2.25M13.5 3h2.25M2.25 10.5h11.25m-11.25 0V3.75c0-.621.504-1.125 1.125-1.125h9.75c.621 0 1.125.504 1.125 1.125v6.75m-12 0h12" /></svg>) },
-  { category_id: 5, name: 'Documentation', description: 'Document and compliance issues', ticketCount: 7, glowClass: 'icon-glow-teal', bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]', icon: (<svg className="w-8 h-8 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25h-2.25a1.5 1.5 0 0 0-1.5 1.5v2.25m0-10.5v10.5m-9-7.5h3m-3 3h6m-6 3h6" /></svg>) },
-  { category_id: 6, name: 'Order Discrepancies', description: 'Mismatched order quantities or items', ticketCount: 14, glowClass: 'icon-glow-amber', bg: 'bg-brandRed/8 hover:bg-brandRed/12 text-brandRed border-brandRed/20 hover:border-brandRed/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(227,24,55,.12)]', icon: (<svg className="w-8 h-8 text-brandRed" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" /></svg>) },
-  { category_id: 7, name: 'User Onboarding', description: 'Registration and profile setup queries', ticketCount: 5, glowClass: 'icon-glow-cyan', bg: 'bg-brandGold/12 hover:bg-brandGold/16 text-brandGold border-brandGold/30 hover:border-brandGold/50', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,166,35,.12)]', icon: (<svg className="w-8 h-8 text-brandGold" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" /></svg>) },
-  { category_id: 8, name: 'Quality Control', description: 'Product quality and damage complaints', ticketCount: 11, glowClass: 'icon-glow-rose', bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]', icon: (<svg className="w-8 h-8 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" /></svg>) },
-  { category_id: 9, name: 'Pricing & Billing', description: 'Pricing disputes and billing inquiries', ticketCount: 8, glowClass: 'icon-glow-yellow', bg: 'bg-brandRed/8 hover:bg-brandRed/12 text-brandRed border-brandRed/20 hover:border-brandRed/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(227,24,55,.12)]', icon: (<svg className="w-8 h-8 text-brandRed" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879-.659c1.546-1.159 3.816-1.159 5.362 0l1.178.884M15 10.125c-.77-.19-1.56-.233-2.339-.127-.776.106-1.554.407-2.23.896-.68.491-1.144 1.189-1.309 1.994-.165.805-.034 1.637.38 2.333.415.696 1.077 1.218 1.83 1.488.752.27 1.57.29 2.337.062a7.485 7.485 0 0 0 2.112-.888M9 10.125C9.77 9.935 10.56 9.892 11.339 9.998c.776-.106 1.554-.407 2.23-.896.68-.491 1.144-1.189 1.309-1.994.165-.805.034-1.637-.38-2.333-.415-.696-1.077-1.218-1.83-1.488-.752-.27-1.57-.29-2.337-.062a7.485 7.485 0 0 0-2.112.888" /></svg>) },
-  { category_id: 10, name: 'SLA Violations', description: 'SLA delays and performance escalations', ticketCount: 3, glowClass: 'icon-glow-red', bg: 'bg-brandGold/12 hover:bg-brandGold/16 text-brandGold border-brandGold/30 hover:border-brandGold/50', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,166,35,.12)]', icon: (<svg className="w-8 h-8 text-brandGold" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>) },
-  { category_id: 11, name: 'Logistics Support', description: 'Transport, routing, and carrier issues', ticketCount: 16, glowClass: 'icon-glow-orange', bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]', icon: (<svg className="w-8 h-8 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.129-1.125v-3.097c0-.626-.25-1.226-.694-1.671l-2.73-2.73a1.125 1.125 0 0 0-.796-.329H13.5m4.5 9v-5.25m0 5.25h-6.75M13.5 9h2.25" /></svg>) },
-  { category_id: 12, name: 'Database & Sync', description: 'Data mismatch and sync issues', ticketCount: 6, glowClass: 'icon-glow-violet', bg: 'bg-brandRed/8 hover:bg-brandRed/12 text-brandRed border-brandRed/20 hover:border-brandRed/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(227,24,55,.12)]', icon: (<svg className="w-8 h-8 text-brandRed" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V10.125" /></svg>) },
-  { category_id: 13, name: 'Account & Security', description: 'Security settings and account recovery', ticketCount: 4, glowClass: 'icon-glow-gray', bg: 'bg-brandGold/12 hover:bg-brandGold/16 text-brandGold border-brandGold/30 hover:border-brandGold/50', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,166,35,.12)]', icon: (<svg className="w-8 h-8 text-brandGold" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>) },
-  { category_id: 14, name: 'Refunds & Returns', description: 'Product return requests and refunds', ticketCount: 19, glowClass: 'icon-glow-lime', bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]', icon: (<svg className="w-8 h-8 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" /></svg>) },
-  { category_id: 15, name: 'Compliance & Audits', description: 'Regulatory, policy, and audit support', ticketCount: 2, glowClass: 'icon-glow-fuchsia', bg: 'bg-brandRed/8 hover:bg-brandRed/12 text-brandRed border-brandRed/20 hover:border-brandRed/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(227,24,55,.12)]', icon: (<svg className="w-8 h-8 text-brandRed" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>) },
-  { category_id: 16, name: 'Vendor Management', description: 'Vendor onboarding, agreements, and disputes', ticketCount: 13, glowClass: 'icon-glow-teal', bg: 'bg-brandGold/12 hover:bg-brandGold/16 text-brandGold border-brandGold/30 hover:border-brandGold/50', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,166,35,.12)]', icon: (<svg className="w-8 h-8 text-brandGold" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349M3.75 21V9.349m0 0a3.001 3.001 0 0 0 3.75-.615A2.993 2.993 0 0 0 9.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 0 0 2.25 1.016c.896 0 1.7-.393 2.25-1.015a3.001 3.001 0 0 0 3.75.614m-16.5 0a3.004 3.004 0 0 1-.621-4.72L4.318 3.44A1.5 1.5 0 0 1 5.378 3h13.243a1.5 1.5 0 0 1 1.06.44l1.19 1.189a3 3 0 0 1-.621 4.72M6.75 18h3.75a.75.75 0 0 0 .75-.75V13.5a.75.75 0 0 0-.75-.75H6.75a.75.75 0 0 0-.75.75v3.75c0 .414.336.75.75.75Z" /></svg>) },
-  { category_id: 17, name: 'Store Operations', description: 'In-store operational queries and escalations', ticketCount: 22, glowClass: 'icon-glow-emerald', bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]', icon: (<svg className="w-8 h-8 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349M3.75 21V9.349m0 0a3.001 3.001 0 0 0 3.75-.615A2.993 2.993 0 0 0 9.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 0 0 2.25 1.016c.896 0 1.7-.393 2.25-1.015a3.001 3.001 0 0 0 3.75.614m-16.5 0a3.004 3.004 0 0 1-.621-4.72L4.318 3.44A1.5 1.5 0 0 1 5.378 3h13.243a1.5 1.5 0 0 1 1.06.44l1.19 1.189a3 3 0 0 1-.621 4.72" /></svg>) },
-  { category_id: 18, name: 'HR & Workforce', description: 'Staff queries, attendance, and HR support', ticketCount: 10, glowClass: 'icon-glow-purple', bg: 'bg-brandRed/8 hover:bg-brandRed/12 text-brandRed border-brandRed/20 hover:border-brandRed/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(227,24,55,.12)]', icon: (<svg className="w-8 h-8 text-brandRed" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" /></svg>) },
-  { category_id: 19, name: 'IT Infrastructure', description: 'Network, hardware, and system outages', ticketCount: 7, glowClass: 'icon-glow-cyan', bg: 'bg-brandGold/12 hover:bg-brandGold/16 text-brandGold border-brandGold/30 hover:border-brandGold/50', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,166,35,.12)]', icon: (<svg className="w-8 h-8 text-brandGold" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-16.5-3a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3m-19.5 0a4.5 4.5 0 0 1 .9-2.7L5.737 5.1a3.375 3.375 0 0 1 2.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 0 1 .9 2.7m0 0a3 3 0 0 1-3 3m0 3h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Zm-3 6h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Z" /></svg>) },
-  { category_id: 19, name: 'IT Infrastructure', description: 'Network, hardware, and system outages', ticketCount: 7, glowClass: 'icon-glow-cyan', bg: 'bg-brandGold/12 hover:bg-brandGold/16 text-brandGold border-brandGold/30 hover:border-brandGold/50', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(245,166,35,.12)]', icon: (<svg className="w-8 h-8 text-brandGold" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-16.5-3a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3m-19.5 0a4.5 4.5 0 0 1 .9-2.7L5.737 5.1a3.375 3.375 0 0 1 2.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 0 1 .9 2.7m0 0a3 3 0 0 1-3 3m0 3h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Zm-3 6h.008v.008h-.008v-.008Zm-6h.008v.008h-.008v-.008Z" /></svg>) },
-  { category_id: 20, name: 'Finance & Reporting', description: 'Financial reports, budgets, and reconciliation', ticketCount: 9, glowClass: 'icon-glow-lime', bg: 'bg-brandNavy/8 hover:bg-brandNavy/12 text-brandNavy border-brandNavy/20 hover:border-brandNavy/40', hoverShadow: 'hover:shadow-[0_8px_24px_rgba(15,27,76,.12)]', icon: (<svg className="w-8 h-8 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" /></svg>) },
+  { category_id: 1, name: 'Payment Issues', description: 'Invoice and payment related issues' },
+  { category_id: 2, name: 'Inventory Issues', description: 'Stock and inventory problems' },
+  { category_id: 3, name: 'Technical Support', description: 'System and technical support' },
+  { category_id: 4, name: 'Delivery Issues', description: 'Shipment and delivery concerns' },
+  { category_id: 5, name: 'Documentation', description: 'Document and compliance issues' },
+  { category_id: 6, name: 'Order Discrepancies', description: 'Mismatched order quantities or items' },
+  { category_id: 7, name: 'User Onboarding', description: 'Registration and profile setup queries' },
+  { category_id: 8, name: 'Quality Control', description: 'Product quality and damage complaints' },
+  { category_id: 9, name: 'Pricing & Billing', description: 'Pricing disputes and billing inquiries' },
+  { category_id: 10, name: 'SLA Violations', description: 'SLA delays and performance escalations' },
+  { category_id: 11, name: 'Logistics Support', description: 'Transport, routing, and carrier issues' },
+  { category_id: 12, name: 'Database & Sync', description: 'Data mismatch and sync issues' },
+  { category_id: 13, name: 'Account & Security', description: 'Security settings and account recovery' },
+  { category_id: 14, name: 'Refunds & Returns', description: 'Product return requests and refunds' },
+  { category_id: 15, name: 'Compliance & Audits', description: 'Regulatory, policy, and audit support' },
+  { category_id: 16, name: 'Vendor Management', description: 'Vendor onboarding, agreements, and disputes' },
+  { category_id: 17, name: 'Store Operations', description: 'In-store operational queries and escalations' },
+  { category_id: 18, name: 'HR & Workforce', description: 'Staff queries, attendance, and HR support' },
+  { category_id: 19, name: 'IT Infrastructure', description: 'Network, hardware, and system outages' },
+  { category_id: 20, name: 'Finance & Reporting', description: 'Financial reports, budgets, and reconciliation' }
 ];
 
 const getCategoryIcon = (catId) => {
-  const s = staticCategories.find(c => c.category_id === catId);
-  return s ? s.icon : (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
-    </svg>
-  );
+  const styles = getCategoryStyles(catId);
+  return <DefaultCategoryIcon className={`w-6 h-6 ${styles.textColor}`} />;
 };
 
 const formatTicketDate = (dateStr) => {
@@ -549,7 +568,8 @@ const UserDashboard = () => {
       setTickets(ticketsRes.data);
       const categoriesRes = await api.get('/categories/');
       if (categoriesRes.data?.length) {
-        setFormCategory(staticCategories[0].category_id.toString());
+        setCategories(categoriesRes.data);
+        setFormCategory(categoriesRes.data[0].category_id.toString());
       }
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -581,7 +601,7 @@ const UserDashboard = () => {
     setFormPriority('Medium');
     setAttachment(null);
     setAttachmentError('');
-    setFormCategory(staticCategories[0].category_id.toString());
+    setFormCategory(categories[0]?.category_id?.toString() || '1');
     setIsSubmittedSuccessfully(false);
   };
 
@@ -710,6 +730,11 @@ const UserDashboard = () => {
      DASHBOARD TAB
   ══════════════════════════════════════════ */
   const renderDashboard = () => {
+    const totalCount = tickets.length;
+    const openCount = tickets.filter(t => t.status === 'Open').length;
+    const progressCount = tickets.filter(t => t.status === 'In Progress').length;
+    const resolvedCount = tickets.filter(t => t.status === 'Resolved').length;
+
     return (
       <div className="space-y-6 text-left">
 
@@ -729,6 +754,26 @@ const UserDashboard = () => {
               Raise a query, track existing requests, or check recent updates.
               <span className="ml-2 text-gray-400">· 3 tickets updated today</span>
             </p>
+          </div>
+        </div>
+
+        {/* ── Stat Cards ── */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-xl border border-gray-200 flex flex-col justify-center text-left shadow-sm">
+            <span className="text-sm font-medium text-gray-500">Total</span>
+            <h3 className="text-2xl font-bold text-gray-900 mt-1">{totalCount}</h3>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-blue-200 flex flex-col justify-center text-left shadow-sm">
+            <span className="text-sm font-medium text-blue-500">Open</span>
+            <h3 className="text-2xl font-bold text-blue-600 mt-1">{openCount}</h3>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-orange-200 flex flex-col justify-center text-left shadow-sm">
+            <span className="text-sm font-medium text-orange-500">In Progress</span>
+            <h3 className="text-2xl font-bold text-orange-600 mt-1">{progressCount}</h3>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-green-200 flex flex-col justify-center text-left shadow-sm">
+            <span className="text-sm font-medium text-green-500">Resolved</span>
+            <h3 className="text-2xl font-bold text-green-600 mt-1">{resolvedCount}</h3>
           </div>
         </div>
 
@@ -791,16 +836,17 @@ const UserDashboard = () => {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
-            {staticCategories.map((cat) => {
+            {categories.map((cat) => {
+              const styles = getCategoryStyles(cat.category_id);
               return (
                 <div
                   key={cat.category_id}
                   onClick={() => handleCategoryClick(cat.category_id)}
-                  className={`cat-card p-5 cursor-pointer flex flex-col justify-between min-h-[200px] relative rounded-2xl border ${cat.bg} ${cat.hoverShadow}`}
+                  className={`cat-card p-5 cursor-pointer flex flex-col justify-between min-h-[200px] relative rounded-2xl border ${styles.bg} ${styles.hoverShadow}`}
                 >
 
-                  <div className={`w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-sm icon-scale ${cat.glowClass}`}>
-                    {cat.icon}
+                  <div className={`w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-sm icon-scale ${styles.glowClass}`}>
+                    <DefaultCategoryIcon className={`w-8 h-8 ${styles.textColor}`} />
                   </div>
 
                   <div>
