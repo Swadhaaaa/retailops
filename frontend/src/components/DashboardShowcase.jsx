@@ -130,7 +130,11 @@ const DashboardShowcase = () => {
                 ['3', 'Assigned', 'active'],
                 ['4', 'Resolved', false],
               ].map(([num, label, status], idx) => (
-                <div key={idx} className="flex flex-col items-center">
+                <div
+                  key={idx}
+                  className="flex flex-col items-center animate-scale-in"
+                  style={{ animationDelay: `${idx * 150}ms` }}
+                >
                   <div
                     className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-500
                     ${status === true
@@ -177,7 +181,7 @@ const DashboardShowcase = () => {
               <span className="text-emerald-400">ON TRACK</span>
             </div>
             <div className="w-full bg-white/10 h-1 rounded-full overflow-hidden mt-1">
-              <div className="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full w-[68%] animate-shimmer-bar"></div>
+              <div className="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full animate-shimmer-bar animate-est-line" style={{ width: '68%' }}></div>
             </div>
           </div>
         </div>
@@ -270,7 +274,7 @@ const DashboardShowcase = () => {
             </div>
 
             <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-brandRed h-full rounded-full w-[99.2%] animate-shimmer-bar"></div>
+              <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-brandRed h-full rounded-full animate-shimmer-bar animate-sla-line" style={{ width: '99.2%' }}></div>
             </div>
           </div>
         </div>
@@ -330,7 +334,9 @@ const DashboardShowcase = () => {
 
               {/* CONTENT - fixed height container */}
               <div className="relative z-10 rounded-2xl bg-white/[0.03] border border-white/5 p-4 backdrop-blur-sm min-h-[180px]">
-                {dash.content}
+                <div key={`${dash.id}-${isActive && contentVisible}`}>
+                  {dash.content}
+                </div>
               </div>
             </div>
           );
@@ -339,7 +345,7 @@ const DashboardShowcase = () => {
 
       {/* FLOATING BOXES - with float animations */}
 
-      <div className="absolute -top-2 -left-16 glass-panel-heavy rounded-2xl p-3 w-[145px] shadow-xl z-20 animate-soft-float-1 hover:scale-105 transition-transform duration-300 cursor-default">
+      <div className="absolute -top-2 -left-16 glass-panel-heavy rounded-2xl p-3 w-[145px] shadow-xl z-20 animate-soft-float-1 hover:scale-[1.07] hover:shadow-emerald-500/20 hover:border-emerald-500/30 transition-all duration-300 cursor-default">
         <span className="text-[9px] uppercase tracking-wider font-bold text-white/55 block">
           Active Queries
         </span>
@@ -357,7 +363,7 @@ const DashboardShowcase = () => {
         </p>
       </div>
 
-      <div className="absolute top-4 -right-16 glass-panel-heavy rounded-2xl p-3 w-[145px] shadow-xl z-20 animate-soft-float-2 hover:scale-105 transition-transform duration-300 cursor-default">
+      <div className="absolute top-4 -right-16 glass-panel-heavy rounded-2xl p-3 w-[145px] shadow-xl z-20 animate-soft-float-2 hover:scale-[1.07] hover:shadow-blue-500/20 hover:border-blue-500/30 transition-all duration-300 cursor-default">
         <span className="text-[9px] uppercase tracking-wider font-bold text-white/55 block">
           Pending Actions
         </span>
@@ -377,7 +383,7 @@ const DashboardShowcase = () => {
         </p>
       </div>
 
-      <div className="absolute -bottom-2 -left-14 glass-panel-heavy rounded-2xl p-3 w-[135px] shadow-xl z-20 animate-soft-float-3 hover:scale-105 transition-transform duration-300 cursor-default">
+      <div className="absolute -bottom-2 -left-14 glass-panel-heavy rounded-2xl p-3 w-[135px] shadow-xl z-20 animate-soft-float-3 hover:scale-[1.07] hover:shadow-emerald-400/20 hover:border-emerald-400/30 transition-all duration-300 cursor-default">
         <span className="text-[9px] uppercase tracking-wider font-bold text-white/55 block">
           SLA Target
         </span>
@@ -393,7 +399,7 @@ const DashboardShowcase = () => {
         </p>
       </div>
 
-      <div className="absolute -bottom-1 -right-10 glass-panel-heavy rounded-2xl px-3 py-2 shadow-xl z-20 animate-soft-float-2 hover:scale-105 transition-transform duration-300 cursor-default" style={{ animationDelay: '2s' }}>
+      <div className="absolute -bottom-1 -right-10 glass-panel-heavy rounded-2xl px-3 py-2 shadow-xl z-20 animate-soft-float-2 hover:scale-[1.07] hover:shadow-red-500/20 hover:border-red-500/30 transition-all duration-300 cursor-default" style={{ animationDelay: '2s' }}>
         <div className="flex items-center space-x-2">
           <div className="relative">
             <div className="w-2 h-2 rounded-full bg-emerald-400"></div>

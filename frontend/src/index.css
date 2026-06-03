@@ -220,3 +220,23 @@
   animation: checkmark-stroke 0.35s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
 }
 
+/* SLA and Estimated Progress Bar Growth animations */
+@keyframes width-grow-sla {
+  0% { width: 0%; }
+  100% { width: 99.2%; }
+}
+
+.animate-sla-line {
+  animation: width-grow-sla 1.5s ease-out 0.3s both;
+}
+
+@keyframes width-grow-est {
+  0% { width: 0%; }
+  100% { width: 68%; }
+}
+
+.animate-est-line {
+  animation: width-grow-est 1.5s ease-out 0.3s both;
+}
+
+

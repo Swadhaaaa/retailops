@@ -93,6 +93,18 @@ for category in categories:
     INSERT INTO categories VALUES (?, ?, ?, ?, true)
     """, category)
 
+# Seed Announcements
+conn.execute("DELETE FROM announcements")
+announcements = [
+    (1, 'System Maintenance', 'Scheduled on 10 Jun 2026, 02:00 AM', 'maintenance', '2026-06-10 02:00:00'),
+    (2, 'New Vendor Guidelines', 'Effective from 01 Jun 2026', 'guidelines', '2026-06-01 00:00:00'),
+    (3, 'SLA Policy Updates', 'Effective from 15 May 2026', 'sla', '2026-05-15 00:00:00')
+]
+for ann in announcements:
+    conn.execute("""
+    INSERT INTO announcements VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    """, ann)
+
 conn.close()
 
 print("Seed data inserted successfully!")

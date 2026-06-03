@@ -67,6 +67,7 @@ def init_db():
         sender_role VARCHAR,
         message_text TEXT,
         is_ping BOOLEAN DEFAULT false,
+        attachment_path VARCHAR,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
@@ -81,6 +82,25 @@ def init_db():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
+
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS announcements (
+        announcement_id INTEGER PRIMARY KEY,
+        title VARCHAR NOT NULL,
+        content TEXT NOT NULL,
+        category VARCHAR,
+        effective_date TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    # Migration checks
+    try:
+        columns = [row[1] for row in conn.execute("PRAGMA table_info('messages')").fetchall()]
+        if 'attachment_path' not in columns:
+            conn.execute("ALTER TABLE messages ADD COLUMN attachment_path VARCHAR")
+    except Exception as e:
+        print(f"Migration error for messages table: {e}")
 
     conn.close()
 

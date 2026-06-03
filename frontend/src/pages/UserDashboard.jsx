@@ -329,6 +329,146 @@ const UserDashboard = () => {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [isSubmittedSuccessfully, setIsSubmittedSuccessfully] = useState(false);
 
+  // Messages Specific States
+  const [messages, setMessages] = useState([]);
+  const [activeMessageTicket, setActiveMessageTicket] = useState(null);
+  const [messageText, setMessageText] = useState('');
+  const [messageAttachment, setMessageAttachment] = useState(null);
+  const [announcements, setAnnouncements] = useState([]);
+  const [messagesStats, setMessagesStats] = useState({ open: 0, pending: 0, resolved: 0, announcements: 0 });
+  const [messagesSearchQuery, setMessagesSearchQuery] = useState('');
+  const [isMessageSubmitting, setIsMessageSubmitting] = useState(false);
+  const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
+
+  const QUICK_REPLIES = [
+    "Thank you. Please let me know if any additional information is required.",
+    "I have uploaded the requested documents.",
+    "Could you please expedite this query?",
+    "Great, appreciate the quick response.",
+    "This issue is resolved. You can close this ticket."
+  ];
+
+  const fetchAnnouncementsAndStats = async () => {
+    try {
+      const statsRes = await api.get('/tickets/stats');
+      setMessagesStats(statsRes.data);
+      const annRes = await api.get('/tickets/announcements');
+      setAnnouncements(annRes.data);
+    } catch (err) {
+      console.error('Error fetching announcements/stats:', err);
+    }
+  };
+
+  const fetchActiveTicketMessages = async (ticketId) => {
+    try {
+      const res = await api.get(`/tickets/${ticketId}`);
+      setMessages(res.data.messages || []);
+      // Sync detailed ticket info with current response
+      setActiveMessageTicket(res.data);
+    } catch (err) {
+      console.error('Error fetching messages:', err);
+    }
+  };
+
+  // Poll for messages and announcements
+  useEffect(() => {
+    if (activeTab !== 'Messages') return;
+    
+    fetchAnnouncementsAndStats();
+    if (activeMessageTicket?.ticket_id) {
+      fetchActiveTicketMessages(activeMessageTicket.ticket_id);
+    }
+    
+    const interval = setInterval(() => {
+      fetchAnnouncementsAndStats();
+      if (activeMessageTicket?.ticket_id) {
+        fetchActiveTicketMessages(activeMessageTicket.ticket_id);
+      }
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [activeTab, activeMessageTicket?.ticket_id]);
+
+  // Set default active message ticket on load
+  useEffect(() => {
+    if (tickets.length > 0 && !activeMessageTicket) {
+      setActiveMessageTicket(tickets[0]);
+    }
+  }, [tickets, activeMessageTicket]);
+
+  const handleSendMessage = async (e) => {
+    if (e) e.preventDefault();
+    if (!messageText.trim() && !messageAttachment) return;
+    if (!activeMessageTicket) return;
+
+    setIsMessageSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append('message_text', messageText);
+      if (messageAttachment) {
+        formData.append('attachment', messageAttachment);
+      }
+
+      await api.post(`/tickets/${activeMessageTicket.ticket_id}/message`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      setMessageText('');
+      setMessageAttachment(null);
+      fetchActiveTicketMessages(activeMessageTicket.ticket_id);
+      fetchDashboardData();
+    } catch (err) {
+      console.error('Error sending message:', err);
+      alert('Failed to send message.');
+    } finally {
+      setIsMessageSubmitting(false);
+    }
+  };
+
+  const handleMessageFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setMessageAttachment(file);
+    }
+  };
+
+  const getAnnIcon = (category) => {
+    switch (category) {
+      case 'maintenance':
+        return (
+          <div className="w-8 h-8 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A1.89 1.89 0 0020 18.17l-5.83-5.83M11.42 15.17l2.42-2.42M11.42 15.17L3 6.75M13.84 12.75l2.42-2.42m-2.42 2.42L21 3M16.26 10.33l-2.42 2.42M13.84 12.75L6.75 21M13.84 12.75L3 21" />
+            </svg>
+          </div>
+        );
+      case 'guidelines':
+        return (
+          <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75z" />
+            </svg>
+          </div>
+        );
+      case 'sla':
+        return (
+          <div className="w-8 h-8 rounded-full bg-yellow-50 text-yellow-600 flex items-center justify-center shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+            </svg>
+          </div>
+        );
+      default:
+        return (
+          <div className="w-8 h-8 rounded-full bg-gray-50 text-gray-500 flex items-center justify-center shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+            </svg>
+          </div>
+        );
+    }
+  };
+
   const [formSubject, setFormSubject] = useState('');
   const [formCategory, setFormCategory] = useState('1');
   const [formPriority, setFormPriority] = useState('Medium');
@@ -527,12 +667,23 @@ const UserDashboard = () => {
       )
     },
     {
+      name: 'Track Status', icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+        </svg>
+      )
+    },
+    {
       name: 'Messages', icon: (
         <div className="relative">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
           </svg>
-          <span className="absolute -top-1.5 -right-2 px-1 py-0.5 rounded-full bg-brandRed text-[8px] font-extrabold text-white">2</span>
+          {(messagesStats.open + messagesStats.pending) > 0 && (
+            <span className="absolute -top-1.5 -right-2 px-1 py-0.5 rounded-full bg-brandRed text-[8px] font-extrabold text-white">
+              {messagesStats.open + messagesStats.pending}
+            </span>
+          )}
         </div>
       )
     },
@@ -773,36 +924,503 @@ const UserDashboard = () => {
     );
   };
 
+  const formatMessageTime = (dateString) => {
+  if (!dateString) return '';
+
+  const date = new Date(dateString);
+
+  if (isNaN(date.getTime())) return '';
+
+  return date.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+  
   /* ══════════════════════════════════════════
      MESSAGES TAB
   ══════════════════════════════════════════ */
-  const renderMessages = () => (
-    <div className="space-y-8">
-      <div className="text-left">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-brandDarkNavy font-sora">Messages Inbox</h1>
-        <p className="text-sm text-gray-500 mt-1">Secure, real-time message stream with Reliance Retail support coordinators.</p>
-      </div>
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 md:p-12 text-center max-w-xl mx-auto mt-6">
-        <div className="w-16 h-16 rounded-2xl bg-brandNavy/8 text-brandNavy flex items-center justify-center mx-auto mb-6">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-8 h-8">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-          </svg>
+  // MESSAGES TAB 
+  const renderMessages = () => {
+    if (tickets.length === 0) {
+      return (
+        <div className="space-y-8">
+          <div className="text-left">
+            <h1 className="text-2xl md:text-3xl font-extrabold text-brandDarkNavy font-sora">Messages</h1>
+            <p className="text-sm text-gray-500 mt-1">Secure, real-time message stream with Reliance Retail support coordinators.</p>
+          </div>
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8 md:p-12 text-center max-w-xl mx-auto mt-6">
+            <div className="w-16 h-16 rounded-2xl bg-brandNavy/8 text-brandNavy flex items-center justify-center mx-auto mb-6">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-8 h-8">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-extrabold text-brandDarkNavy font-sora mb-2">No Active Message Streams</h3>
+            <p className="text-xs text-gray-500 max-w-sm mx-auto leading-relaxed mb-6 font-semibold">
+              Official operational announcements and direct chat requests related to your active tickets will appear here.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button onClick={() => switchTab('Dashboard')} className={`px-5 py-3 rounded-xl text-xs font-bold text-white transition-all w-full sm:w-auto shadow-md ${buttonColor}`}>
+                Raise a Query
+              </button>
+              <button onClick={() => switchTab('My Queries')} className="px-5 py-3 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-800 hover:bg-gray-50 border border-gray-200 transition-colors w-full sm:w-auto">
+                Browse Ticket Logs
+              </button>
+            </div>
+          </div>
         </div>
-        <h3 className="text-lg font-extrabold text-brandDarkNavy font-sora mb-2">No Active Message Streams</h3>
-        <p className="text-xs text-gray-500 max-w-sm mx-auto leading-relaxed mb-6 font-semibold">
-          Official operational announcements and direct chat requests related to your active tickets will appear here.
-        </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <button onClick={() => switchTab('Dashboard')} className={`px-5 py-3 rounded-xl text-xs font-bold text-white transition-all w-full sm:w-auto shadow-md ${buttonColor}`}>
-            Raise a Query
-          </button>
-          <button onClick={() => switchTab('My Queries')} className="px-5 py-3 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-800 hover:bg-gray-50 border border-gray-200 transition-colors w-full sm:w-auto">
-            Browse Ticket Logs
-          </button>
+      );
+    }
+
+    const filteredMessageTickets = tickets.filter(t => 
+      t.ticket_id.toString().toLowerCase().includes(messagesSearchQuery.toLowerCase()) ||
+      t.title.toLowerCase().includes(messagesSearchQuery.toLowerCase())
+    );
+
+    // Format helper
+    const formatDate = (dateStr) => {
+      if (!dateStr) return '';
+      try {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }) + ", " + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } catch {
+        return dateStr;
+      }
+    };
+
+    return (
+      <div className="space-y-6 text-left font-dmSans">
+        {/* Messages Header */}
+        <div className="text-left">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-brandDarkNavy font-sora">Messages</h1>
+          <p className="text-xs text-gray-500 mt-1 font-semibold">
+            Stay updated with your ticket conversations and important announcements.
+          </p>
+        </div>
+
+        {/* Stats Strip */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: 'Open Tickets', count: messagesStats.open, icon: (
+              <svg className="w-5 h-5 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12.75 3.03v.568c0 .334.148.65.405.864l4.03 3.359a1.125 1.125 0 0 1-1.42 1.742l-4.03-3.359a1.125 1.125 0 0 0-1.5 0L6.205 9.004a1.125 1.125 0 0 1-1.42-1.742l4.03-3.359a1.125 1.125 0 0 0 .405-.864V3.03c0-.621.504-1.125 1.125-1.125h1.125c.621 0 1.125.504 1.125 1.125Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" />
+              </svg>
+            ), bg: 'bg-[#F0F4FF]', text: 'text-brandNavy' },
+            { label: 'Pending Tickets', count: messagesStats.pending, icon: (
+              <svg className="w-5 h-5 text-brandGold" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+              </svg>
+            ), bg: 'bg-brandGold/8', text: 'text-brandGold' },
+            { label: 'Resolved Tickets', count: messagesStats.resolved, icon: (
+              <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+              </svg>
+            ), bg: 'bg-emerald-50', text: 'text-emerald-600' },
+            { label: 'Announcements', count: messagesStats.announcements, icon: (
+              <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
+              </svg>
+            ), bg: 'bg-purple-50', text: 'text-purple-600' }
+          ].map((stat, idx) => (
+            <div key={idx} className="bg-white border border-gray-100 rounded-2xl p-4 flex items-center justify-between shadow-sm hover:shadow-md transition-all">
+              <div className="flex items-center space-x-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${stat.bg} ${stat.text}`}>
+                  {stat.icon}
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-400 font-extrabold uppercase font-sora tracking-wider">{stat.label}</p>
+                  <h4 className="text-lg font-extrabold text-brandDarkNavy font-sora mt-0.5 leading-none">{stat.count}</h4>
+                </div>
+              </div>
+              <button onClick={() => switchTab('My Queries')} className="text-[10px] font-bold text-brandNavy hover:underline">View all &gt;</button>
+            </div>
+          ))}
+        </div>
+
+        {/* 3-Column Message Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* Column 1: Recent Ticket Updates */}
+          <div className="lg:col-span-3 bg-white rounded-3xl border border-gray-100 p-4 shadow-sm flex flex-col min-h-[580px]">
+            <div className="flex items-center justify-between mb-4 px-1">
+              <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora uppercase tracking-wider">Recent Ticket Updates</h3>
+              <button className="p-1 rounded hover:bg-gray-100 text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative mb-3">
+              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.637 10.637Z" />
+                </svg>
+              </span>
+              <input
+                type="text"
+                value={messagesSearchQuery}
+                onChange={e => setMessagesSearchQuery(e.target.value)}
+                placeholder="Search by Ticket ID..."
+                className="w-full pl-9 pr-4 py-2 border border-gray-150 rounded-xl outline-none focus:border-brandNavy/50 text-xs font-bold text-gray-700 bg-gray-50/50"
+              />
+            </div>
+
+            {/* Scrollable Ticket List */}
+            <div className="flex-1 overflow-y-auto space-y-2 max-h-[400px] pr-1">
+              {filteredMessageTickets.map((t) => {
+                const isSelected = activeMessageTicket?.ticket_id === t.ticket_id;
+                // Compute last message and sender
+                const isUnread = t.status === 'Needs Clarification';
+                return (
+                  <div
+                    key={t.ticket_id}
+                    onClick={() => {
+                      setActiveMessageTicket(t);
+                      fetchActiveTicketMessages(t.ticket_id);
+                    }}
+                    className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-start space-x-3 text-left ${
+                      isSelected
+                        ? 'bg-brandNavy/[0.03] border-brandNavy/20 shadow-sm'
+                        : 'bg-white border-gray-100 hover:bg-gray-50/50'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-xl shrink-0 flex items-center justify-center ${isSelected ? 'bg-brandNavy text-white' : 'bg-gray-50 text-gray-400 border border-gray-150/60'}`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-brandDarkNavy">#{t.ticket_id}</span>
+                        {isUnread && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-brandRed shrink-0" />
+                        )}
+                      </div>
+                      <h4 className="text-[11px] font-extrabold text-gray-800 truncate mt-0.5">{t.title}</h4>
+                      <p className="text-[9px] text-brandRed mt-1 font-bold">
+                        {t.status === 'Needs Clarification' ? 'Support feedback' : (t.status === 'Resolved' ? 'Resolved' : 'No new updates')}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+              {filteredMessageTickets.length === 0 && (
+                <div className="text-center py-8 text-xs text-gray-400">No tickets found</div>
+              )}
+            </div>
+
+            <button onClick={() => switchTab('My Queries')} className="mt-4 text-center text-xs font-extrabold text-brandNavy hover:underline py-2 border-t border-gray-100 flex items-center justify-center space-x-1.5 w-full">
+              <span>View All Conversations</span>
+              <span>&gt;</span>
+            </button>
+          </div>
+
+          {/* Column 2: Active Chat Area */}
+          <div className="lg:col-span-6 bg-white rounded-3xl border border-gray-100 p-4 shadow-sm flex flex-col justify-between min-h-[580px]">
+            {activeMessageTicket ? (
+              <>
+                {/* Chat Header */}
+                <div className="pb-3 border-b border-gray-100 flex items-start justify-between">
+                  <div className="min-w-0">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-extrabold text-brandDarkNavy font-sora">#{activeMessageTicket.ticket_id}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${
+                        activeMessageTicket.status === 'Open'
+                          ? 'bg-blue-50 text-blue-600 border-blue-100'
+                          : activeMessageTicket.status === 'In Progress'
+                          ? 'bg-yellow-50 text-yellow-600 border-yellow-100'
+                          : activeMessageTicket.status === 'Under Review'
+                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                          : 'bg-red-50 text-red-600 border-red-100'
+                      }`}>
+                        {activeMessageTicket.status}
+                      </span>
+                    </div>
+                    <h3 className="text-xs font-bold text-gray-600 truncate mt-1">{activeMessageTicket.title}</h3>
+                    <p className="text-[9px] text-gray-400 mt-0.5">Created on {formatDate(activeMessageTicket.created_at)}</p>
+                  </div>
+                  
+                  {/* Action Menu */}
+                  <button className="p-1 rounded hover:bg-gray-50 text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0zM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0zM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0z" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Messages Feed */}
+                <div className="flex-1 overflow-y-auto py-4 space-y-3.5 max-h-[300px] pr-1">
+                  <div className="text-center">
+                    <span className="text-[10px] bg-gray-50 border border-gray-150/40 text-gray-400 px-3 py-1 rounded-full font-bold">
+                      Ticket Created
+                    </span>
+                  </div>
+
+                  {messages.map((msg, idx) => {
+                    const isSupport = msg.sender_role === 'admin';
+                    return (
+                      <div key={idx} className={`flex items-start space-x-2.5 max-w-[85%] ${isSupport ? 'mr-auto text-left' : 'ml-auto flex-row-reverse space-x-reverse text-right'}`}>
+                        {/* Avatar */}
+                        {isSupport ? (
+                          <div className="w-8 h-8 rounded-full border border-gray-100 flex items-center justify-center overflow-hidden shrink-0 bg-white shadow-sm">
+                            <img src={relianceLogo} alt="Reliance" className="w-6 h-auto object-contain" />
+                          </div>
+                        ) : (
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm shrink-0 ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`}>
+                            {getInitials(userName)}
+                          </div>
+                        )}
+
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-1.5 text-[10px] font-bold text-gray-400">
+                            <span>{isSupport ? 'Reliance Support' : 'You'}</span>
+                            <span className="font-medium text-[9px]">• {formatMessageTime(msg.created_at)}</span>
+                          </div>
+                          
+                          <div className={`p-3 rounded-2xl text-xs font-medium leading-relaxed ${
+                            isSupport
+                              ? 'bg-blue-50/70 border border-blue-100 text-gray-800 rounded-tl-none'
+                              : (isVendor 
+                                  ? 'bg-brandRed/5 border border-brandRed/10 text-gray-800 rounded-tr-none'
+                                  : 'bg-brandNavy/5 border border-brandNavy/10 text-gray-800 rounded-tr-none')
+                          }`}>
+                            <p className="whitespace-pre-line">{msg.message_text}</p>
+                            
+                            {/* Message Level Attachments */}
+                            {msg.attachment_path && (
+                              <div className="mt-2.5 p-2 rounded-xl bg-white border border-gray-100 flex items-center justify-between space-x-3 shadow-sm max-w-xs">
+                                <div className="flex items-center space-x-2 min-w-0">
+                                  <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" />
+                                  </svg>
+                                  <span className="text-[10px] text-gray-600 font-bold truncate">
+                                    {msg.attachment_path.split('_').slice(1).join('_') || 'Attached File'}
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => downloadAttachment(msg.attachment_path)}
+                                  className="text-[9px] font-extrabold text-brandNavy hover:underline"
+                                >
+                                  Download
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  
+                  {/* Read Checkmarks for last user reply */}
+                  {messages.length > 0 && messages[messages.length - 1].sender_role === 'user' && (
+                    <div className="text-right text-[9px] font-bold text-gray-400 flex items-center justify-end space-x-1 pr-10">
+                      <svg className="w-3.5 h-3.5 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                      </svg>
+                      <span>Read</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Input Area */}
+                <form onSubmit={handleSendMessage} className="border-t border-gray-100 pt-3 space-y-2 relative">
+
+
+                  {/* Textarea */}
+                  <div className="border border-gray-200 rounded-2xl p-2 bg-gray-50/30 flex flex-col justify-between min-h-[90px] relative focus-within:border-brandNavy/30 transition-all">
+                    <textarea
+                      value={messageText}
+                      onChange={e => setMessageText(e.target.value)}
+                      placeholder="Type your message..."
+                      className="w-full text-xs font-semibold text-gray-700 outline-none bg-transparent resize-none h-14"
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                    />
+
+                    {/* Attachment preview */}
+                    {messageAttachment && (
+                      <div className="m-1.5 p-1.5 rounded-lg bg-white border border-gray-150 flex items-center justify-between space-x-2 shadow-sm max-w-xs">
+                        <span className="text-[10px] text-gray-600 truncate font-bold">{messageAttachment.name}</span>
+                        <button type="button" onClick={() => setMessageAttachment(null)} className="text-gray-400 hover:text-brandRed">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3 h-3">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Footer Row in Textarea box */}
+                    <div className="flex items-center justify-between pt-1 border-t border-gray-100/50 mt-1">
+                      <div className="flex items-center space-x-1.5 relative">
+                        {/* Attach button */}
+                        <input
+                          type="file"
+                          id="message-file-upload"
+                          className="hidden"
+                          onChange={handleMessageFileChange}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => document.getElementById('message-file-upload').click()}
+                          className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 text-[10px] font-bold"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+                          </svg>
+                          <span>Attach File</span>
+                        </button>
+
+                        {/* Quick Replies */}
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setQuickRepliesOpen(!quickRepliesOpen)}
+                            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 text-[10px] font-bold"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                            </svg>
+                            <span>Quick Replies</span>
+                          </button>
+
+                          {quickRepliesOpen && (
+                            <div className="absolute left-0 bottom-full mb-2 w-56 bg-white border border-gray-200 rounded-xl shadow-lg py-1 z-30 animate-fade-in font-medium">
+                              {QUICK_REPLIES.map((reply, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => {
+                                    setMessageText(reply);
+                                    setQuickRepliesOpen(false);
+                                  }}
+                                  className="w-full text-left px-3.5 py-2 text-[10px] text-gray-600 hover:bg-gray-50 truncate"
+                                >
+                                  {reply}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Send Button */}
+                      <button
+                        type="submit"
+                        disabled={isMessageSubmitting}
+                        className={`flex items-center space-x-1.5 px-6 py-2.5 rounded-xl text-white text-[10px] font-bold shadow-md transition-all shrink-0 ${buttonColor}`}
+                      >
+                        <svg className="w-3 h-3 rotate-45 -mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/>
+                        </svg>
+                        <span>Send</span>
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </>
+            ) : (
+              <div className="text-center py-20 text-gray-400 text-xs font-bold">Select a ticket to begin chatting</div>
+            )}
+          </div>
+
+          {/* Column 3: Contextual Details Sidebar */}
+          <div className="lg:col-span-3 space-y-4">
+            {activeMessageTicket ? (
+              <>
+                {/* Ticket Details Panel */}
+                <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm text-left">
+                  <h4 className="text-xs font-extrabold text-brandDarkNavy font-sora uppercase tracking-wider mb-3">Ticket Details</h4>
+                  
+                  <div className="space-y-2.5 text-[11px] font-bold text-gray-600 font-dmSans">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Ticket ID</span>
+                      <span className="text-brandDarkNavy">#{activeMessageTicket.ticket_id}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Category</span>
+                      <span className="text-brandDarkNavy">
+                        {categories.find(c => c.category_id === activeMessageTicket.category_id)?.name || `Category #${activeMessageTicket.category_id}`}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Priority</span>
+                      <span className="flex items-center space-x-1 text-brandDarkNavy">
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          activeMessageTicket.priority === 'Urgent' || activeMessageTicket.priority === 'High'
+                            ? 'bg-brandRed'
+                            : 'bg-yellow-400'
+                        }`} />
+                        <span>{activeMessageTicket.priority}</span>
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Status</span>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] bg-brandNavy/5 border border-brandNavy/10 text-brandNavy uppercase">{activeMessageTicket.status}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Created On</span>
+                      <span className="text-brandDarkNavy font-medium">{formatDate(activeMessageTicket.created_at).split(',')[0]}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Assigned To</span>
+                      <span className="text-brandDarkNavy truncate max-w-[100px]">{activeMessageTicket.assigned_to || 'Retail Operations'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Expected Resolution</span>
+                      <span className="text-brandDarkNavy font-medium">Within 24 hours</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ticket Progress Stepper */}
+                <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm text-left">
+                  <h4 className="text-xs font-extrabold text-brandDarkNavy font-sora uppercase tracking-wider mb-4">Ticket Progress</h4>
+                  
+                  <div className="relative pl-5 space-y-5">
+                    {/* Stepper connector lines */}
+                    <div className="absolute left-1.5 top-2.5 bottom-2.5 w-0.5 bg-gray-150" />
+                    
+                    {[
+                      { label: 'Created', done: true, date: formatDate(activeMessageTicket.created_at) },
+                      { label: 'Assigned', done: !!activeMessageTicket.assigned_to, date: activeMessageTicket.assigned_to ? '06 Jun 2026, 10:20 AM' : 'Pending' },
+                      { label: 'Under Review', done: activeMessageTicket.status === 'Under Review' || activeMessageTicket.status === 'In Progress' || activeMessageTicket.status === 'Resolved', date: (activeMessageTicket.status === 'Under Review' || activeMessageTicket.status === 'In Progress') ? '06 Jun 2026, 10:30 AM' : 'Pending' },
+                      { label: 'Resolved', done: activeMessageTicket.status === 'Resolved', date: activeMessageTicket.status === 'Resolved' ? 'Closed' : 'Pending' }
+                    ].map((step, idx) => (
+                      <div key={idx} className="relative flex flex-col justify-start">
+                        {/* Step Marker Indicator */}
+                        <div className={`absolute -left-5 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center bg-white ${
+                          step.done 
+                            ? 'border-emerald-500 bg-emerald-500 text-white' 
+                            : 'border-gray-300 bg-white'
+                        }`} style={{ zIndex: 5 }}>
+                          {step.done && (
+                            <svg className="w-2 h-2" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
+                          )}
+                        </div>
+                        
+                        <span className="text-[11px] font-bold text-brandDarkNavy leading-none">{step.label}</span>
+                        <span className="text-[9px] text-gray-400 mt-1 font-medium">{step.date}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : null}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   /* ══════════════════════════════════════════
      ANALYTICS TAB
@@ -922,7 +1540,8 @@ const UserDashboard = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'Dashboard': return renderDashboard();
-      case 'My Queries': return renderMyQueries();
+      case 'My Queries':
+      case 'Track Status': return renderMyQueries();
       case 'Messages': return renderMessages();
       case 'Analytics': return renderAnalytics();
       case 'Profile': return renderProfile();
@@ -955,7 +1574,7 @@ const UserDashboard = () => {
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
-              if (activeTab !== 'My Queries' && activeTab !== 'Dashboard') switchTab('My Queries');
+              if (activeTab !== 'My Queries' && activeTab !== 'Track Status' && activeTab !== 'Dashboard') switchTab('My Queries');
             }}
             className="w-full pl-11 pr-16 py-3 bg-white/60 backdrop-blur border border-gray-200/70 rounded-2xl outline-none focus:border-brandNavy/50 focus:bg-white/90 text-xs font-bold text-gray-700 transition-all font-dmSans placeholder-gray-400/80 shadow-[inset_0_1px_3px_rgba(0,0,0,.03)]"
           />
@@ -1005,67 +1624,116 @@ const UserDashboard = () => {
       <div className="flex-1 flex overflow-hidden">
 
         {/* ── SIDEBAR ── */}
-        <aside className="w-[240px] bg-white border-r border-gray-100/80 shrink-0 hidden md:flex flex-col justify-between p-5 z-20">
-          <div className="space-y-1">
-            <div className="px-3 mb-4">
-              <span className="text-[10px] text-gray-400 font-extrabold tracking-widest uppercase block">Menu</span>
-            </div>
-            {sidebarItems.map((item) => {
-              const isActive = activeTab === item.name;
-              return (
-                <button
-                  key={item.name}
-                  onClick={() => switchTab(item.name)}
-                  className={`sidebar-item w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold relative overflow-hidden ${isActive
-                      ? `${activeSidebarBg} ${activeSidebarGlow}`
-                      : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50/80'
-                    }`}
-                >
-                  {isActive && (
-                    <div className={`absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r-full ${activeSidebarLine}`} />
-                  )}
-                  <span className={`flex items-center justify-center w-7 h-7 rounded-xl transition-all duration-200 icon-scale ${isActive
-                      ? (isVendor ? 'bg-brandRed/10 text-brandRed' : 'bg-brandNavy/10 text-brandNavy')
-                      : 'text-gray-400'
-                    }`}>
-                    {item.icon}
-                  </span>
-                  <span>{item.name}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="space-y-3">
-            <div className="bg-gray-50/80 border border-gray-150/60 rounded-3xl p-4 text-left font-dmSans">
-              <h4 className="text-xs font-bold text-brandDarkNavy font-sora">Need Help?</h4>
-              <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">We're here to assist you</p>
-              <div className="mt-3 space-y-2 text-[10px] font-bold text-gray-500">
-                {[
-                  { href: '#guide', label: 'User Guide', iconPath: 'M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25' },
-                  { href: '#chat', label: 'Chat Support', iconPath: 'M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z' },
-                  { href: '#contact', label: 'Contact Support', iconPath: 'M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.824-1.806-5.194-4.176-7-7l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z' }
-                ].map(({ href, label, iconPath }) => (
-                  <a key={href} href={href} className="flex items-center space-x-2 hover:text-brandNavy transition-colors">
-                    <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d={iconPath} />
-                    </svg>
-                    <span>{label}</span>
-                  </a>
-                ))}
+        <aside className="w-[240px] bg-white border-r border-gray-100/80 shrink-0 hidden md:flex flex-col justify-between p-5 z-20 font-dmSans text-left">
+          <div className="space-y-6">
+            {/* MENU SECTION */}
+            <div className="space-y-1">
+              <div className="px-3 mb-2">
+                <span className="text-[10px] text-gray-400 font-extrabold tracking-widest uppercase block">Menu</span>
               </div>
+              {[
+                { name: 'Dashboard', icon: (
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                  </svg>
+                )},
+                { name: 'My Queries', icon: (
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                  </svg>
+                )},
+                { name: 'Track Status', icon: (
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+                  </svg>
+                )},
+                { name: 'Messages', icon: (
+                  <div className="relative">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                    </svg>
+                    {(messagesStats.open + messagesStats.pending) > 0 && (
+                      <span className="absolute -top-1.5 -right-2 px-1 py-0.5 rounded-full bg-brandRed text-[8px] font-extrabold text-white">
+                        {messagesStats.open + messagesStats.pending}
+                      </span>
+                    )}
+                  </div>
+                )},
+                { name: 'Profile', icon: (
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                  </svg>
+                )}
+              ].map((item) => {
+                const isActive = activeTab === item.name;
+                return (
+                  <button
+                    key={item.name}
+                    onClick={() => switchTab(item.name)}
+                    className={`sidebar-item w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold relative overflow-hidden ${isActive
+                        ? `${activeSidebarBg} ${activeSidebarGlow}`
+                        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50/80'
+                      }`}
+                  >
+                    {isActive && (
+                      <div className={`absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r-full ${activeSidebarLine}`} />
+                    )}
+                    <span className={`flex items-center justify-center w-7 h-7 rounded-xl transition-all duration-200 icon-scale ${isActive
+                        ? (isVendor ? 'bg-brandRed/10 text-brandRed' : 'bg-brandNavy/10 text-brandNavy')
+                        : 'text-gray-400'
+                      }`}>
+                      {item.icon}
+                    </span>
+                    <span>{item.name}</span>
+                  </button>
+                );
+              })}
             </div>
 
-            <button
-              onClick={handleLogout}
-              className="sidebar-item w-full flex items-center space-x-3 px-3.5 py-3 rounded-2xl text-xs font-bold text-gray-500 hover:text-brandRed hover:bg-brandRed/5 border border-transparent hover:border-brandRed/10"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4 text-gray-400">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-              </svg>
-              <span>Sign Out Account</span>
-            </button>
+            {/* NEED HELP SECTION */}
+            <div className="space-y-1">
+              <div className="px-3 mb-2">
+                <span className="text-[10px] text-gray-400 font-extrabold tracking-widest uppercase block">Need Help?</span>
+              </div>
+              {[
+                { label: 'User Guide', icon: (
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                  </svg>
+                )},
+                { label: 'Chat Support', icon: (
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+                  </svg>
+                )},
+                { label: 'Contact Support', icon: (
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.824-1.806-5.194-4.176-7-7l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
+                  </svg>
+                )}
+              ].map((hlp, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => alert(`${hlp.label} will be active in release version.`)}
+                  className="w-full flex items-center space-x-3 px-3.5 py-2 hover:bg-gray-50 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-800 transition-all text-left"
+                >
+                  <span className="text-gray-400">{hlp.icon}</span>
+                  <span>{hlp.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* SIGN OUT AT BOTTOM */}
+          <button
+            onClick={handleLogout}
+            className="sidebar-item w-full flex items-center space-x-3 px-3.5 py-3 rounded-2xl text-xs font-bold text-gray-500 hover:text-brandRed hover:bg-brandRed/5 border border-transparent hover:border-brandRed/10 transition-all text-left mt-6"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4 text-gray-400">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+            </svg>
+            <span>Sign Out Account</span>
+          </button>
         </aside>
 
         {/* ── MAIN CONTENT ── */}

@@ -8,18 +8,22 @@ import uuid
 
 tickets_bp = Blueprint('tickets', __name__)
 
-# Configure upload folder
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'xlsx', 'txt', 'csv'}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+
+
+def get_conn():
+    return duckdb.connect('tickets.db')
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-# GENERATE CUSTOM TICKET ID
 def generate_ticket_id(conn):
-
     last_ticket = conn.execute("""
         SELECT ticket_id
         FROM tickets
@@ -40,43 +44,79 @@ def generate_ticket_id(conn):
     return f"MDM{new_number:06d}"
 
 
-# CREATE TICKET
+def get_next_id(conn, table_name, id_column):
+    row = conn.execute(
+        f"SELECT COALESCE(MAX({id_column}), 0) + 1 FROM {table_name}"
+    ).fetchone()
+    return row[0]
+
+
+def ticket_to_dict(ticket):
+    attachment_path = ticket[9]
+
+    return {
+        'ticket_id': ticket[0],
+        'title': ticket[1],
+        'description': ticket[2],
+        'category_id': ticket[3],
+        'priority': ticket[4],
+        'status': ticket[5],
+        'raised_by': ticket[6],
+        'assigned_to': ticket[7],
+        'created_at': str(ticket[8]),
+        'attachment_path': attachment_path,
+        'has_attachment': bool(attachment_path),
+        'attachment_download_url': f'/api/tickets/download/{attachment_path}' if attachment_path else None
+    }
+
+
+# CREATE TICKET WITH OPTIONAL ATTACHMENT
 @tickets_bp.route('/', methods=['POST'])
 @jwt_required()
 def create_ticket():
-
     try:
         current_user = get_jwt_identity()
-        conn = duckdb.connect('tickets.db')
-        ticket_id = generate_ticket_id(conn)
+        conn = get_conn()
 
-        title = request.form.get('title')
-        description = request.form.get('description')
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
         category_id = request.form.get('category_id')
-        priority = request.form.get('priority')
+        priority = request.form.get('priority') or 'Medium'
 
+        if not title or not description or not category_id:
+            conn.close()
+            return jsonify({'error': 'Title, description and category are required'}), 400
+
+        ticket_id = generate_ticket_id(conn)
         attachment_path = None
 
         if 'attachment' in request.files:
             file = request.files['attachment']
-            if file and allowed_file(file.filename):
+
+            if file and file.filename:
+                if not allowed_file(file.filename):
+                    conn.close()
+                    return jsonify({'error': 'File type not allowed'}), 400
+
+                file.seek(0, os.SEEK_END)
+                file_size = file.tell()
+                file.seek(0)
+
+                if file_size > MAX_FILE_SIZE:
+                    conn.close()
+                    return jsonify({'error': 'File size must be under 10 MB'}), 400
+
                 filename = secure_filename(file.filename)
                 unique_filename = f"{uuid.uuid4()}_{filename}"
                 file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+
                 file.save(file_path)
                 attachment_path = unique_filename
 
         conn.execute("""
             INSERT INTO tickets (
-                ticket_id,
-                title,
-                description,
-                category_id,
-                priority,
-                status,
-                raised_by,
-                created_at,
-                attachment_path
+                ticket_id, title, description, category_id, priority,
+                status, raised_by, created_at, attachment_path
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [
@@ -95,38 +135,26 @@ def create_ticket():
 
         return jsonify({
             'message': 'Ticket created successfully',
-            'ticket_id': ticket_id
+            'ticket_id': ticket_id,
+            'attachment_path': attachment_path,
+            'has_attachment': bool(attachment_path)
         }), 201
 
     except Exception as e:
-        return jsonify({
-            'error': str(e)
-        }), 500
+        return jsonify({'error': str(e)}), 500
 
 
-# GET ALL USER TICKETS
+# GET USER TICKETS
 @tickets_bp.route('/', methods=['GET'])
 @jwt_required()
 def get_tickets():
-
     try:
-
         current_user = get_jwt_identity()
-
-        conn = duckdb.connect('tickets.db')
+        conn = get_conn()
 
         tickets = conn.execute("""
-            SELECT
-                ticket_id,
-                title,
-                description,
-                category_id,
-                priority,
-                status,
-                raised_by,
-                assigned_to,
-                created_at,
-                attachment_path
+            SELECT ticket_id, title, description, category_id, priority,
+                   status, raised_by, assigned_to, created_at, attachment_path
             FROM tickets
             WHERE raised_by = ?
             ORDER BY created_at DESC
@@ -134,144 +162,98 @@ def get_tickets():
 
         conn.close()
 
-        result = []
-
-        for ticket in tickets:
-            result.append({
-                'ticket_id': ticket[0],
-                'title': ticket[1],
-                'description': ticket[2],
-                'category_id': ticket[3],
-                'priority': ticket[4],
-                'status': ticket[5],
-                'raised_by': ticket[6],
-                'assigned_to': ticket[7],
-                'created_at': str(ticket[8]),
-                'attachment_path': ticket[9]
-            })
-
-        return jsonify(result)
+        return jsonify([ticket_to_dict(ticket) for ticket in tickets])
 
     except Exception as e:
-        return jsonify({
-            'error': str(e)
-        }), 500
+        return jsonify({'error': str(e)}), 500
 
 
-# GET SINGLE TICKET
+# GET SINGLE TICKET WITH MESSAGES
 @tickets_bp.route('/<ticket_id>', methods=['GET'])
 @jwt_required()
 def get_single_ticket(ticket_id):
-
     try:
-
-        conn = duckdb.connect('tickets.db')
+        conn = get_conn()
 
         ticket = conn.execute("""
-            SELECT
-                ticket_id,
-                title,
-                description,
-                category_id,
-                priority,
-                status,
-                raised_by,
-                assigned_to,
-                created_at,
-                attachment_path
+            SELECT ticket_id, title, description, category_id, priority,
+                   status, raised_by, assigned_to, created_at, attachment_path
             FROM tickets
             WHERE ticket_id = ?
         """, [ticket_id]).fetchone()
 
+        if not ticket:
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        messages = conn.execute("""
+            SELECT message_id, ticket_id, sender_id, sender_role,
+                   message_text, is_ping, created_at, attachment_path
+            FROM messages
+            WHERE ticket_id = ?
+            ORDER BY created_at ASC
+        """, [ticket_id]).fetchall()
+
         conn.close()
 
-        if not ticket:
-            return jsonify({
-                'error': 'Ticket not found'
-            }), 404
+        ticket_data = ticket_to_dict(ticket)
 
-        return jsonify({
-            'ticket_id': ticket[0],
-            'title': ticket[1],
-            'description': ticket[2],
-            'category_id': ticket[3],
-            'priority': ticket[4],
-            'status': ticket[5],
-            'raised_by': ticket[6],
-            'assigned_to': ticket[7],
-            'created_at': str(ticket[8]),
-            'attachment_path': ticket[9]
-        })
+        ticket_data['messages'] = [
+            {
+                'message_id': msg[0],
+                'ticket_id': msg[1],
+                'sender_id': msg[2],
+                'sender_role': msg[3],
+                'message_text': msg[4],
+                'is_ping': msg[5],
+                'created_at': str(msg[6]),
+                'attachment_path': msg[7],
+                'has_attachment': bool(msg[7]),
+                'attachment_download_url': f'/api/tickets/download/{msg[7]}' if msg[7] else None
+            }
+            for msg in messages
+        ]
+
+        return jsonify(ticket_data)
 
     except Exception as e:
-        return jsonify({
-            'error': str(e)
-        }), 500
+        return jsonify({'error': str(e)}), 500
 
 
 # ADMIN GET ALL TICKETS
 @tickets_bp.route('/admin/all', methods=['GET'])
 @jwt_required()
 def admin_get_all_tickets():
-
     try:
-
-        conn = duckdb.connect('tickets.db')
+        conn = get_conn()
 
         tickets = conn.execute("""
-            SELECT
-                ticket_id,
-                title,
-                description,
-                category_id,
-                priority,
-                status,
-                raised_by,
-                assigned_to,
-                created_at,
-                attachment_path
+            SELECT ticket_id, title, description, category_id, priority,
+                   status, raised_by, assigned_to, created_at, attachment_path
             FROM tickets
             ORDER BY created_at DESC
         """).fetchall()
 
         conn.close()
 
-        result = []
-
-        for ticket in tickets:
-            result.append({
-                'ticket_id': ticket[0],
-                'title': ticket[1],
-                'description': ticket[2],
-                'category_id': ticket[3],
-                'priority': ticket[4],
-                'status': ticket[5],
-                'raised_by': ticket[6],
-                'assigned_to': ticket[7],
-                'created_at': str(ticket[8]),
-                'attachment_path': ticket[9]
-            })
-
-        return jsonify(result)
+        return jsonify([ticket_to_dict(ticket) for ticket in tickets])
 
     except Exception as e:
-        return jsonify({
-            'error': str(e)
-        }), 500
+        return jsonify({'error': str(e)}), 500
 
 
 # ASSIGN AGENT
 @tickets_bp.route('/<ticket_id>/assign', methods=['PUT'])
 @jwt_required()
 def assign_agent(ticket_id):
-
     try:
-
         data = request.get_json()
-
         agent = data.get('agent')
 
-        conn = duckdb.connect('tickets.db')
+        if not agent:
+            return jsonify({'error': 'Agent is required'}), 400
+
+        conn = get_conn()
 
         conn.execute("""
             UPDATE tickets
@@ -282,24 +264,375 @@ def assign_agent(ticket_id):
 
         conn.close()
 
-        return jsonify({
-            'message': 'Agent assigned successfully'
-        })
+        return jsonify({'message': 'Agent assigned successfully'})
 
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# UPDATE TICKET STATUS
+@tickets_bp.route('/<ticket_id>/status', methods=['PUT'])
+@jwt_required()
+def update_ticket_status(ticket_id):
+    try:
+        data = request.get_json()
+        status = data.get('status')
+
+        valid_statuses = [
+            'Open',
+            'Under Review',
+            'In Progress',
+            'Needs Clarification',
+            'Resolved',
+            'Closed'
+        ]
+
+        if status not in valid_statuses:
+            return jsonify({'error': 'Invalid status'}), 400
+
+        conn = get_conn()
+
+        ticket = conn.execute("""
+            SELECT raised_by FROM tickets WHERE ticket_id = ?
+        """, [ticket_id]).fetchone()
+
+        if not ticket:
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        conn.execute("""
+            UPDATE tickets
+            SET status = ?
+            WHERE ticket_id = ?
+        """, [status, ticket_id])
+
+        notif_id = get_next_id(conn, 'notifications', 'notif_id')
+
+        conn.execute("""
+            INSERT INTO notifications (
+                notif_id, user_id, ticket_id, message, is_read, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, [
+            notif_id,
+            ticket[0],
+            ticket_id,
+            f'Your ticket {ticket_id} status has been updated to {status}',
+            False,
+            datetime.now()
+        ])
+
+        conn.close()
+
+        return jsonify({'message': f'Ticket status updated to {status}'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ADMIN PING USER
+@tickets_bp.route('/<ticket_id>/ping', methods=['POST'])
+@jwt_required()
+def ping_user(ticket_id):
+    try:
+        current_user = get_jwt_identity()
+        data = request.get_json()
+        message = data.get('message', '').strip()
+
+        if not message:
+            return jsonify({'error': 'Message is required'}), 400
+
+        conn = get_conn()
+
+        ticket = conn.execute("""
+            SELECT raised_by FROM tickets WHERE ticket_id = ?
+        """, [ticket_id]).fetchone()
+
+        if not ticket:
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        msg_id = get_next_id(conn, 'messages', 'message_id')
+
+        conn.execute("""
+            INSERT INTO messages (
+                message_id, ticket_id, sender_id, sender_role,
+                message_text, is_ping, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, [
+            msg_id,
+            ticket_id,
+            current_user,
+            'admin',
+            message,
+            True,
+            datetime.now()
+        ])
+
+        conn.execute("""
+            UPDATE tickets
+            SET status = 'Needs Clarification'
+            WHERE ticket_id = ?
+        """, [ticket_id])
+
+        notif_id = get_next_id(conn, 'notifications', 'notif_id')
+
+        conn.execute("""
+            INSERT INTO notifications (
+                notif_id, user_id, ticket_id, message, is_read, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, [
+            notif_id,
+            ticket[0],
+            ticket_id,
+            f'Action required on your ticket {ticket_id}: {message}',
+            False,
+            datetime.now()
+        ])
+
+        conn.close()
+
+        return jsonify({'message': 'User pinged successfully'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ADD MESSAGE / USER REPLY
+@tickets_bp.route('/<ticket_id>/message', methods=['POST'])
+@jwt_required()
+def add_message(ticket_id):
+    try:
+        current_user = get_jwt_identity()
+        
+        attachment_path = None
+        # Check if form data is sent (multipart/form-data)
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            message_text = request.form.get('message_text', '').strip()
+            if 'attachment' in request.files:
+                file = request.files['attachment']
+                if file and file.filename:
+                    if not allowed_file(file.filename):
+                        return jsonify({'error': 'File type not allowed'}), 400
+                        
+                    file.seek(0, os.SEEK_END)
+                    file_size = file.tell()
+                    file.seek(0)
+                    if file_size > MAX_FILE_SIZE:
+                        return jsonify({'error': 'File size must be under 10 MB'}), 400
+                        
+                    filename = secure_filename(file.filename)
+                    unique_filename = f"{uuid.uuid4()}_{filename}"
+                    file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+                    file.save(file_path)
+                    attachment_path = unique_filename
+        else:
+            data = request.get_json() or {}
+            message_text = data.get('message_text', '').strip()
+
+        if not message_text and not attachment_path:
+            return jsonify({'error': 'Message cannot be empty'}), 400
+
+        conn = get_conn()
+
+        ticket = conn.execute("""
+            SELECT raised_by, status
+            FROM tickets
+            WHERE ticket_id = ?
+        """, [ticket_id]).fetchone()
+
+        if not ticket:
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        msg_id = get_next_id(conn, 'messages', 'message_id')
+
+        sender_role = 'user'
+        if current_user != ticket[0]:
+            sender_role = 'admin'
+
+        conn.execute("""
+            INSERT INTO messages (
+                message_id, ticket_id, sender_id, sender_role,
+                message_text, is_ping, attachment_path, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, [
+            msg_id,
+            ticket_id,
+            current_user,
+            sender_role,
+            message_text,
+            False,
+            attachment_path,
+            datetime.now()
+        ])
+
+        if sender_role == 'user' and ticket[1] == 'Needs Clarification':
+            conn.execute("""
+                UPDATE tickets
+                SET status = 'Under Review'
+                WHERE ticket_id = ?
+            """, [ticket_id])
+
+        conn.close()
+
         return jsonify({
-            'error': str(e)
-        }), 500
+            'message': 'Message sent',
+            'attachment_path': attachment_path,
+            'has_attachment': bool(attachment_path)
+        }), 201
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
-# DOWNLOAD ATTACHMENT
+# GET NOTIFICATIONS
+@tickets_bp.route('/notifications/all', methods=['GET'])
+@jwt_required()
+def get_notifications():
+    try:
+        current_user = get_jwt_identity()
+        conn = get_conn()
+
+        notifications = conn.execute("""
+            SELECT notif_id, user_id, ticket_id, message, is_read, created_at
+            FROM notifications
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+        """, [current_user]).fetchall()
+
+        conn.close()
+
+        result = []
+        for notif in notifications:
+            result.append({
+                'notif_id': notif[0],
+                'user_id': notif[1],
+                'ticket_id': notif[2],
+                'message': notif[3],
+                'is_read': notif[4],
+                'created_at': str(notif[5])
+            })
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# MARK NOTIFICATION AS READ
+@tickets_bp.route('/notifications/<int:notif_id>/read', methods=['PUT'])
+@jwt_required()
+def mark_notification_read(notif_id):
+    try:
+        current_user = get_jwt_identity()
+        conn = get_conn()
+
+        conn.execute("""
+            UPDATE notifications
+            SET is_read = true
+            WHERE notif_id = ? AND user_id = ?
+        """, [notif_id, current_user])
+
+        conn.close()
+
+        return jsonify({'message': 'Notification marked as read'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# DOWNLOAD ATTACHMENT BY FILENAME
 @tickets_bp.route('/download/<filename>', methods=['GET'])
 @jwt_required()
 def download_attachment(filename):
     try:
-        file_path = os.path.join(UPLOAD_FOLDER, secure_filename(filename))
+        safe_filename = secure_filename(filename)
+        file_path = os.path.join(UPLOAD_FOLDER, safe_filename)
+
         if not os.path.exists(file_path):
             return jsonify({'error': 'File not found'}), 404
+
         return send_file(file_path, as_attachment=True)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# GET ALL ANNOUNCEMENTS
+@tickets_bp.route('/announcements', methods=['GET'])
+@jwt_required()
+def get_announcements():
+    try:
+        conn = get_conn()
+        announcements = conn.execute("""
+            SELECT announcement_id, title, content, category, effective_date
+            FROM announcements
+            ORDER BY effective_date DESC
+        """).fetchall()
+        conn.close()
+        
+        result = []
+        for ann in announcements:
+            result.append({
+                'announcement_id': ann[0],
+                'title': ann[1],
+                'content': ann[2],
+                'category': ann[3],
+                'effective_date': str(ann[4])
+            })
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# GET TICKET AND ANNOUNCEMENT STATS
+@tickets_bp.route('/stats', methods=['GET'])
+@jwt_required()
+def get_ticket_stats():
+    try:
+        current_user = get_jwt_identity()
+        conn = get_conn()
+        
+        # Get user's role
+        user = conn.execute("SELECT role FROM users WHERE user_id = ?", [current_user]).fetchone()
+        is_admin = user and user[0] == 'admin'
+        
+        if is_admin:
+            # Admin stats: all tickets
+            tickets = conn.execute("""
+                SELECT status FROM tickets
+            """).fetchall()
+        else:
+            # User stats: only their raised tickets
+            tickets = conn.execute("""
+                SELECT status FROM tickets WHERE raised_by = ?
+            """, [current_user]).fetchall()
+            
+        announcements_count = conn.execute("SELECT COUNT(*) FROM announcements").fetchone()[0]
+        conn.close()
+        
+        open_cnt = 0
+        pending_cnt = 0
+        resolved_cnt = 0
+        
+        for t in tickets:
+            status = t[0]
+            if status == 'Open':
+                open_cnt += 1
+            elif status in ['In Progress', 'Under Review', 'Needs Clarification']:
+                pending_cnt += 1
+            elif status in ['Resolved', 'Closed']:
+                resolved_cnt += 1
+                
+        return jsonify({
+            'open': open_cnt,
+            'pending': pending_cnt,
+            'resolved': resolved_cnt,
+            'announcements': announcements_count
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
