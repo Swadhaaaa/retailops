@@ -70,6 +70,27 @@ def ticket_to_dict(ticket):
     }
 
 
+def admin_ticket_to_dict(ticket):
+    attachment_path = ticket[9]
+
+    return {
+        'ticket_id': ticket[0],
+        'title': ticket[1],
+        'description': ticket[2],
+        'category_id': ticket[3],
+        'priority': ticket[4],
+        'status': ticket[5],
+        'raised_by': ticket[6],
+        'assigned_to': ticket[7],
+        'created_at': str(ticket[8]),
+        'attachment_path': attachment_path,
+        'has_attachment': bool(attachment_path),
+        'attachment_download_url': f'/api/tickets/download/{attachment_path}' if attachment_path else None,
+        'vendor_name': ticket[10] if len(ticket) > 10 else None,
+        'category_name': ticket[11] if len(ticket) > 11 else None
+    }
+
+
 # CREATE TICKET WITH OPTIONAL ATTACHMENT
 @tickets_bp.route('/', methods=['POST'])
 @jwt_required()
@@ -176,10 +197,13 @@ def get_single_ticket(ticket_id):
         conn = get_conn()
 
         ticket = conn.execute("""
-            SELECT ticket_id, title, description, category_id, priority,
-                   status, raised_by, assigned_to, created_at, attachment_path
-            FROM tickets
-            WHERE ticket_id = ?
+            SELECT t.ticket_id, t.title, t.description, t.category_id, t.priority,
+                   t.status, t.raised_by, t.assigned_to, t.created_at, t.attachment_path,
+                   u.name AS vendor_name, c.name AS category_name
+            FROM tickets t
+            LEFT JOIN users u ON t.raised_by = u.email
+            LEFT JOIN categories c ON t.category_id = c.category_id
+            WHERE t.ticket_id = ?
         """, [ticket_id]).fetchone()
 
         if not ticket:
@@ -196,7 +220,7 @@ def get_single_ticket(ticket_id):
 
         conn.close()
 
-        ticket_data = ticket_to_dict(ticket)
+        ticket_data = admin_ticket_to_dict(ticket)
 
         ticket_data['messages'] = [
             {
@@ -228,15 +252,18 @@ def admin_get_all_tickets():
         conn = get_conn()
 
         tickets = conn.execute("""
-            SELECT ticket_id, title, description, category_id, priority,
-                   status, raised_by, assigned_to, created_at, attachment_path
-            FROM tickets
-            ORDER BY created_at DESC
+            SELECT t.ticket_id, t.title, t.description, t.category_id, t.priority,
+                   t.status, t.raised_by, t.assigned_to, t.created_at, t.attachment_path,
+                   u.name AS vendor_name, c.name AS category_name
+            FROM tickets t
+            LEFT JOIN users u ON t.raised_by = u.email
+            LEFT JOIN categories c ON t.category_id = c.category_id
+            ORDER BY t.created_at DESC
         """).fetchall()
 
         conn.close()
 
-        return jsonify([ticket_to_dict(ticket) for ticket in tickets])
+        return jsonify([admin_ticket_to_dict(ticket) for ticket in tickets])
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500

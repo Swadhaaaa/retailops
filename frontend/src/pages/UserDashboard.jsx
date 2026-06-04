@@ -178,11 +178,11 @@ const getCategoryStyles = (categoryId) => {
    STATIC CATEGORIES
 ───────────────────────────────────────────── */
 const staticCategories = [
-  { category_id: 1, name: 'Payment Issues', description: 'Invoice and payment related issues' },
+  { category_id: 1, name: 'Payment Issue', description: 'Invoice and payment related issues' },
   { category_id: 2, name: 'Inventory Issues', description: 'Stock and inventory problems' },
-  { category_id: 3, name: 'Technical Support', description: 'System and technical support' },
+  { category_id: 3, name: 'Portal Access', description: 'System and technical support' },
   { category_id: 4, name: 'Delivery Issues', description: 'Shipment and delivery concerns' },
-  { category_id: 5, name: 'Documentation', description: 'Document and compliance issues' },
+  { category_id: 5, name: 'Contract Query', description: 'Document and compliance issues' },
   { category_id: 6, name: 'Order Discrepancies', description: 'Mismatched order quantities or items' },
   { category_id: 7, name: 'User Onboarding', description: 'Registration and profile setup queries' },
   { category_id: 8, name: 'Quality Control', description: 'Product quality and damage complaints' },
@@ -192,8 +192,8 @@ const staticCategories = [
   { category_id: 12, name: 'Database & Sync', description: 'Data mismatch and sync issues' },
   { category_id: 13, name: 'Account & Security', description: 'Security settings and account recovery' },
   { category_id: 14, name: 'Refunds & Returns', description: 'Product return requests and refunds' },
-  { category_id: 15, name: 'Compliance & Audits', description: 'Regulatory, policy, and audit support' },
-  { category_id: 16, name: 'Vendor Management', description: 'Vendor onboarding, agreements, and disputes' },
+  { category_id: 15, name: 'GST Compliance', description: 'Regulatory, policy, and audit support' },
+  { category_id: 16, name: 'KYC Verification', description: 'Vendor onboarding, agreements, and disputes' },
   { category_id: 17, name: 'Store Operations', description: 'In-store operational queries and escalations' },
   { category_id: 18, name: 'HR & Workforce', description: 'Staff queries, attendance, and HR support' },
   { category_id: 19, name: 'IT Infrastructure', description: 'Network, hardware, and system outages' },
@@ -432,6 +432,10 @@ const UserDashboard = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
+      const refreshEvent = String(Date.now());
+      localStorage.setItem('tickets:lastChanged', refreshEvent);
+      window.dispatchEvent(new CustomEvent('tickets:changed', { detail: refreshEvent }));
+
       setMessageText('');
       setMessageAttachment(null);
       fetchActiveTicketMessages(activeMessageTicket.ticket_id);
@@ -500,6 +504,8 @@ const UserDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [priorityFilter, setPriorityFilter] = useState('All');
+  const [emailAlerts, setEmailAlerts] = useState(true);
+  const [smsAlerts, setSmsAlerts] = useState(true);
 
   const [liveTime, setLiveTime] = useState(
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -561,8 +567,8 @@ const UserDashboard = () => {
   const getInitials = (name) =>
     name.split(' ').map(n => n[0]).join('').toUpperCase();
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
+  const fetchDashboardData = async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     try {
       const ticketsRes = await api.get('/tickets/');
       setTickets(ticketsRes.data);
@@ -578,7 +584,30 @@ const UserDashboard = () => {
     }
   };
 
-  useEffect(() => { fetchDashboardData(); }, []);
+  useEffect(() => {
+    fetchDashboardData();
+    const refreshTickets = () => fetchDashboardData({ silent: true });
+    const refreshOnStorage = (event) => {
+      if (event.key === 'tickets:lastChanged') refreshTickets();
+    };
+    const refreshOnVisible = () => {
+      if (document.visibilityState === 'visible') refreshTickets();
+    };
+
+    window.addEventListener('tickets:changed', refreshTickets);
+    window.addEventListener('storage', refreshOnStorage);
+    window.addEventListener('focus', refreshTickets);
+    document.addEventListener('visibilitychange', refreshOnVisible);
+
+    const interval = setInterval(refreshTickets, 3000);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('tickets:changed', refreshTickets);
+      window.removeEventListener('storage', refreshOnStorage);
+      window.removeEventListener('focus', refreshTickets);
+      document.removeEventListener('visibilitychange', refreshOnVisible);
+    };
+  }, []);
 
   const switchTab = (tab) => {
     setActiveTab(tab);
@@ -620,6 +649,10 @@ const UserDashboard = () => {
       await api.post('/tickets/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+
+      const refreshEvent = String(Date.now());
+      localStorage.setItem('tickets:lastChanged', refreshEvent);
+      window.dispatchEvent(new CustomEvent('tickets:changed', { detail: refreshEvent }));
 
       setIsSubmittedSuccessfully(true);
       await fetchDashboardData();
@@ -851,14 +884,14 @@ const UserDashboard = () => {
 
                   <div>
                     <div className="flex items-center justify-between">
-                      <h4 className="text-[13px] font-extrabold font-sora text-brandDarkNavy leading-none">{cat.name}</h4>
+                      <h4 className="text-[20px] font-extrabold font-sora text-brandDarkNavy tracking-tight leading-snug">{cat.name}</h4>
                       <span className="cat-arrow text-gray-400">
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                         </svg>
                       </span>
                     </div>
-                    <p className="text-[10px] text-gray-500 mt-1.5 font-semibold leading-relaxed line-clamp-2">{cat.description}</p>
+                    <p className="text-[11px] text-gray-500 mt-2 font-semibold leading-relaxed line-clamp-2">{cat.description}</p>
                   </div>
                 </div>
               );
@@ -970,6 +1003,280 @@ const UserDashboard = () => {
     );
   };
 
+  const getTicketProgress = (ticket) => {
+    let currentStep = 1;
+    let progressPercent = 25;
+
+    if (ticket.status === 'Closed') {
+      currentStep = 5;
+      progressPercent = 100;
+    } else if (ticket.status === 'Resolved') {
+      currentStep = 4;
+      progressPercent = 80;
+    } else if (ticket.status === 'In Progress' || ticket.status === 'Under Review') {
+      currentStep = 3;
+      progressPercent = 60;
+    } else if (ticket.assigned_to) {
+      currentStep = 2;
+      progressPercent = 45;
+    } else if (ticket.status === 'Needs Clarification') {
+      currentStep = 2;
+      progressPercent = 40;
+    } else {
+      currentStep = 1;
+      progressPercent = 25;
+    }
+
+    return { currentStep, progressPercent };
+  };
+
+  const getDepartmentForCategory = (categoryName) => {
+    if (!categoryName) return 'Operations';
+    const name = categoryName.toLowerCase();
+    if (name.includes('payment') || name.includes('billing') || name.includes('finance')) return 'Finance';
+    if (name.includes('inventory') || name.includes('quality')) return 'Inventory';
+    if (name.includes('technical') || name.includes('sync') || name.includes('infrastructure')) return 'IT Operations';
+    if (name.includes('delivery') || name.includes('logistics')) return 'Logistics';
+    if (name.includes('compliance') || name.includes('audit') || name.includes('documentation')) return 'Compliance';
+    if (name.includes('vendor')) return 'Vendor Management';
+    if (name.includes('order')) return 'Order Management';
+    return 'Retail Operations';
+  };
+
+  const getRelativeTime = (dateString) => {
+    if (!dateString) return 'Updated 2 hours ago';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Updated 2 hours ago';
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 1) return 'Updated just now';
+    if (diffMins < 60) return `Updated ${diffMins}m ago`;
+    if (diffHours < 24) return `Updated ${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+    return `Updated ${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+  };
+
+  const getTrackStatusBadgeStyles = (status) => {
+    switch (status) {
+      case 'Open':
+        return 'bg-blue-50 text-blue-600 border-blue-200';
+      case 'Under Review':
+      case 'In Progress':
+        return 'bg-indigo-50 text-indigo-600 border-indigo-200';
+      case 'Needs Clarification':
+        return 'bg-purple-50 text-purple-600 border-purple-200';
+      case 'Resolved':
+        return 'bg-rose-50 text-rose-600 border-rose-200';
+      case 'Closed':
+        return 'bg-red-50 text-red-600 border-red-200';
+      default:
+        return 'bg-gray-50 text-gray-600 border-gray-200';
+    }
+  };
+
+  const getPriorityBadgeStyles = (priority) => {
+    switch (priority) {
+      case 'Urgent':
+        return 'bg-red-50 text-red-600 border-red-200';
+      case 'High':
+        return 'bg-orange-50 text-orange-600 border-orange-200';
+      case 'Medium':
+        return 'bg-blue-50 text-blue-600 border-blue-200';
+      default:
+        return 'bg-gray-50 text-gray-600 border-gray-200';
+    }
+  };
+
+  const renderTrackStatus = () => {
+    const filteredTickets = tickets.filter(ticket => {
+      const matchesSearch =
+        ticket.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ticket.ticket_id.toString().includes(searchQuery) ||
+        (ticket.description && ticket.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchesStatus = statusFilter === 'All' || ticket.status === statusFilter;
+      const matchesPriority = priorityFilter === 'All' || ticket.priority === priorityFilter;
+      return matchesSearch && matchesStatus && matchesPriority;
+    });
+
+    return (
+      <div className="space-y-8 text-left">
+        {/* Header */}
+        <div className="flex items-center justify-between animate-slide-up-fade">
+          <div>
+            <h1 className="text-3xl font-extrabold text-brandDarkNavy font-sora animate-scale-in">Track Status</h1>
+            <p className="text-sm text-gray-500 mt-1">Live tracking and progress timeline for all your query tickets.</p>
+          </div>
+          <button
+            onClick={() => { setIsCategoryLocked(false); setIsModalOpen(true); }}
+            className={`px-5 py-3 rounded-2xl text-xs font-bold text-white shadow-md transition-all flex items-center space-x-2 ${buttonColor}`}
+          >
+            <span>Create Ticket</span>
+          </button>
+        </div>
+
+        {/* Ticket Progress Flow Panel */}
+        <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm animate-slide-up-fade">
+          <h3 className="text-sm font-extrabold text-brandDarkNavy font-sora mb-6">Ticket Progress Flow</h3>
+          
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4 relative px-2">
+            {/* Horizontal Line background for larger screens */}
+            <div className="hidden md:block absolute left-8 right-8 top-1/2 -translate-y-1/2 h-0.5 bg-gray-100 -z-10" />
+
+            {[
+              { num: 1, label: 'Open', color: 'bg-blue-600 ring-blue-100 text-blue-600', line: 'bg-gradient-to-r from-blue-600 to-indigo-600' },
+              { num: 2, label: 'Assigned', color: 'bg-indigo-600 ring-indigo-100 text-indigo-600', line: 'bg-gradient-to-r from-indigo-600 to-purple-600' },
+              { num: 3, label: 'In Progress', color: 'bg-purple-600 ring-purple-100 text-purple-600', line: 'bg-gradient-to-r from-purple-600 to-rose-600' },
+              { num: 4, label: 'Resolved', color: 'bg-rose-600 ring-rose-100 text-rose-600', line: 'bg-gradient-to-r from-rose-600 to-red-600' },
+              { num: 5, label: 'Closed', color: 'bg-red-600 ring-red-100 text-red-600' }
+            ].map((step, idx) => (
+              <React.Fragment key={idx}>
+                {/* Step Item */}
+                <div className="flex items-center space-x-3 z-10 bg-white px-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white ring-4 ${step.color.split(' ')[0]} ${step.color.split(' ')[1]}`}>
+                    {step.num}
+                  </div>
+                  <span className="text-xs font-extrabold text-gray-700 font-sora">{step.label}</span>
+                </div>
+                
+                {/* Line connector for larger screens */}
+                {idx < 4 && (
+                  <div className={`hidden md:block flex-1 h-0.5 ${step.line}`} />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between animate-slide-up-fade">
+          <input type="text" placeholder="Search tickets..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+            className="px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none w-full lg:max-w-sm focus:border-brandNavy/30" />
+          <div className="flex gap-3">
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+              className="px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:border-brandNavy/30 bg-white">
+              <option value="All">All Status</option>
+              <option value="Open">Open</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Resolved">Resolved</option>
+              <option value="Closed">Closed</option>
+            </select>
+            <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)}
+              className="px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:border-brandNavy/30 bg-white">
+              <option value="All">All Priority</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="Urgent">Urgent</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Tickets Tracking Grid */}
+        {loading ? (
+          <div className="text-sm text-gray-400">Loading tickets...</div>
+        ) : filteredTickets.length === 0 ? (
+          <div className="bg-white rounded-3xl border border-gray-100 py-20 text-center animate-slide-up-fade">
+            <p className="text-gray-500 font-bold">No matching tickets found</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {filteredTickets.map((ticket) => {
+              const catObj = categories.find(c => c.category_id === ticket.category_id);
+              const categoryName = catObj ? catObj.name : `Category #${ticket.category_id}`;
+              const { currentStep, progressPercent } = getTicketProgress(ticket);
+              const deptName = getDepartmentForCategory(categoryName);
+              const relativeTime = getRelativeTime(ticket.created_at || ticket.updated_at);
+              const statusStyles = getTrackStatusBadgeStyles(ticket.status);
+              const priorityStyles = getPriorityBadgeStyles(ticket.priority);
+
+              return (
+                <div
+                  key={ticket.ticket_id}
+                  onClick={() => setSelectedTicket(ticket)}
+                  className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-all cursor-pointer text-left relative overflow-hidden group animate-slide-up-fade"
+                >
+                  {/* Subtle red/blue accent indicator on hover */}
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-blue-500 to-red-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                  {/* Header Row */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                    <div className="flex items-center space-x-3 flex-wrap gap-y-2">
+                      <h2 className="text-lg font-extrabold text-brandDarkNavy font-sora leading-snug">{ticket.title}</h2>
+                      
+                      {/* Status Badge */}
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${statusStyles}`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                        {ticket.status}
+                      </span>
+                    </div>
+
+                    {/* Priority Pill */}
+                    <span className={`px-3 py-1 rounded-xl text-[10px] font-bold border self-start sm:self-center ${priorityStyles}`}>
+                      {ticket.priority === 'Urgent' ? 'Critical' : ticket.priority}
+                    </span>
+                  </div>
+
+                  {/* Subtitle / Vendor Name */}
+                  <p className="text-xs text-gray-400 font-semibold mb-6 font-dmSans">
+                    {userName || 'ABC Suppliers Ltd'}
+                  </p>
+
+                  {/* Grid Metadata */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase font-extrabold tracking-wider font-sora">Ticket ID</p>
+                      <p className="text-xs font-bold text-brandDarkNavy mt-1">{ticket.ticket_id}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase font-extrabold tracking-wider font-sora">Category</p>
+                      <p className="text-xs font-bold text-brandDarkNavy mt-1 truncate">{categoryName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase font-extrabold tracking-wider font-sora">Department</p>
+                      <p className="text-xs font-bold text-brandDarkNavy mt-1 truncate">{deptName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-400 uppercase font-extrabold tracking-wider font-sora">Assigned To</p>
+                      <p className="text-xs font-bold text-brandDarkNavy mt-1 truncate">{ticket.assigned_to || 'Retail Operations'}</p>
+                    </div>
+                  </div>
+
+                  {/* Progress Section */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-xs font-bold text-gray-700">
+                      <span className="text-[10px] text-gray-400 uppercase font-extrabold tracking-wider font-sora">Progress</span>
+                      <div className="flex items-center space-x-2 text-[11px] font-extrabold text-brandDarkNavy">
+                        <span>{progressPercent}%</span>
+                        <span className="text-gray-300">•</span>
+                        <span className="text-[10px] text-gray-400 font-normal flex items-center gap-1 font-dmSans">
+                          <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+                          </svg>
+                          {relativeTime}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar Container */}
+                    <div className="w-full bg-gray-150 h-2 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-600 via-purple-600 to-red-600 rounded-full transition-all duration-500"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const formatMessageTime = (dateString) => {
   if (!dateString) return '';
 
@@ -1050,9 +1357,8 @@ const UserDashboard = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: 'Open Tickets', count: messagesStats.open, icon: (
-              <svg className="w-5 h-5 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12.75 3.03v.568c0 .334.148.65.405.864l4.03 3.359a1.125 1.125 0 0 1-1.42 1.742l-4.03-3.359a1.125 1.125 0 0 0-1.5 0L6.205 9.004a1.125 1.125 0 0 1-1.42-1.742l4.03-3.359a1.125 1.125 0 0 0 .405-.864V3.03c0-.621.504-1.125 1.125-1.125h1.125c.621 0 1.125.504 1.125 1.125Z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" />
+              <svg className="w-5 h-5 text-brandNavy animate-scale-in" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
               </svg>
             ), bg: 'bg-[#F0F4FF]', text: 'text-brandNavy' },
             { label: 'Pending Tickets', count: messagesStats.pending, icon: (
@@ -1442,15 +1748,17 @@ const UserDashboard = () => {
                     ].map((step, idx) => (
                       <div key={idx} className="relative flex flex-col justify-start">
                         {/* Step Marker Indicator */}
-                        <div className={`absolute -left-5 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center bg-white ${
+                        <div className={`absolute -left-[23px] top-[1px] w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                           step.done 
-                            ? 'border-emerald-500 bg-emerald-500 text-white' 
-                            : 'border-gray-300 bg-white'
+                            ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm shadow-emerald-100' 
+                            : 'border-gray-200 bg-white text-gray-300'
                         }`} style={{ zIndex: 5 }}>
-                          {step.done && (
-                            <svg className="w-2 h-2" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                          {step.done ? (
+                            <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth="4.5" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                             </svg>
+                          ) : (
+                            <span className="w-1.5 h-1.5 rounded-full bg-gray-200" />
                           )}
                         </div>
                         
@@ -1564,16 +1872,33 @@ const UserDashboard = () => {
           <div className="space-y-4 text-left">
             <h3 className="font-extrabold text-sm text-brandDarkNavy font-sora">Notification Alert Rules</h3>
             {[
-              { label: 'Email ticket progression digests', sub: 'Receive notification when ticket state updates.' },
-              { label: 'SMS critical urgency escalations', sub: 'Text alert when a query is marked Urgent.' }
-            ].map(({ label, sub }) => (
+              { 
+                label: 'Email ticket progression digests', 
+                sub: 'Receive notification when ticket state updates.',
+                enabled: emailAlerts,
+                toggle: () => setEmailAlerts(!emailAlerts)
+              },
+              { 
+                label: 'SMS critical urgency escalations', 
+                sub: 'Text alert when a query is marked Urgent.',
+                enabled: smsAlerts,
+                toggle: () => setSmsAlerts(!smsAlerts)
+              }
+            ].map(({ label, sub, enabled, toggle }) => (
               <div key={label} className="flex items-center justify-between py-1">
                 <div>
                   <p className="text-xs font-bold text-gray-700">{label}</p>
                   <p className="text-[10px] text-gray-400 mt-0.5 font-semibold font-dmSans">{sub}</p>
                 </div>
-                <div className={`w-10 h-6 rounded-full p-1 cursor-pointer flex items-center justify-end ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`}>
-                  <div className="w-4 h-4 bg-white rounded-full" />
+                <div 
+                  onClick={toggle}
+                  className={`w-10 h-6 rounded-full p-1 cursor-pointer flex items-center transition-all duration-300 ${
+                    enabled 
+                      ? (isVendor ? 'bg-brandRed justify-end' : 'bg-brandNavy justify-end') 
+                      : 'bg-gray-200 justify-start'
+                  }`}
+                >
+                  <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
                 </div>
               </div>
             ))}
@@ -1586,8 +1911,8 @@ const UserDashboard = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'Dashboard': return renderDashboard();
-      case 'My Queries':
-      case 'Track Status': return renderMyQueries();
+      case 'My Queries': return renderMyQueries();
+      case 'Track Status': return renderTrackStatus();
       case 'Messages': return renderMessages();
       case 'Analytics': return renderAnalytics();
       case 'Profile': return renderProfile();
