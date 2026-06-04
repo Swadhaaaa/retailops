@@ -101,12 +101,29 @@ def create_ticket():
 
         title = request.form.get('title', '').strip()
         description = request.form.get('description', '').strip()
-        category_id = request.form.get('category_id')
+        category_id_raw = request.form.get('category_id')
         priority = request.form.get('priority') or 'Medium'
 
-        if not title or not description or not category_id:
+        if not title or not description or not category_id_raw:
             conn.close()
             return jsonify({'error': 'Title, description and category are required'}), 400
+
+        try:
+            category_id = int(category_id_raw)
+        except (TypeError, ValueError):
+            conn.close()
+            return jsonify({'error': 'Invalid category'}), 400
+
+        category_exists = conn.execute("""
+            SELECT 1
+            FROM categories
+            WHERE category_id = ?
+            AND is_active = true
+        """, [category_id]).fetchone()
+
+        if not category_exists:
+            conn.close()
+            return jsonify({'error': 'Invalid category'}), 400
 
         ticket_id = generate_ticket_id(conn)
         attachment_path = None
@@ -201,7 +218,7 @@ def get_single_ticket(ticket_id):
                    t.status, t.raised_by, t.assigned_to, t.created_at, t.attachment_path,
                    u.name AS vendor_name, c.name AS category_name
             FROM tickets t
-            LEFT JOIN users u ON t.raised_by = u.email
+            LEFT JOIN users u ON t.raised_by = u.user_id OR t.raised_by = u.email
             LEFT JOIN categories c ON t.category_id = c.category_id
             WHERE t.ticket_id = ?
         """, [ticket_id]).fetchone()
@@ -256,7 +273,7 @@ def admin_get_all_tickets():
                    t.status, t.raised_by, t.assigned_to, t.created_at, t.attachment_path,
                    u.name AS vendor_name, c.name AS category_name
             FROM tickets t
-            LEFT JOIN users u ON t.raised_by = u.email
+            LEFT JOIN users u ON t.raised_by = u.user_id OR t.raised_by = u.email
             LEFT JOIN categories c ON t.category_id = c.category_id
             ORDER BY t.created_at DESC
         """).fetchall()
@@ -352,6 +369,43 @@ def update_ticket_status(ticket_id):
         conn.close()
 
         return jsonify({'message': f'Ticket status updated to {status}'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# UPDATE TICKET PRIORITY
+@tickets_bp.route('/<ticket_id>/priority', methods=['PUT'])
+@jwt_required()
+def update_ticket_priority(ticket_id):
+    try:
+        data = request.get_json()
+        priority = data.get('priority')
+
+        valid_priorities = ['Low', 'Medium', 'High', 'Critical', 'Urgent']
+
+        if priority not in valid_priorities:
+            return jsonify({'error': 'Invalid priority'}), 400
+
+        conn = get_conn()
+
+        ticket = conn.execute("""
+            SELECT ticket_id FROM tickets WHERE ticket_id = ?
+        """, [ticket_id]).fetchone()
+
+        if not ticket:
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        conn.execute("""
+            UPDATE tickets
+            SET priority = ?
+            WHERE ticket_id = ?
+        """, [priority, ticket_id])
+
+        conn.close()
+
+        return jsonify({'message': f'Ticket priority updated to {priority}'})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500

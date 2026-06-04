@@ -574,8 +574,11 @@ const UserDashboard = () => {
       setTickets(ticketsRes.data);
       const categoriesRes = await api.get('/categories/');
       if (categoriesRes.data?.length) {
-        setCategories(categoriesRes.data);
-        setFormCategory(categoriesRes.data[0].category_id.toString());
+        const normalizedCategories = categoriesRes.data.map(category => ({
+          ...category,
+          category_id: Number(category.category_id)
+        }));
+        setCategories(normalizedCategories);
       }
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -642,7 +645,7 @@ const UserDashboard = () => {
       const formData = new FormData();
       formData.append('title', formSubject);
       formData.append('description', formDescription);
-      formData.append('category_id', parseInt(formCategory, 10));
+      formData.append('category_id', formCategory);
       formData.append('priority', formPriority);
       if (attachment) formData.append('attachment', attachment);
 

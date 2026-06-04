@@ -63,6 +63,12 @@ const AdminDashboard = () => {
   const [drawerMessageText, setDrawerMessageText] = useState('');
   const [drawerIsMessageSubmitting, setDrawerIsMessageSubmitting] = useState(false);
 
+  // Queries detail workspace states
+  const [queryTicket, setQueryTicket] = useState(null);
+  const [queryMessages, setQueryMessages] = useState([]);
+  const [queryComment, setQueryComment] = useState('');
+  const [queryIsSubmitting, setQueryIsSubmitting] = useState(false);
+
   const QUICK_REPLIES = [
     "Hello, we have received your query and our team is reviewing the details.",
     "Sure, we have assigned this to our operations team. Expected resolution within 24 hours.",
@@ -75,6 +81,37 @@ const AdminDashboard = () => {
     const refreshEvent = String(Date.now());
     localStorage.setItem('tickets:lastChanged', refreshEvent);
     window.dispatchEvent(new CustomEvent('tickets:changed', { detail: refreshEvent }));
+  };
+
+  const getRelativeTime = (dateStr) => {
+    if (!dateStr) return 'Just now';
+    try {
+      const now = new Date();
+      const created = new Date(dateStr);
+      const diffMs = now - created;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours} hours ago`;
+      if (diffDays < 30) return diffDays === 1 ? '1 day ago' : `${diffDays} days ago`;
+      return created.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  const getAssignedTeam = (categoryName) => {
+    if (!categoryName) return 'Operations';
+    const name = categoryName.toLowerCase();
+    if (name.includes('kyc') || name.includes('vendor')) return 'Vendor Management';
+    if (name.includes('payment') || name.includes('billing') || name.includes('finance')) return 'Finance';
+    if (name.includes('portal') || name.includes('technical') || name.includes('database') || name.includes('it ')) return 'IT Support';
+    if (name.includes('compliance') || name.includes('gst')) return 'Compliance';
+    if (name.includes('contract') || name.includes('document')) return 'Operations';
+    return 'Operations';
   };
 
   const fetchAnnouncementsAndStats = async () => {
@@ -172,9 +209,91 @@ const AdminDashboard = () => {
     }
   };
 
+  const openQueryTicket = async (ticket) => {
+    setQueryTicket(ticket);
+    try {
+      const res = await api.get(`/tickets/${ticket.ticket_id}`);
+      setQueryTicket(res.data);
+      setQueryMessages(res.data.messages || []);
+      setActiveTab('Queries');
+    } catch (err) {
+      console.error('Error opening query ticket:', err);
+      alert('Failed to open ticket details.');
+    }
+  };
+
+  const refreshQueryTicket = async (ticketId = queryTicket?.ticket_id) => {
+    if (!ticketId) return;
+    const res = await api.get(`/tickets/${ticketId}`);
+    setQueryTicket(res.data);
+    setQueryMessages(res.data.messages || []);
+  };
+
+  const handleQueryStatusChange = async (status) => {
+    if (!queryTicket) return;
+    try {
+      await api.put(`/tickets/${queryTicket.ticket_id}/status`, { status });
+      await fetchTickets({ silent: true });
+      await refreshQueryTicket(queryTicket.ticket_id);
+      notifyTicketsChanged();
+    } catch (err) {
+      console.error('Error updating query status:', err);
+      alert('Failed to update status.');
+    }
+  };
+
+  const handleQueryPriorityChange = async (priority) => {
+    if (!queryTicket) return;
+    try {
+      await api.put(`/tickets/${queryTicket.ticket_id}/priority`, { priority });
+      await fetchTickets({ silent: true });
+      await refreshQueryTicket(queryTicket.ticket_id);
+      notifyTicketsChanged();
+    } catch (err) {
+      console.error('Error updating query priority:', err);
+      alert('Failed to update priority.');
+    }
+  };
+
+  const handleQueryAgentChange = async (agent) => {
+    if (!queryTicket) return;
+    try {
+      await api.put(`/tickets/${queryTicket.ticket_id}/assign`, { agent });
+      await fetchTickets({ silent: true });
+      await refreshQueryTicket(queryTicket.ticket_id);
+      notifyTicketsChanged();
+    } catch (err) {
+      console.error('Error assigning query:', err);
+      alert('Failed to assign ticket.');
+    }
+  };
+
+  const handleSendQueryComment = async (e) => {
+    if (e) e.preventDefault();
+    if (!queryTicket || !queryComment.trim()) return;
+
+    setQueryIsSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append('message_text', queryComment);
+      await api.post(`/tickets/${queryTicket.ticket_id}/message`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setQueryComment('');
+      await fetchTickets({ silent: true });
+      await refreshQueryTicket(queryTicket.ticket_id);
+      notifyTicketsChanged();
+    } catch (err) {
+      console.error('Error sending query comment:', err);
+      alert('Failed to send comment.');
+    } finally {
+      setQueryIsSubmitting(false);
+    }
+  };
+
   // Poll for messages, announcements, and drawer details
   useEffect(() => {
-    if (activeTab !== 'Messages' && !drawerTicket) return;
+    if (activeTab !== 'Messages' && !drawerTicket && !queryTicket) return;
     
     if (activeTab === 'Messages') {
       fetchAnnouncementsAndStats();
@@ -186,6 +305,13 @@ const AdminDashboard = () => {
     if (drawerTicket?.ticket_id) {
       api.get(`/tickets/${drawerTicket.ticket_id}`).then(res => {
         setDrawerMessages(res.data.messages || []);
+      }).catch(err => console.error(err));
+    }
+
+    if (queryTicket?.ticket_id) {
+      api.get(`/tickets/${queryTicket.ticket_id}`).then(res => {
+        setQueryTicket(res.data);
+        setQueryMessages(res.data.messages || []);
       }).catch(err => console.error(err));
     }
     
@@ -201,16 +327,25 @@ const AdminDashboard = () => {
           setDrawerMessages(res.data.messages || []);
         }).catch(err => console.error(err));
       }
+      if (queryTicket?.ticket_id) {
+        api.get(`/tickets/${queryTicket.ticket_id}`).then(res => {
+          setQueryTicket(res.data);
+          setQueryMessages(res.data.messages || []);
+        }).catch(err => console.error(err));
+      }
     }, 5000);
     
     return () => clearInterval(interval);
-  }, [activeTab, activeMessageTicket?.ticket_id, drawerTicket?.ticket_id]);
+  }, [activeTab, activeMessageTicket?.ticket_id, drawerTicket?.ticket_id, queryTicket?.ticket_id]);
 
   useEffect(() => {
     if (tickets.length > 0 && !activeMessageTicket) {
       setActiveMessageTicket(tickets[0]);
     }
-  }, [tickets, activeMessageTicket]);
+    if (activeTab === 'Queries' && tickets.length > 0 && !queryTicket) {
+      openQueryTicket(tickets[0]);
+    }
+  }, [tickets, activeMessageTicket, activeTab, queryTicket]);
 
   const handleSendMessage = async (e) => {
     if (e) e.preventDefault();
@@ -405,7 +540,7 @@ const AdminDashboard = () => {
       )
     },
     {
-      name: 'My Queries', icon: (
+      name: 'Queries', icon: (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
           <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
         </svg>
@@ -448,7 +583,7 @@ const AdminDashboard = () => {
       case 'In Progress':
         return 'bg-brandNavy/10 text-brandNavy border-brandNavy/20';
       case 'Resolved':
-        return 'bg-brandNavy/10 text-brandNavy border-brandNavy/20';
+        return 'bg-green-50 text-green-700 border-green-200';
       case 'Urgent':
         return 'bg-brandRed/10 text-brandRed border-brandRed/20';
       default:
@@ -542,6 +677,8 @@ const AdminDashboard = () => {
     switch (activeTab) {
       case 'Dashboard':
         return renderDashboard();
+      case 'Queries':
+        return renderQueries();
       case 'Messages':
         return renderMessages();
       case 'Analytics':
@@ -784,10 +921,10 @@ const AdminDashboard = () => {
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
             <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 font-sora tracking-tight leading-none">
-              Good Morning, Admin 👋
+              Good Morning, Admin!
             </h1>
             <p className="text-xs text-slate-400 mt-2 font-medium font-dmSans">
-              Here is what is happening across retail stores and vendor queries today.
+              z
             </p>
           </div>
           <div className="flex items-center space-x-2 bg-white border border-slate-100 shadow-sm rounded-2xl px-4 py-2 hover:border-slate-200 transition-all">
@@ -1018,7 +1155,7 @@ const AdminDashboard = () => {
                     } else if (stat === 'In Progress') {
                       statusStyle = 'bg-brandRed/10 text-brandRed border-brandRed/20';
                     } else if (stat === 'Resolved') {
-                      statusStyle = 'bg-brandNavy/10 text-brandNavy border-brandNavy/20';
+                      statusStyle = 'bg-green-50 text-green-700 border-green-200';
                     } else if (stat === 'Closed') {
                       statusStyle = 'bg-slate-150 bg-slate-100 text-slate-600 border-slate-250';
                     }
@@ -1070,6 +1207,282 @@ const AdminDashboard = () => {
                   })}
                 </tbody>
               </table>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderQueries() {
+    const selectedTicket = queryTicket || tickets[0] || null;
+    const selectedTeam = getAssignedTeam(selectedTicket?.category_name || `Category #${selectedTicket?.category_id || ''}`);
+    const attachments = selectedTicket
+      ? [
+          ...(selectedTicket.has_attachment ? [{
+            name: selectedTicket.attachment_path?.split('_').slice(1).join('_') || selectedTicket.attachment_path,
+            path: selectedTicket.attachment_path,
+            source: 'Ticket'
+          }] : []),
+          ...queryMessages
+            .filter(msg => msg.has_attachment && msg.attachment_path)
+            .map(msg => ({
+              name: msg.attachment_path.split('_').slice(1).join('_') || msg.attachment_path,
+              path: msg.attachment_path,
+              source: msg.sender_role === 'admin' ? 'Admin reply' : 'User reply'
+            }))
+        ]
+      : [];
+
+    const timeline = selectedTicket
+      ? [
+          {
+            label: `Ticket created by ${selectedTicket.vendor_name || selectedTicket.raised_by}`,
+            time: selectedTicket.created_at,
+            actor: selectedTicket.vendor_name || selectedTicket.raised_by
+          },
+          ...(selectedTicket.assigned_to ? [{
+            label: `Assigned to ${selectedTicket.assigned_to}`,
+            time: selectedTicket.created_at,
+            actor: 'Admin Manager'
+          }] : []),
+          ...queryMessages.map(msg => ({
+            label: msg.message_text,
+            time: msg.created_at,
+            actor: msg.sender_role === 'admin' ? 'Admin Manager' : (selectedTicket.vendor_name || 'User')
+          }))
+        ]
+      : [];
+
+    const statusPill = (status) => {
+      if (status === 'Resolved') {
+        return 'bg-green-50 text-green-700 border-green-200';
+      }
+      if (status === 'In Progress' || status === 'Needs Clarification' || status === 'Under Review') {
+        return 'bg-brandRed/10 text-brandRed border-brandRed/20';
+      }
+      return 'bg-brandNavy/10 text-brandNavy border-brandNavy/20';
+    };
+
+    return (
+      <div className="space-y-5 text-left">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-extrabold text-brandDarkNavy font-sora">Queries</h1>
+            <p className="text-xs text-slate-500 mt-1 font-semibold">Review, assign, update, and respond to live tickets.</p>
+          </div>
+          <span className="text-[10px] font-bold text-brandNavy bg-brandNavy/10 border border-brandNavy/20 px-3 py-1 rounded-full font-sora self-start sm:self-auto">
+            {tickets.length} Active Queries
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+          <div className="xl:col-span-4 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100">
+              <h2 className="text-xs font-extrabold text-brandDarkNavy font-sora uppercase tracking-wider">Ticket Queue</h2>
+            </div>
+            <div className="max-h-[720px] overflow-y-auto divide-y divide-slate-100">
+              {loading ? (
+                <div className="p-8 text-center text-xs font-bold text-slate-400">Loading tickets...</div>
+              ) : tickets.length === 0 ? (
+                <div className="p-8 text-center text-xs font-bold text-slate-400">No tickets available.</div>
+              ) : (
+                tickets.map(ticket => {
+                  const isSelected = selectedTicket?.ticket_id === ticket.ticket_id;
+                  return (
+                    <button
+                      key={ticket.ticket_id}
+                      type="button"
+                      onClick={() => openQueryTicket(ticket)}
+                      className={`w-full text-left px-4 py-3 transition-colors ${isSelected ? 'bg-brandNavy/5' : 'hover:bg-slate-50'}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-extrabold text-brandNavy font-sora truncate">#{ticket.ticket_id}</p>
+                          <p className="text-[11px] font-bold text-slate-700 mt-1 truncate">{ticket.title}</p>
+                          <p className="text-[10px] font-semibold text-slate-400 mt-1 truncate">
+                            {ticket.vendor_name || ticket.raised_by} · {ticket.category_name || `Category #${ticket.category_id}`}
+                          </p>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border shrink-0 ${statusPill(ticket.status)}`}>
+                          {ticket.status}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          <div className="xl:col-span-8">
+            {!selectedTicket ? (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center text-sm font-bold text-slate-400">
+                Select a ticket to view details.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-12 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="lg:col-span-8 p-5 lg:p-6 space-y-6 border-b lg:border-b-0 lg:border-r border-slate-100">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <h2 className="text-lg font-extrabold text-brandDarkNavy font-sora">Ticket #{selectedTicket.ticket_id}</h2>
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold border ${statusPill(selectedTicket.status)}`}>
+                          {selectedTicket.status || 'Open'}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-4 text-[10px] font-bold text-slate-500">
+                        <span>Created: {getRelativeTime(selectedTicket.created_at)}</span>
+                        <span>Priority: <b className={selectedTicket.priority === 'Critical' || selectedTicket.priority === 'Urgent' || selectedTicket.priority === 'High' ? 'text-brandRed' : 'text-brandNavy'}>{selectedTicket.priority}</b></span>
+                        <span>Category: {selectedTicket.category_name || `Category #${selectedTicket.category_id}`}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <section>
+                    <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora mb-3">Description</h3>
+                    <p className="text-xs text-slate-700 leading-relaxed font-semibold whitespace-pre-wrap">{selectedTicket.description}</p>
+                  </section>
+
+                  <section className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div>
+                      <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora mb-3">Vendor Details</h3>
+                      <div className="space-y-1.5 text-xs font-semibold text-slate-600">
+                        <p>Name: <span className="text-brandDarkNavy font-extrabold">{selectedTicket.vendor_name || selectedTicket.raised_by}</span></p>
+                        <p>Email: <span>{selectedTicket.raised_by}</span></p>
+                        <p>Phone: <span>Not available</span></p>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora mb-3">Assigned Team</h3>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs font-extrabold text-slate-700">{selectedTicket.assigned_to || selectedTeam}</p>
+                        <button
+                          type="button"
+                          onClick={() => handleQueryAgentChange(selectedTicket.assigned_to || AGENTS[0])}
+                          className="px-4 py-2 rounded-lg border border-brandNavy/20 text-brandNavy text-[10px] font-extrabold hover:bg-brandNavy/5"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="border-t border-slate-100 pt-5">
+                    <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora mb-3">Attachments ({attachments.length})</h3>
+                    {attachments.length === 0 ? (
+                      <p className="text-xs font-semibold text-slate-400">No attachments uploaded.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {attachments.map((file, index) => (
+                          <div key={`${file.path}-${index}`} className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3 text-xs">
+                            <div>
+                              <p className="font-extrabold text-slate-700">{file.name}</p>
+                              <p className="text-[10px] font-semibold text-slate-400">{file.source}</p>
+                            </div>
+                            <button type="button" onClick={() => downloadAttachment(file.path)} className="text-brandNavy font-extrabold hover:underline">
+                              Download
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="border-t border-slate-100 pt-5">
+                    <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora mb-4">Activity Timeline</h3>
+                    <div className="space-y-4">
+                      {timeline.map((item, index) => (
+                        <div key={`${item.time}-${index}`} className="flex gap-3">
+                          <div className={`mt-1 w-2.5 h-2.5 rounded-full shrink-0 ${index === 0 ? 'bg-brandRed' : 'bg-brandNavy'}`} />
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-400">{getRelativeTime(item.time)}</p>
+                            <p className="text-xs font-extrabold text-brandDarkNavy mt-0.5">{item.actor}</p>
+                            <p className="text-xs font-semibold text-slate-600 mt-1">{item.label}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <form onSubmit={handleSendQueryComment} className="border-t border-slate-100 pt-5">
+                    <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora mb-3">Add Internal Note / Comment</h3>
+                    <textarea
+                      value={queryComment}
+                      onChange={e => setQueryComment(e.target.value)}
+                      placeholder="Write your comment..."
+                      className="w-full min-h-[110px] rounded-xl border border-slate-200 px-4 py-3 text-xs font-semibold text-slate-700 outline-none focus:border-brandNavy resize-none"
+                    />
+                    <div className="flex justify-end mt-3">
+                      <button
+                        type="submit"
+                        disabled={queryIsSubmitting || !queryComment.trim()}
+                        className="px-6 py-2.5 rounded-lg bg-brandNavy text-white text-[10px] font-extrabold disabled:opacity-50"
+                      >
+                        Send Comment
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                <aside className="lg:col-span-4 p-5 space-y-4 bg-white">
+                  <div>
+                    <label className="block text-xs font-extrabold text-brandDarkNavy font-sora mb-2">Update Status</label>
+                    <select value={selectedTicket.status || 'Open'} onChange={e => handleQueryStatusChange(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-3 text-xs font-bold outline-none focus:border-brandNavy">
+                      <option value="Open">Open</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Under Review">Under Review</option>
+                      <option value="Needs Clarification">Waiting for User</option>
+                      <option value="Resolved">Resolved</option>
+                      <option value="Closed">Closed</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-extrabold text-brandDarkNavy font-sora mb-2">Change Priority</label>
+                    <select value={selectedTicket.priority || 'Medium'} onChange={e => handleQueryPriorityChange(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-3 text-xs font-bold outline-none focus:border-brandNavy">
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                      <option value="Critical">Critical</option>
+                      <option value="Urgent">Urgent</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-extrabold text-brandDarkNavy font-sora mb-2">Assign Team</label>
+                    <select value={selectedTicket.assigned_to || 'Unassigned'} onChange={e => handleQueryAgentChange(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-3 text-xs font-bold outline-none focus:border-brandNavy">
+                      <option value="Unassigned">Unassigned</option>
+                      {AGENTS.map(agent => <option key={agent} value={agent}>{agent}</option>)}
+                    </select>
+                  </div>
+                  <button type="button" onClick={() => refreshQueryTicket(selectedTicket.ticket_id)} className="w-full rounded-xl bg-brandNavy text-white py-3 text-xs font-extrabold">
+                    Update Ticket
+                  </button>
+                  <button type="button" onClick={() => handleQueryStatusChange('Resolved')} className={`w-full rounded-xl border py-3 text-xs font-extrabold ${selectedTicket.status === 'Resolved' ? 'border-green-200 bg-green-50 text-green-700' : 'border-brandRed/30 text-brandRed'}`}>
+                    Mark as Resolved
+                  </button>
+                  <select onChange={e => e.target.value && handleQueryStatusChange(e.target.value)} defaultValue="" className="w-full rounded-xl border border-slate-200 px-3 py-3 text-xs font-bold text-brandNavy outline-none focus:border-brandNavy">
+                    <option value="">More Actions</option>
+                    <option value="Needs Clarification">Waiting for User</option>
+                    <option value="Closed">Close Ticket</option>
+                  </select>
+
+                  <div className="rounded-xl border border-brandNavy/10 bg-brandNavy/5 p-4">
+                    <h3 className="text-xs font-extrabold text-brandNavy font-sora mb-3">Status Guide</h3>
+                    {[
+                      ['Open', 'Newly created ticket'],
+                      ['In Progress', 'Work is being done'],
+                      ['Waiting for User', 'Awaiting user response'],
+                      ['Resolved', 'Issue resolved by admin'],
+                      ['Closed', 'Ticket closed']
+                    ].map(([label, desc]) => (
+                      <div key={label} className="mb-2 last:mb-0">
+                        <p className="text-[10px] font-extrabold text-brandNavy">{label}</p>
+                        <p className="text-[10px] font-semibold text-slate-500">{desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </aside>
+              </div>
             )}
           </div>
         </div>
@@ -1448,7 +1861,7 @@ const AdminDashboard = () => {
                     : drawerTicket.status === 'In Progress'
                       ? 'bg-brandNavy/10 text-brandNavy border-brandNavy/20'
                       : drawerTicket.status === 'Resolved'
-                        ? 'bg-brandNavy/10 text-brandNavy border-brandNavy/20'
+                        ? 'bg-green-50 text-green-700 border-green-200'
                         : 'bg-slate-100 text-slate-600 border-slate-200'
                 }`}>
                   {drawerTicket.status}
