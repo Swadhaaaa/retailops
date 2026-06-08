@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import duckdb
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from werkzeug.utils import secure_filename
 import uuid
@@ -50,6 +50,18 @@ def get_next_id(conn, table_name, id_column):
         f"SELECT COALESCE(MAX({id_column}), 0) + 1 FROM {table_name}"
     ).fetchone()
     return row[0]
+
+def calculate_sla_deadline(priority):
+    priority = priority.lower()
+
+    if priority == 'low':
+        return datetime.now() + timedelta(hours=72)
+    elif priority == 'medium':
+        return datetime.now() + timedelta(hours=48)
+    elif priority == 'high':
+        return datetime.now() + timedelta(hours=24)
+
+    return datetime.now() + timedelta(hours=48)
 
 # AI CATEGORY SUGGESTION
 @tickets_bp.route('/nlp/suggest', methods=['POST'])
@@ -122,6 +134,8 @@ def create_ticket():
         description = request.form.get('description', '').strip()
         category_id_raw = request.form.get('category_id')
         priority = request.form.get('priority') or 'Medium'
+        sla_deadline = calculate_sla_deadline(priority)
+        
 
         if not title or not description or not category_id_raw:
             conn.close()
@@ -171,11 +185,11 @@ def create_ticket():
                 attachment_path = unique_filename
 
         conn.execute("""
-            INSERT INTO tickets (
-                ticket_id, title, description, category_id, priority,
-                status, raised_by, created_at, attachment_path
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+           INSERT INTO tickets (
+                     ticket_id, title, description, category_id, priority,
+                     status, raised_by, created_at, attachment_path, sla_deadline
+                     )
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [
             ticket_id,
             title,
@@ -185,8 +199,9 @@ def create_ticket():
             'Open',
             current_user,
             datetime.now(),
-            attachment_path
-        ])
+            attachment_path,
+            sla_deadline
+            ])
 
         conn.close()
 
