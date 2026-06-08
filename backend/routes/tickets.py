@@ -5,6 +5,7 @@ from datetime import datetime
 import os
 from werkzeug.utils import secure_filename
 import uuid
+from nlp.classifier import suggest_category
 
 tickets_bp = Blueprint('tickets', __name__)
 
@@ -49,6 +50,24 @@ def get_next_id(conn, table_name, id_column):
         f"SELECT COALESCE(MAX({id_column}), 0) + 1 FROM {table_name}"
     ).fetchone()
     return row[0]
+
+# AI CATEGORY SUGGESTION
+@tickets_bp.route('/nlp/suggest', methods=['POST'])
+@jwt_required()
+def suggest_ticket_category():
+    try:
+        data = request.get_json() or {}
+        description = data.get("description", "")
+
+        category = suggest_category(description)
+
+        return jsonify({
+            "category": category,
+            "confidence": 0.9
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 def ticket_to_dict(ticket):

@@ -598,9 +598,9 @@ const AdminDashboard = () => {
   const resolvedCount = tickets.filter(t => t.status === 'Resolved').length;
 
   return (
-    <div className="min-h-screen bg-brandBg font-dmSans flex flex-col">
+    <div className="min-h-screen bg-white font-dmSans flex flex-col text-slate-800">
       {/* ----------------- TOP NAVBAR ----------------- */}
-      <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6 shrink-0 z-30 shadow-sm">
+      <header className="h-16 premium-glass border-b border-white/50 flex items-center justify-between px-6 shrink-0 z-30 sticky top-0">
         <div className="flex items-center space-x-3">
           <img src={relianceLogo} alt="Reliance Retail Logo" className="h-9 w-auto object-contain" />
           <span className="text-[10px] text-brandMuted uppercase ml-2 hidden sm:inline-block border-l pl-2 border-gray-200">Admin Console</span>
@@ -608,7 +608,7 @@ const AdminDashboard = () => {
 
         {/* User Info & Avatar */}
         <div className="flex items-center space-x-4">
-          <div className="px-3 py-1 rounded-full text-xs font-semibold bg-brandNavy/5 border border-brandNavy/10 text-brandNavy">
+          <div className="px-3 py-1 rounded-full text-xs font-semibold bg-white/70 border border-white/60 text-brandNavy shadow-sm backdrop-blur-md">
             Admin / Manager
           </div>
           <div className="flex items-center space-x-2.5">
@@ -617,7 +617,7 @@ const AdminDashboard = () => {
               <p className="text-[10px] text-gray-400">{userEmail}</p>
             </div>
             {/* Initials Circle */}
-            <div className="w-9 h-9 rounded-full bg-brandNavy text-white font-bold text-xs flex items-center justify-center border border-gray-100 shadow-sm font-sora">
+            <div className="w-9 h-9 rounded-full bg-brandNavy text-white font-bold text-xs flex items-center justify-center border border-white/70 shadow-[0_10px_24px_rgba(15,27,76,0.2)] font-sora">
               {getInitials(userName)}
             </div>
           </div>
@@ -627,7 +627,7 @@ const AdminDashboard = () => {
       {/* ----------------- CORE WORKSPACE ----------------- */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar */}
-        <aside className="w-[220px] bg-white border-r border-gray-100 shrink-0 hidden md:flex flex-col justify-between p-4 z-20">
+        <aside className="w-[220px] premium-glass border-r border-white/50 shrink-0 hidden md:flex flex-col justify-between p-4 z-20">
           <div className="space-y-1">
             {sidebarItems.map((item) => {
               const isActive = activeTab === item.name;
@@ -635,12 +635,12 @@ const AdminDashboard = () => {
                 <button
                   key={item.name}
                   onClick={() => setActiveTab(item.name)}
-                  className={`w-full flex items-center space-x-3 px-3.5 py-3 rounded-xl text-sm transition-all duration-300 relative ${isActive ? 'bg-brandNavy/5 text-brandNavy font-semibold' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
+                  className={`w-full flex items-center space-x-3 px-3.5 py-3 rounded-2xl text-sm transition-all duration-300 relative ${isActive ? 'bg-white/85 text-brandNavy font-semibold shadow-[0_12px_28px_rgba(15,27,76,0.08)] border border-white/70' : 'text-gray-500 hover:text-brandNavy hover:bg-white/70 hover:shadow-sm'
                     }`}
                 >
                   {/* Active highlight vertical strip */}
                   {isActive && (
-                    <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-md bg-brandNavy" />
+                    <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-md bg-gradient-to-b from-brandNavy to-brandRed" />
                   )}
                   <span className={`${isActive ? 'text-brandNavy' : 'text-gray-400 hover:text-gray-600'}`}>{item.icon}</span>
                   <span className="font-medium">{item.name}</span>
@@ -652,7 +652,7 @@ const AdminDashboard = () => {
           {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className="w-full flex items-center space-x-3 px-3.5 py-3 rounded-xl text-sm text-gray-500 hover:text-brandRed hover:bg-brandRed/5 transition-all duration-300"
+            className="w-full flex items-center space-x-3 px-3.5 py-3 rounded-2xl text-sm text-gray-500 hover:text-brandRed hover:bg-white/75 hover:shadow-sm transition-all duration-300"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 text-gray-400 hover:text-inherit">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
@@ -662,7 +662,7 @@ const AdminDashboard = () => {
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8 bg-[#F6F7FB]">
+        <main className="admin-canvas flex-1 overflow-y-auto p-6 md:p-8">
           <div className="max-w-6xl mx-auto space-y-8 animate-slide-up-fade">
             {renderTabContent()}
           </div>
@@ -785,18 +785,20 @@ const AdminDashboard = () => {
     const unresolvedCount = Math.max(totalCount - resolvedCount - openCount - progressCount, 0);
     const hasDashboardData = tickets.length > 0;
 
-    const chartBlue = '#07164F';
-    const chartRed = '#E31E24';
-    const chartMuted = '#CBD5E1';
+    const chartBlue = '#0F1B4C';
+    const chartRed = '#E31837';
+    const chartMuted = '#D9E2F1';
 
     const departmentChartData = {
       labels: deptList.map(d => d.label),
       datasets: [{
         label: 'Tickets',
         data: deptList.map(d => d.count),
-        backgroundColor: chartBlue,
+        backgroundColor: 'rgba(15, 27, 76, 0.82)',
         borderColor: chartBlue,
-        borderRadius: 8,
+        hoverBackgroundColor: chartRed,
+        borderRadius: 14,
+        borderSkipped: false,
         maxBarThickness: 56
       }]
     };
@@ -807,11 +809,12 @@ const AdminDashboard = () => {
         label: 'Tickets Created',
         data: monthlyCounts,
         borderColor: chartRed,
-        backgroundColor: 'rgba(227, 30, 36, 0.08)',
+        backgroundColor: 'rgba(227, 24, 55, 0.08)',
         pointBackgroundColor: '#ffffff',
         pointBorderColor: chartRed,
         pointBorderWidth: 3,
         pointRadius: 5,
+        pointHoverRadius: 7,
         tension: 0.4,
         fill: true
       }]
@@ -821,9 +824,10 @@ const AdminDashboard = () => {
       labels: ['Open', 'In Progress', 'Resolved/Closed', 'Other'],
       datasets: [{
         data: [openCount, progressCount, resolvedCount, unresolvedCount],
-        backgroundColor: [chartRed, chartBlue, '#31416F', chartMuted],
+        backgroundColor: [chartRed, chartBlue, 'rgba(15, 27, 76, 0.62)', chartMuted],
         borderColor: '#ffffff',
-        borderWidth: 3
+        borderWidth: 4,
+        hoverOffset: 6
       }]
     };
 
@@ -833,22 +837,27 @@ const AdminDashboard = () => {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: chartBlue,
+          backgroundColor: 'rgba(15, 27, 76, 0.92)',
           titleColor: '#ffffff',
           bodyColor: '#ffffff',
-          padding: 10,
-          displayColors: false
+          padding: 12,
+          cornerRadius: 12,
+          displayColors: false,
+          borderColor: 'rgba(255, 255, 255, 0.25)',
+          borderWidth: 1
         }
       },
       scales: {
         x: {
           grid: { display: false },
-          ticks: { color: '#64748B', font: { size: 11, weight: '700' } }
+          ticks: { color: '#64748B', font: { size: 11, weight: '700' } },
+          border: { display: false }
         },
         y: {
           beginAtZero: true,
-          grid: { color: '#E2E8F0', borderDash: [4, 4] },
-          ticks: { color: '#64748B', precision: 0, font: { size: 10, weight: '700' } }
+          grid: { color: 'rgba(148, 163, 184, 0.18)', drawBorder: false },
+          ticks: { color: '#64748B', precision: 0, font: { size: 10, weight: '700' } },
+          border: { display: false }
         }
       }
     };
@@ -860,10 +869,14 @@ const AdminDashboard = () => {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: chartBlue,
+          backgroundColor: 'rgba(15, 27, 76, 0.92)',
           titleColor: '#ffffff',
           bodyColor: '#ffffff',
-          displayColors: false
+          displayColors: false,
+          padding: 12,
+          cornerRadius: 12,
+          borderColor: 'rgba(255, 255, 255, 0.25)',
+          borderWidth: 1
         }
       }
     };
@@ -927,26 +940,26 @@ const AdminDashboard = () => {
               z
             </p>
           </div>
-          <div className="flex items-center space-x-2 bg-white border border-slate-100 shadow-sm rounded-2xl px-4 py-2 hover:border-slate-200 transition-all">
+          <div className="flex items-center space-x-2 premium-glass-soft rounded-2xl px-4 py-2 premium-hover">
             <div className="w-2 h-2 rounded-full bg-brandRed animate-pulse" />
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-sora">Live Monitoring</span>
           </div>
         </div>
 
         {loading && (
-          <div className="rounded-2xl border border-brandNavy/10 bg-white px-5 py-4 text-xs font-bold text-brandNavy shadow-sm">
+          <div className="rounded-2xl premium-glass px-5 py-4 text-xs font-bold text-brandNavy">
             Loading live admin dashboard data...
           </div>
         )}
 
         {dashboardError && !loading && (
-          <div className="rounded-2xl border border-brandRed/20 bg-brandRed/5 px-5 py-4 text-xs font-bold text-brandRed shadow-sm">
+          <div className="rounded-2xl border border-brandRed/20 bg-brandRed/5 px-5 py-4 text-xs font-bold text-brandRed shadow-sm backdrop-blur-md">
             {dashboardError}
           </div>
         )}
 
         {!loading && !dashboardError && !hasDashboardData && (
-          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-6 text-center shadow-sm">
+          <div className="rounded-2xl premium-glass px-5 py-6 text-center">
             <p className="text-sm font-extrabold text-brandNavy font-sora">No tickets available yet</p>
             <p className="text-xs text-slate-500 mt-1 font-dmSans">Dashboard metrics and charts will populate as tickets are created in the backend.</p>
           </div>
@@ -955,8 +968,9 @@ const AdminDashboard = () => {
         {/* ── 4 Premium Stat Cards ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
           {statCards.map((card, i) => (
-            <div key={i} className="bg-white border border-slate-100/90 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 relative group overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 rounded-full bg-slate-50 -translate-y-8 translate-x-8 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none" />
+            <div key={i} className="premium-glass premium-hover rounded-[22px] p-5 relative group overflow-hidden">
+              <div className={`absolute inset-x-0 bottom-0 h-1 ${i % 2 === 0 ? 'bg-brandNavy/70' : 'bg-brandRed/70'} opacity-80`} />
+              <div className="absolute top-0 right-0 w-28 h-28 rounded-full bg-gradient-to-br from-brandNavy/10 to-brandRed/10 -translate-y-10 translate-x-10 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none" />
               
               <div className="flex items-start justify-between relative z-10">
                 <div>
@@ -967,7 +981,7 @@ const AdminDashboard = () => {
                   </p>
                 </div>
                 
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-105 ${card.bgIcon}`}>
+                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-105 ${card.bgIcon}`}>
                   {card.icon}
                 </div>
               </div>
@@ -978,7 +992,7 @@ const AdminDashboard = () => {
         {/* ── Charts Row (2 columns) ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Vertical Bar Chart - Tickets by Department */}
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+          <div className="premium-glass premium-hover rounded-[22px] p-6">
             <div className="mb-6">
               <h2 className="text-sm font-extrabold text-slate-800 font-sora">Tickets by Department</h2>
               <p className="text-[10px] text-slate-400 mt-0.5 font-dmSans font-medium">Distribution across key operational segments</p>
@@ -994,7 +1008,7 @@ const AdminDashboard = () => {
             </div>
           </div>
           {/* Curved Line Chart - Monthly Ticket Trends */}
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+          <div className="premium-glass premium-hover rounded-[22px] p-6">
             <div className="mb-6">
               <h2 className="text-sm font-extrabold text-slate-800 font-sora">Monthly Ticket Trends</h2>
               <p className="text-[10px] text-slate-400 mt-0.5 font-dmSans font-medium">6-month ticket submission rates</p>
@@ -1014,7 +1028,7 @@ const AdminDashboard = () => {
         {/* ── Status & SLA Row (3 columns) ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Column 1: Ticket Status (Doughnut Chart) */}
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col justify-between">
+          <div className="premium-glass premium-hover rounded-[22px] p-6 flex flex-col justify-between">
             <h2 className="text-sm font-extrabold text-slate-800 font-sora mb-4">Ticket Status</h2>
             <div className="flex items-center justify-between gap-5 flex-1 py-1">
               <div className="relative w-32 h-32 shrink-0">
@@ -1051,7 +1065,7 @@ const AdminDashboard = () => {
             </div>
           </div>
           {/* Column 2: Resolution Summary */}
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col justify-between">
+          <div className="premium-glass premium-hover rounded-[22px] p-6 flex flex-col justify-between">
             <h2 className="text-sm font-extrabold text-slate-800 font-sora mb-4">Resolution Summary</h2>
             <div className="space-y-3 flex-1 flex flex-col justify-center">
               {[
@@ -1059,19 +1073,19 @@ const AdminDashboard = () => {
                 { label: 'Resolved Tickets', value: resolvedCount },
                 { label: 'Open Queue', value: openCount + progressCount }
               ].map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-3">
+                <div key={idx} className="flex items-center justify-between rounded-2xl border border-white/60 bg-white/60 px-4 py-3 shadow-sm backdrop-blur-md">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-dmSans">{item.label}</span>
                   <span className="text-sm font-extrabold text-brandNavy font-sora">{item.value}</span>
                 </div>
               ))}
             </div>
-            <div className="mt-4 px-4 py-2.5 bg-brandNavy/5 border border-brandNavy/10 rounded-2xl text-[10px] text-brandNavy font-bold font-dmSans">
+            <div className="mt-4 px-4 py-2.5 bg-brandNavy/5 border border-brandNavy/10 rounded-2xl text-[10px] text-brandNavy font-bold font-dmSans backdrop-blur-md">
               Resolution time is calculated from available ticket creation timestamps returned by the existing admin endpoint.
             </div>
           </div>
 
           {/* Column 3: Queue Snapshot */}
-          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col">
+          <div className="premium-glass premium-hover rounded-[22px] p-6 flex flex-col">
             <h2 className="text-sm font-extrabold text-slate-800 font-sora mb-4">Queue Snapshot</h2>
             <div className="space-y-2.5 flex-1 flex flex-col justify-center">
               {[
@@ -1080,7 +1094,7 @@ const AdminDashboard = () => {
                 { label: 'Closed Tickets', value: closedCount },
                 { label: 'Unassigned Tickets', value: tickets.filter(t => !t.assigned_to || t.assigned_to === 'Unassigned').length }
               ].map((stat, i) => (
-                <div key={i} className="flex items-center justify-between px-4 py-2.5 rounded-xl border border-brandNavy/10 bg-white text-brandNavy shadow-sm">
+                <div key={i} className="flex items-center justify-between px-4 py-2.5 rounded-2xl border border-white/60 bg-white/70 text-brandNavy shadow-sm backdrop-blur-md">
                   <div className="flex items-center space-x-2.5">
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${i % 2 === 0 ? 'bg-brandRed' : 'bg-brandNavy'}`} />
                     <span className="text-[10px] font-bold uppercase tracking-wider font-dmSans">{stat.label}</span>
@@ -1093,8 +1107,8 @@ const AdminDashboard = () => {
         </div>
 
         {/* ── Recent Tickets Table ── */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
+        <div className="premium-glass rounded-[22px] overflow-hidden">
+          <div className="px-6 py-5 border-b border-white/60 flex items-center justify-between flex-wrap gap-3">
             <div>
               <h2 className="text-sm font-extrabold text-slate-800 font-sora">Recent Tickets</h2>
               <p className="text-[10px] text-slate-400 mt-0.5 font-dmSans font-medium">Click on any Ticket ID to review activity and respond in the slide-over details panel.</p>
@@ -1118,7 +1132,7 @@ const AdminDashboard = () => {
             ) : (
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/70 text-[9px] text-slate-400 font-extrabold font-sora tracking-widest border-b border-slate-100 uppercase">
+                  <tr className="bg-white/55 text-[9px] text-slate-400 font-extrabold font-sora tracking-widest border-b border-white/70 uppercase backdrop-blur-md">
                     <th className="py-3.5 px-6">Ticket ID</th>
                     <th className="py-3.5 px-6">Vendor Name</th>
                     <th className="py-3.5 px-6">Category</th>
@@ -1128,7 +1142,7 @@ const AdminDashboard = () => {
                     <th className="py-3.5 px-6">Created</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-white/70">
                   {tickets.map((query) => {
                     const vendorName = query.vendor_name || query.raised_by.split('@')[0];
                     const categoryLabel = query.category_name || `Cat #${query.category_id}`;
@@ -1163,7 +1177,7 @@ const AdminDashboard = () => {
                     return (
                       <tr 
                         key={query.ticket_id} 
-                        className="hover:bg-slate-50/50 transition-colors duration-150 group"
+                        className="premium-table-row group"
                       >
                         {/* ID Clickable Link */}
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -1277,8 +1291,8 @@ const AdminDashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-          <div className="xl:col-span-4 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100">
+          <div className="xl:col-span-4 premium-glass rounded-[22px] overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/60">
               <h2 className="text-xs font-extrabold text-brandDarkNavy font-sora uppercase tracking-wider">Ticket Queue</h2>
             </div>
             <div className="max-h-[720px] overflow-y-auto divide-y divide-slate-100">
@@ -1294,7 +1308,7 @@ const AdminDashboard = () => {
                       key={ticket.ticket_id}
                       type="button"
                       onClick={() => openQueryTicket(ticket)}
-                      className={`w-full text-left px-4 py-3 transition-colors ${isSelected ? 'bg-brandNavy/5' : 'hover:bg-slate-50'}`}
+                      className={`w-full text-left px-4 py-3 transition-all ${isSelected ? 'bg-white/80 shadow-sm text-brandNavy' : 'hover:bg-white/65 hover:shadow-sm'}`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -1317,12 +1331,12 @@ const AdminDashboard = () => {
 
           <div className="xl:col-span-8">
             {!selectedTicket ? (
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center text-sm font-bold text-slate-400">
+              <div className="premium-glass rounded-[22px] p-10 text-center text-sm font-bold text-slate-400">
                 Select a ticket to view details.
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-12 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="lg:col-span-8 p-5 lg:p-6 space-y-6 border-b lg:border-b-0 lg:border-r border-slate-100">
+              <div className="grid grid-cols-1 lg:grid-cols-12 premium-glass rounded-[22px] overflow-hidden">
+                <div className="lg:col-span-8 p-5 lg:p-6 space-y-6 border-b lg:border-b-0 lg:border-r border-white/60">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-3 flex-wrap">
@@ -1360,7 +1374,7 @@ const AdminDashboard = () => {
                         <button
                           type="button"
                           onClick={() => handleQueryAgentChange(selectedTicket.assigned_to || AGENTS[0])}
-                          className="px-4 py-2 rounded-lg border border-brandNavy/20 text-brandNavy text-[10px] font-extrabold hover:bg-brandNavy/5"
+                          className="px-4 py-2 rounded-xl border border-brandNavy/20 text-brandNavy text-[10px] font-extrabold hover:bg-brandNavy/5 premium-hover"
                         >
                           Change
                         </button>
@@ -1375,7 +1389,7 @@ const AdminDashboard = () => {
                     ) : (
                       <div className="space-y-2">
                         {attachments.map((file, index) => (
-                          <div key={`${file.path}-${index}`} className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3 text-xs">
+                          <div key={`${file.path}-${index}`} className="flex items-center justify-between rounded-2xl border border-white/60 bg-white/60 px-4 py-3 text-xs shadow-sm backdrop-blur-md">
                             <div>
                               <p className="font-extrabold text-slate-700">{file.name}</p>
                               <p className="text-[10px] font-semibold text-slate-400">{file.source}</p>
@@ -1411,13 +1425,13 @@ const AdminDashboard = () => {
                       value={queryComment}
                       onChange={e => setQueryComment(e.target.value)}
                       placeholder="Write your comment..."
-                      className="w-full min-h-[110px] rounded-xl border border-slate-200 px-4 py-3 text-xs font-semibold text-slate-700 outline-none focus:border-brandNavy resize-none"
+                      className="w-full min-h-[110px] rounded-2xl border border-white/70 bg-white/65 px-4 py-3 text-xs font-semibold text-slate-700 outline-none focus:border-brandNavy resize-none shadow-sm backdrop-blur-md transition-all"
                     />
                     <div className="flex justify-end mt-3">
                       <button
                         type="submit"
                         disabled={queryIsSubmitting || !queryComment.trim()}
-                        className="px-6 py-2.5 rounded-lg bg-brandNavy text-white text-[10px] font-extrabold disabled:opacity-50"
+                        className="px-6 py-2.5 rounded-xl bg-brandNavy text-white text-[10px] font-extrabold disabled:opacity-50 premium-button"
                       >
                         Send Comment
                       </button>
@@ -1425,10 +1439,10 @@ const AdminDashboard = () => {
                   </form>
                 </div>
 
-                <aside className="lg:col-span-4 p-5 space-y-4 bg-white">
+                <aside className="lg:col-span-4 p-5 space-y-4 bg-white/42 backdrop-blur-md">
                   <div>
                     <label className="block text-xs font-extrabold text-brandDarkNavy font-sora mb-2">Update Status</label>
-                    <select value={selectedTicket.status || 'Open'} onChange={e => handleQueryStatusChange(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-3 text-xs font-bold outline-none focus:border-brandNavy">
+                    <select value={selectedTicket.status || 'Open'} onChange={e => handleQueryStatusChange(e.target.value)} className="w-full rounded-2xl border border-white/70 bg-white/75 px-3 py-3 text-xs font-bold outline-none focus:border-brandNavy shadow-sm">
                       <option value="Open">Open</option>
                       <option value="In Progress">In Progress</option>
                       <option value="Under Review">Under Review</option>
@@ -1439,7 +1453,7 @@ const AdminDashboard = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-extrabold text-brandDarkNavy font-sora mb-2">Change Priority</label>
-                    <select value={selectedTicket.priority || 'Medium'} onChange={e => handleQueryPriorityChange(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-3 text-xs font-bold outline-none focus:border-brandNavy">
+                    <select value={selectedTicket.priority || 'Medium'} onChange={e => handleQueryPriorityChange(e.target.value)} className="w-full rounded-2xl border border-white/70 bg-white/75 px-3 py-3 text-xs font-bold outline-none focus:border-brandNavy shadow-sm">
                       <option value="Low">Low</option>
                       <option value="Medium">Medium</option>
                       <option value="High">High</option>
@@ -1449,24 +1463,24 @@ const AdminDashboard = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-extrabold text-brandDarkNavy font-sora mb-2">Assign Team</label>
-                    <select value={selectedTicket.assigned_to || 'Unassigned'} onChange={e => handleQueryAgentChange(e.target.value)} className="w-full rounded-xl border border-slate-200 px-3 py-3 text-xs font-bold outline-none focus:border-brandNavy">
+                    <select value={selectedTicket.assigned_to || 'Unassigned'} onChange={e => handleQueryAgentChange(e.target.value)} className="w-full rounded-2xl border border-white/70 bg-white/75 px-3 py-3 text-xs font-bold outline-none focus:border-brandNavy shadow-sm">
                       <option value="Unassigned">Unassigned</option>
                       {AGENTS.map(agent => <option key={agent} value={agent}>{agent}</option>)}
                     </select>
                   </div>
-                  <button type="button" onClick={() => refreshQueryTicket(selectedTicket.ticket_id)} className="w-full rounded-xl bg-brandNavy text-white py-3 text-xs font-extrabold">
+                  <button type="button" onClick={() => refreshQueryTicket(selectedTicket.ticket_id)} className="w-full rounded-2xl bg-brandNavy text-white py-3 text-xs font-extrabold premium-button">
                     Update Ticket
                   </button>
-                  <button type="button" onClick={() => handleQueryStatusChange('Resolved')} className={`w-full rounded-xl border py-3 text-xs font-extrabold ${selectedTicket.status === 'Resolved' ? 'border-green-200 bg-green-50 text-green-700' : 'border-brandRed/30 text-brandRed'}`}>
+                  <button type="button" onClick={() => handleQueryStatusChange('Resolved')} className={`w-full rounded-2xl border py-3 text-xs font-extrabold transition-all hover:shadow-sm ${selectedTicket.status === 'Resolved' ? 'border-green-200 bg-green-50 text-green-700' : 'border-brandRed/30 text-brandRed bg-white/70 hover:bg-brandRed/5'}`}>
                     Mark as Resolved
                   </button>
-                  <select onChange={e => e.target.value && handleQueryStatusChange(e.target.value)} defaultValue="" className="w-full rounded-xl border border-slate-200 px-3 py-3 text-xs font-bold text-brandNavy outline-none focus:border-brandNavy">
+                  <select onChange={e => e.target.value && handleQueryStatusChange(e.target.value)} defaultValue="" className="w-full rounded-2xl border border-white/70 bg-white/75 px-3 py-3 text-xs font-bold text-brandNavy outline-none focus:border-brandNavy shadow-sm">
                     <option value="">More Actions</option>
                     <option value="Needs Clarification">Waiting for User</option>
                     <option value="Closed">Close Ticket</option>
                   </select>
 
-                  <div className="rounded-xl border border-brandNavy/10 bg-brandNavy/5 p-4">
+                  <div className="rounded-2xl border border-brandNavy/10 bg-brandNavy/5 p-4 backdrop-blur-md">
                     <h3 className="text-xs font-extrabold text-brandNavy font-sora mb-3">Status Guide</h3>
                     {[
                       ['Open', 'Newly created ticket'],
@@ -1493,7 +1507,7 @@ const AdminDashboard = () => {
   // Announcements list (static fallback helper)
   function renderAnalytics() {
     return (
-      <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm text-left">
+      <div className="premium-glass rounded-[24px] p-8 text-left">
         <h3 className="text-lg font-extrabold text-[#0B1F5F] font-sora">Operational Insights</h3>
         <p className="text-xs text-gray-400 mt-1">Real-time charts and metric graphs detail service levels and SLA performance.</p>
         <div className="py-12 text-center text-gray-400 text-xs font-bold">Analytics dashboards are fully operational.</div>
@@ -1503,7 +1517,7 @@ const AdminDashboard = () => {
 
   function renderProfile() {
     return (
-      <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm text-left">
+      <div className="premium-glass rounded-[24px] p-8 text-left">
         <h3 className="text-lg font-extrabold text-[#0B1F5F] font-sora">Admin Profile Settings</h3>
         <p className="text-xs text-gray-400 mt-1">Manage admin preferences, notifications, and integration settings.</p>
         <div className="py-12 text-center text-gray-400 text-xs font-bold">Profile features are fully operational.</div>
@@ -1515,7 +1529,7 @@ const AdminDashboard = () => {
   function renderMessages() {
     if (tickets.length === 0) {
       return (
-        <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm text-center">
+        <div className="premium-glass rounded-[24px] p-8 text-center">
           <p className="text-gray-400 text-xs font-bold">No active message streams available.</p>
         </div>
       );
@@ -1565,7 +1579,7 @@ const AdminDashboard = () => {
             { label: 'Resolved Tickets', count: messagesStats.resolved, bg: 'bg-brandNavy/10', text: 'text-brandNavy' },
             { label: 'Announcements', count: messagesStats.announcements, bg: 'bg-brandRed/10', text: 'text-brandRed' }
           ].map((stat, idx) => (
-            <div key={idx} className="bg-white border border-gray-100 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+            <div key={idx} className="premium-glass-soft premium-hover rounded-[20px] p-4 flex items-center justify-between">
               <div>
                 <p className="text-[10px] text-gray-400 font-extrabold uppercase font-sora tracking-wider">{stat.label}</p>
                 <h4 className="text-lg font-extrabold text-brandDarkNavy font-sora mt-0.5 leading-none">{stat.count}</h4>
@@ -1578,7 +1592,7 @@ const AdminDashboard = () => {
         {/* 3-Column Message Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
           {/* Column 1: Recent Ticket Updates */}
-          <div className="lg:col-span-3 bg-white rounded-3xl border border-gray-100 p-4 shadow-sm flex flex-col min-h-[580px]">
+          <div className="lg:col-span-3 premium-glass rounded-[24px] p-4 flex flex-col min-h-[580px]">
             <div className="flex items-center justify-between mb-4 px-1">
               <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora uppercase tracking-wider">All active conversations</h3>
             </div>
@@ -1595,7 +1609,7 @@ const AdminDashboard = () => {
                 value={messagesSearchQuery}
                 onChange={e => setMessagesSearchQuery(e.target.value)}
                 placeholder="Search by Ticket ID..."
-                className="w-full pl-9 pr-4 py-2 border border-gray-150 rounded-xl outline-none focus:border-brandNavy/50 text-xs font-bold text-gray-700 bg-gray-50/50"
+                className="w-full pl-9 pr-4 py-2 border border-white/70 rounded-2xl outline-none focus:border-brandNavy/50 text-xs font-bold text-gray-700 bg-white/70 shadow-sm backdrop-blur-md"
               />
             </div>
 
@@ -1612,8 +1626,8 @@ const AdminDashboard = () => {
                     }}
                     className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-start space-x-3 text-left ${
                       isSelected
-                        ? 'bg-brandNavy/[0.03] border-brandNavy/20 shadow-sm'
-                        : 'bg-white border-gray-100 hover:bg-gray-50/50'
+                        ? 'bg-white/85 border-brandNavy/20 shadow-sm'
+                        : 'bg-white/55 border-white/60 hover:bg-white/80 hover:shadow-sm'
                     }`}
                   >
                     <div className="flex-1 min-w-0">
@@ -1628,7 +1642,7 @@ const AdminDashboard = () => {
           </div>
 
           {/* Column 2: Active Chat Area */}
-          <div className="lg:col-span-6 bg-white rounded-3xl border border-gray-100 p-4 shadow-sm flex flex-col justify-between min-h-[580px]">
+          <div className="lg:col-span-6 premium-glass rounded-[24px] p-4 flex flex-col justify-between min-h-[580px]">
             {activeMessageTicket ? (
               <>
                 {/* Chat Header */}
@@ -1654,7 +1668,7 @@ const AdminDashboard = () => {
                       <div key={idx} className={`flex items-start space-x-2.5 max-w-[85%] ${isSupport ? 'ml-auto flex-row-reverse space-x-reverse text-right' : 'mr-auto text-left'}`}>
                         {/* Avatar */}
                         {isSupport ? (
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-brandNavy shadow-sm shrink-0">
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-brandNavy shadow-[0_8px_20px_rgba(15,27,76,0.2)] shrink-0">
                             {getInitials(userName)}
                           </div>
                         ) : (
@@ -1671,8 +1685,8 @@ const AdminDashboard = () => {
                           
                           <div className={`p-3 rounded-2xl text-xs font-medium leading-relaxed ${
                             isSupport
-                              ? 'bg-brandNavy/5 border border-brandNavy/10 text-gray-800 rounded-tr-none'
-                              : 'bg-brandNavy/10 border border-brandNavy/20 text-gray-800 rounded-tl-none'
+                              ? 'bg-white/75 border border-brandNavy/10 text-gray-800 rounded-tr-none shadow-sm backdrop-blur-md'
+                              : 'bg-brandNavy/10 border border-brandNavy/20 text-gray-800 rounded-tl-none shadow-sm backdrop-blur-md'
                           }`}>
                             <p className="whitespace-pre-line">{msg.message_text}</p>
                             
@@ -1705,7 +1719,7 @@ const AdminDashboard = () => {
                   </div>
 
                   {/* Textarea */}
-                  <div className="border border-gray-200 rounded-2xl p-2 bg-gray-50/30 flex flex-col justify-between min-h-[90px] relative focus-within:border-brandNavy/30 transition-all">
+                  <div className="border border-white/70 rounded-2xl p-2 bg-white/65 shadow-sm backdrop-blur-md flex flex-col justify-between min-h-[90px] relative focus-within:border-brandNavy/30 transition-all">
                     <textarea
                       value={messageText}
                       onChange={e => setMessageText(e.target.value)}
@@ -1736,7 +1750,7 @@ const AdminDashboard = () => {
                         <button
                           type="button"
                           onClick={() => document.getElementById('admin-message-file').click()}
-                          className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 text-[10px] font-bold"
+                          className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-white/80 border border-white/70 text-gray-500 hover:bg-white text-[10px] font-bold shadow-sm transition-all"
                         >
                           <span>Attach File</span>
                         </button>
@@ -1745,13 +1759,13 @@ const AdminDashboard = () => {
                           <button
                             type="button"
                             onClick={() => setQuickRepliesOpen(!quickRepliesOpen)}
-                            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 text-[10px] font-bold"
+                            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-white/80 border border-white/70 text-gray-500 hover:bg-white text-[10px] font-bold shadow-sm transition-all"
                           >
                             <span>Quick Replies</span>
                           </button>
 
                           {quickRepliesOpen && (
-                            <div className="absolute left-0 bottom-full mb-2 w-56 bg-white border border-gray-200 rounded-xl shadow-lg py-1 z-30 font-medium">
+                            <div className="absolute left-0 bottom-full mb-2 w-56 premium-glass rounded-2xl py-1 z-30 font-medium overflow-hidden">
                               {QUICK_REPLIES.map((reply, idx) => (
                                 <button
                                   key={idx}
@@ -1773,7 +1787,7 @@ const AdminDashboard = () => {
                       <button
                         type="submit"
                         disabled={isMessageSubmitting}
-                        className="flex items-center space-x-1.5 px-6 py-2.5 rounded-xl text-white text-[10px] font-bold shadow-md bg-brandNavy hover:bg-brandDarkNavy transition-all shrink-0"
+                        className="flex items-center space-x-1.5 px-6 py-2.5 rounded-xl text-white text-[10px] font-bold bg-brandNavy hover:bg-brandDarkNavy transition-all shrink-0 premium-button"
                       >
                         <span>Send Response</span>
                       </button>
@@ -1789,7 +1803,7 @@ const AdminDashboard = () => {
           {/* Column 3: Contextual Details */}
           <div className="lg:col-span-3 space-y-4">
             {activeMessageTicket ? (
-              <div className="bg-white rounded-3xl border border-gray-100 p-4.5 shadow-sm text-left">
+              <div className="premium-glass rounded-[24px] p-4.5 text-left">
                 <h4 className="text-xs font-extrabold text-brandDarkNavy font-sora uppercase tracking-wider mb-3">Ticket Details</h4>
                 <div className="space-y-2.5 text-[11px] font-bold text-gray-600">
                   <div className="flex justify-between">
@@ -1813,7 +1827,7 @@ const AdminDashboard = () => {
             ) : null}
 
             {/* System Announcements */}
-            <div className="bg-white rounded-3xl border border-gray-100 p-4.5 shadow-sm text-left">
+            <div className="premium-glass rounded-[24px] p-4.5 text-left">
               <h4 className="text-xs font-extrabold text-brandDarkNavy font-sora uppercase tracking-wider mb-3.5">Announcements Seeding</h4>
               <div className="space-y-3">
                 {announcements.map((ann) => (

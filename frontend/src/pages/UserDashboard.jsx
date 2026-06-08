@@ -496,6 +496,8 @@ const UserDashboard = () => {
   const [formCategory, setFormCategory] = useState('1');
   const [formPriority, setFormPriority] = useState('Medium');
   const [formDescription, setFormDescription] = useState('');
+  const [aiSuggestion, setAiSuggestion] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [attachment, setAttachment] = useState(null);
@@ -630,6 +632,8 @@ const UserDashboard = () => {
     setIsCategoryLocked(false);
     setFormSubject('');
     setFormDescription('');
+    setAiSuggestion('');
+    setAiLoading(false);
     setFormPriority('Medium');
     setAttachment(null);
     setAttachmentError('');
@@ -695,6 +699,42 @@ const UserDashboard = () => {
     if (!file) return;
     if (file.size > 25 * 1024 * 1024) { setAttachmentError('Maximum file size is 25MB'); setAttachment(null); return; }
     setAttachmentError(''); setAttachment(file);
+  };
+
+  const getAISuggestion = async (description) => {
+    if (description.length < 15) {
+      setAiSuggestion('');
+      setAiLoading(false);
+      return;
+    }
+
+    try {
+      setAiLoading(true);
+
+      const res = await api.post('/tickets/nlp/suggest', {
+        description
+      });
+
+      const suggestedCategory = res.data.category || res.data.suggestion?.category_name || '';
+      setAiSuggestion(suggestedCategory);
+    } catch (err) {
+      console.error('AI category suggestion failed:', err);
+      setAiSuggestion('');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleApplyAISuggestion = () => {
+    if (isCategoryLocked || !aiSuggestion) return;
+
+    const matchedCategory = categories.find(
+      category => category.name.toLowerCase() === aiSuggestion.toLowerCase()
+    );
+
+    if (matchedCategory) {
+      setFormCategory(matchedCategory.category_id.toString());
+    }
   };
 
   const handleDragOver = (e) => e.preventDefault();
@@ -2193,8 +2233,32 @@ const UserDashboard = () => {
                   <div>
                     <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Description</label>
                     <textarea required rows={isCategoryLocked ? 4 : 2} placeholder={getCategoryPlaceholders(formCategory).description}
-                      value={formDescription} onChange={e => setFormDescription(e.target.value)}
+                      value={formDescription} onChange={e => {
+                        const value = e.target.value;
+                        setFormDescription(value);
+                        getAISuggestion(value);
+                      }}
                       className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-sm bg-gray-50/50 resize-none font-medium text-gray-700" />
+                    {aiLoading && (
+                      <p className="mt-1.5 text-[10px] font-bold text-brandNavy">
+                        🤖 Analyzing ticket...
+                      </p>
+                    )}
+                    {aiSuggestion && (
+                      <div className="mt-2 rounded-lg border border-brandNavy/10 bg-brandNavy/5 px-3 py-2 flex items-center justify-between gap-3">
+                        <p className="text-[10px] font-bold text-brandDarkNavy">
+                          💡 AI Suggested Category: <span className="text-brandNavy">{aiSuggestion}</span>
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleApplyAISuggestion}
+                          disabled={isCategoryLocked}
+                          className="shrink-0 rounded-md bg-brandNavy px-2.5 py-1.5 text-[9px] font-extrabold uppercase tracking-wider text-white transition-colors hover:bg-brandDarkNavy disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Apply Suggestion
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div>
