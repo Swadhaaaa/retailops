@@ -2,9 +2,37 @@ import React, { useContext, useState, useEffect, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { RoleContext } from '../context/RoleContext';
 import { useNavigate } from 'react-router-dom';
+import { Bar, Doughnut, Line, PolarArea } from 'react-chartjs-2';
+import {
+  ArcElement,
+  BarElement,
+  CategoryScale,
+  Chart as ChartJS,
+  Filler,
+  Legend,
+  LinearScale,
+  LineElement,
+  PointElement,
+  RadialLinearScale,
+  Tooltip
+} from 'chart.js';
 import api from '../utils/api';
 import relianceLogo from '../assets/reliance_logo.png';
 import DefaultCategoryIcon from '../components/DefaultCategoryIcon';
+import RaiseTicketModal from '../components/RaiseTicketModal';
+
+ChartJS.register(
+  ArcElement,
+  BarElement,
+  CategoryScale,
+  Filler,
+  Legend,
+  LinearScale,
+  LineElement,
+  PointElement,
+  RadialLinearScale,
+  Tooltip
+);
 
 /* ─────────────────────────────────────────────
    GLOBAL STYLES injected once
@@ -347,6 +375,7 @@ const UserDashboard = () => {
   const [isCategoryLocked, setIsCategoryLocked] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [isSubmittedSuccessfully, setIsSubmittedSuccessfully] = useState(false);
+  const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
 
   // Messages Specific States
   const [messages, setMessages] = useState([]);
@@ -627,6 +656,28 @@ const UserDashboard = () => {
     setIsModalOpen(true);
   };
 
+  const openChatSupport = () => {
+    switchTab('Messages');
+    if (!activeMessageTicket && tickets.length > 0) {
+      setActiveMessageTicket(tickets[0]);
+      fetchActiveTicketMessages(tickets[0].ticket_id);
+    }
+  };
+
+  const openContactSupport = () => {
+    setIsCategoryLocked(false);
+    setFormCategory(categories[0]?.category_id?.toString() || '1');
+    setFormPriority('Medium');
+    setFormSubject('Contact support request');
+    setFormDescription('');
+    setAttachment(null);
+    setAttachmentError('');
+    setAiSuggestion('');
+    setAiLoading(false);
+    setIsSubmittedSuccessfully(false);
+    setIsModalOpen(true);
+  };
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setIsCategoryLocked(false);
@@ -781,6 +832,13 @@ const UserDashboard = () => {
             </span>
           )}
         </div>
+      )
+    },
+    {
+      name: 'Analytics', icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v5.625C7.5 19.346 6.996 19.875 6.375 19.875h-2.25A1.375 1.375 0 0 1 3 18.5v-5.375zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v10.125c0 .621-.504 1.125-1.125 1.125h-2.25a1.375 1.375 0 0 1-1.375-1.375V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v14.625c0 .621-.504 1.125-1.125 1.125h-2.25a1.375 1.375 0 0 1-1.375-1.375V4.125z" />
+        </svg>
       )
     },
     {
@@ -1375,6 +1433,22 @@ const UserDashboard = () => {
       t.title.toLowerCase().includes(messagesSearchQuery.toLowerCase())
     );
 
+    const getConversationUpdateState = (status) => {
+      if (status === 'Resolved' || status === 'Closed') {
+        return { label: 'Resolved', style: 'text-green-600' };
+      }
+      if (status === 'In Progress') {
+        return { label: 'In Progress', style: 'text-amber-600' };
+      }
+      if (status === 'Under Review') {
+        return { label: 'Under Review', style: 'text-amber-600' };
+      }
+      if (status === 'Needs Clarification') {
+        return { label: 'Support feedback', style: 'text-amber-600' };
+      }
+      return { label: 'No new updates', style: 'text-brandRed' };
+    };
+
     // Format helper
     const formatDate = (dateStr) => {
       if (!dateStr) return '';
@@ -1470,6 +1544,7 @@ const UserDashboard = () => {
                 const isSelected = activeMessageTicket?.ticket_id === t.ticket_id;
                 // Compute last message and sender
                 const isUnread = t.status === 'Needs Clarification';
+                const updateState = getConversationUpdateState(t.status);
                 return (
                   <div
                     key={t.ticket_id}
@@ -1496,8 +1571,8 @@ const UserDashboard = () => {
                         )}
                       </div>
                       <h4 className="text-[11px] font-extrabold text-gray-800 truncate mt-0.5">{t.title}</h4>
-                      <p className="text-[9px] text-brandRed mt-1 font-bold">
-                        {t.status === 'Needs Clarification' ? 'Support feedback' : (t.status === 'Resolved' ? 'Resolved' : 'No new updates')}
+                      <p className={`text-[9px] mt-1 font-bold ${updateState.style}`}>
+                        {updateState.label}
                       </p>
                     </div>
                   </div>
@@ -1712,7 +1787,7 @@ const UserDashboard = () => {
                         disabled={isMessageSubmitting}
                         className={`flex items-center space-x-1.5 px-6 py-2.5 rounded-xl text-white text-[10px] font-bold shadow-md transition-all shrink-0 ${buttonColor}`}
                       >
-                        <svg className="w-3 h-3 rotate-45 -mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3 h-3 -rotate-45 -mt-0.5" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/>
                         </svg>
                         <span>Send</span>
@@ -1822,50 +1897,293 @@ const UserDashboard = () => {
   /* ══════════════════════════════════════════
      ANALYTICS TAB
   ══════════════════════════════════════════ */
-  const renderAnalytics = () => (
-    <div className="space-y-8 text-left">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-extrabold text-brandDarkNavy font-sora">Operational Insights</h1>
-        <p className="text-sm text-gray-500 mt-1">Real-time metric graphs detailing service performance and ticket resolution SLAs.</p>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[
-          { label: 'SLA Compliance', val: '98.4%', color: 'text-emerald-600', bar: 'bg-emerald-500', barW: '98.4%', sub: 'Target: 95.0% SLA Threshold' },
-          { label: 'Resolution Speed', val: '4.2 Hours', color: isVendor ? 'text-brandRed' : 'text-brandNavy', bar: isVendor ? 'bg-brandRed' : 'bg-brandNavy', barW: '85%', sub: 'Average ticket close speed this month' },
-          { label: 'Customer Satisfaction', val: '4.8 / 5.0', color: 'text-amber-500', bar: 'bg-amber-400', barW: '96%', sub: 'Feedback score from operations desk' }
-        ].map(s => (
-          <div key={s.label} className="stat-card bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <span className="text-[10px] text-gray-400 font-extrabold uppercase font-sora tracking-widest">{s.label}</span>
-            <p className={`text-2xl font-extrabold font-sora mt-1 ${s.color}`}>{s.val}</p>
-            <p className="text-xs text-gray-500 mt-2 font-semibold font-dmSans">{s.sub}</p>
-            <div className="w-full bg-gray-100 h-1.5 rounded-full mt-4 overflow-hidden">
-              <div className={`${s.bar} h-full rounded-full bar-animate`} style={{ width: s.barW }} />
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
+  const renderAnalytics = () => {
+    const parseTicketDate = (value) => {
+      if (!value) return null;
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? null : date;
+    };
+    const isResolvedStatus = (status) => status === 'Resolved' || status === 'Closed';
+    const primaryColor = isVendor ? '#E31837' : '#0F1B4C';
+    const secondaryColor = isVendor ? '#0F1B4C' : '#E31837';
+
+    const totalCount = tickets.length;
+    const openCount = tickets.filter(t => t.status === 'Open').length;
+    const progressCount = tickets.filter(t => t.status === 'In Progress' || t.status === 'Under Review').length;
+    const clarificationCount = tickets.filter(t => t.status === 'Needs Clarification').length;
+    const resolvedCount = tickets.filter(t => isResolvedStatus(t.status)).length;
+    const urgentCount = tickets.filter(t => t.priority === 'Urgent' || t.priority === 'High').length;
+    const completionRate = totalCount ? Math.round((resolvedCount / totalCount) * 100) : 0;
+    const priorityOrder = ['Low', 'Medium', 'High', 'Urgent'];
+    const priorityValues = priorityOrder.map(priority => tickets.filter(t => t.priority === priority).length);
+    const priorityColors = ['#CBD5E1', primaryColor, '#F59E0B', '#E31837'];
+
+    const monthKeys = Array.from({ length: 6 }, (_, index) => {
+      const date = new Date();
+      date.setMonth(date.getMonth() - (5 - index), 1);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    });
+    const monthLabels = monthKeys.map(key => {
+      const [year, month] = key.split('-').map(Number);
+      return new Date(year, month - 1, 1).toLocaleString([], { month: 'short' });
+    });
+    const monthlyCreated = monthKeys.map(key =>
+      tickets.filter(ticket => {
+        const created = parseTicketDate(ticket.created_at);
+        if (!created) return false;
+        return `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}` === key;
+      }).length
+    );
+
+    const categoryCounts = tickets.reduce((acc, ticket) => {
+      const category = categories.find(cat => cat.category_id === ticket.category_id);
+      const label = category?.name || `Category #${ticket.category_id}`;
+      acc[label] = (acc[label] || 0) + 1;
+      return acc;
+    }, {});
+    const categoryData = Object.entries(categoryCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6);
+    const categoryLabels = categoryData.length ? categoryData.map(([label]) => label) : ['No tickets'];
+    const categoryValues = categoryData.length ? categoryData.map(([, count]) => count) : [0];
+
+    const chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(15, 27, 76, 0.92)',
+          titleColor: '#ffffff',
+          bodyColor: '#ffffff',
+          padding: 12,
+          cornerRadius: 12,
+          displayColors: false
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#64748B', font: { size: 10, weight: '700' } },
+          border: { display: false }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(148, 163, 184, 0.18)' },
+          ticks: { color: '#64748B', precision: 0, font: { size: 10, weight: '700' } },
+          border: { display: false }
+        }
+      }
+    };
+
+    const doughnutOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(15, 27, 76, 0.92)',
+          titleColor: '#ffffff',
+          bodyColor: '#ffffff',
+          padding: 12,
+          cornerRadius: 12,
+          displayColors: false
+        }
+      }
+    };
+
+    const polarOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(15, 27, 76, 0.92)',
+          titleColor: '#ffffff',
+          bodyColor: '#ffffff',
+          padding: 12,
+          cornerRadius: 12,
+          displayColors: false
+        }
+      },
+      scales: {
+        r: {
+          beginAtZero: true,
+          ticks: { display: false, precision: 0 },
+          grid: { color: 'rgba(148, 163, 184, 0.2)' },
+          angleLines: { color: 'rgba(148, 163, 184, 0.18)' },
+          pointLabels: { color: '#64748B', font: { size: 10, weight: '700' } }
+        }
+      }
+    };
+
+    const trendChartData = {
+      labels: monthLabels,
+      datasets: [{
+        label: 'Tickets Created',
+        data: monthlyCreated,
+        borderColor: primaryColor,
+        backgroundColor: `${primaryColor}14`,
+        pointBackgroundColor: '#ffffff',
+        pointBorderColor: primaryColor,
+        pointBorderWidth: 3,
+        pointRadius: 4,
+        tension: 0.4,
+        fill: true
+      }]
+    };
+
+    const statusChartData = {
+      labels: ['Open', 'In Progress', 'Resolved', 'Needs Clarification'],
+      datasets: [{
+        data: [openCount, progressCount, resolvedCount, clarificationCount],
+        backgroundColor: ['#EF4444', '#F59E0B', '#10B981', secondaryColor],
+        borderColor: '#ffffff',
+        borderWidth: 4,
+        hoverOffset: 6
+      }]
+    };
+
+    const categoryChartData = {
+      labels: categoryLabels,
+      datasets: [{
+        label: 'Tickets',
+        data: categoryValues,
+        backgroundColor: `${primaryColor}D9`,
+        borderColor: primaryColor,
+        borderRadius: 12,
+        borderSkipped: false,
+        maxBarThickness: 42
+      }]
+    };
+
+    const priorityChartData = {
+      labels: priorityOrder,
+      datasets: [{
+        label: 'Tickets',
+        data: priorityValues,
+        backgroundColor: priorityColors.map(color => `${color}CC`),
+        borderColor: '#ffffff',
+        borderWidth: 2
+      }]
+    };
+
+    const statCards = [
+      { label: 'Total Queries', value: totalCount, sub: 'Tickets raised by your account', color: isVendor ? 'text-brandRed' : 'text-brandNavy' },
+      { label: 'Completion Rate', value: `${completionRate}%`, sub: `${resolvedCount} resolved or closed`, color: 'text-emerald-600' },
+      { label: 'Active Work', value: progressCount, sub: 'In progress or under review', color: 'text-amber-600' },
+      { label: 'Priority Items', value: urgentCount, sub: 'High or urgent tickets', color: 'text-brandRed' }
+    ];
+
+    return (
+      <div className="space-y-8 text-left">
         <div>
-          <h3 className="font-extrabold text-base text-brandDarkNavy font-sora">Query Resolutions by Category</h3>
-          <p className="text-xs text-gray-500 mt-1 font-semibold">Monthly breakdown of successfully resolved tickets by category department.</p>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-brandDarkNavy font-sora">Operational Insights</h1>
+          <p className="text-sm text-gray-500 mt-1">Live charts from your ticket history, status movement, and category activity.</p>
         </div>
-        {[
-          { label: 'Payment Issues & Disputes', pct: 94 },
-          { label: 'Inventory & Store Audits', pct: 98 },
-          { label: 'Technical Support & APIs', pct: 100, emerald: true }
-        ].map(s => (
-          <div key={s.label} className="space-y-1.5">
-            <div className="flex justify-between text-xs font-bold text-gray-700">
-              <span>{s.label}</span><span className="font-extrabold">{s.pct}% Resolved</span>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+          {statCards.map(card => (
+            <div key={card.label} className="stat-card bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+              <span className="text-[10px] text-gray-400 font-extrabold uppercase font-sora tracking-widest">{card.label}</span>
+              <p className={`text-2xl font-extrabold font-sora mt-2 ${card.color}`}>{card.value}</p>
+              <p className="text-xs text-gray-500 mt-2 font-semibold font-dmSans">{card.sub}</p>
             </div>
-            <div className="w-full bg-gray-50 border border-gray-100/50 h-3 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full bar-animate ${s.emerald ? 'bg-emerald-500' : (isVendor ? 'bg-brandRed' : 'bg-brandNavy')}`} style={{ width: `${s.pct}%` }} />
-            </div>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="bg-white rounded-3xl border border-gray-100 p-10 text-center text-xs font-bold text-gray-400 shadow-sm">
+            Loading analytics...
           </div>
-        ))}
+        ) : (
+          <>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                <h3 className="font-extrabold text-base text-brandDarkNavy font-sora">Monthly Ticket Trend</h3>
+                <p className="text-xs text-gray-500 mt-1 font-semibold">Tickets created across the last 6 months.</p>
+                <div className="h-72 mt-6">
+                  {totalCount ? (
+                    <Line data={trendChartData} options={chartOptions} />
+                  ) : (
+                    <div className="h-full flex items-center justify-center rounded-2xl border border-dashed border-gray-200 text-xs font-bold text-gray-400">
+                      No trend data available
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                <h3 className="font-extrabold text-base text-brandDarkNavy font-sora">Tickets by Category</h3>
+                <p className="text-xs text-gray-500 mt-1 font-semibold">Top categories from your current query history.</p>
+                <div className="h-72 mt-6">
+                  {totalCount ? (
+                    <Bar data={categoryChartData} options={chartOptions} />
+                  ) : (
+                    <div className="h-full flex items-center justify-center rounded-2xl border border-dashed border-gray-200 text-xs font-bold text-gray-400">
+                      No category data available
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm xl:col-span-1">
+                <h3 className="font-extrabold text-base text-brandDarkNavy font-sora">Status Split</h3>
+                <p className="text-xs text-gray-500 mt-1 font-semibold">Current distribution of your tickets.</p>
+                <div className="h-64 mt-6 relative">
+                  {totalCount ? (
+                    <>
+                      <Doughnut data={statusChartData} options={doughnutOptions} />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span className="text-2xl font-extrabold text-brandDarkNavy font-sora">{totalCount}</span>
+                        <span className="text-[9px] text-gray-400 font-extrabold uppercase">Tickets</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="h-full flex items-center justify-center rounded-2xl border border-dashed border-gray-200 text-xs font-bold text-gray-400">
+                      No status data
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm xl:col-span-2">
+                <h3 className="font-extrabold text-base text-brandDarkNavy font-sora">Priority Mix</h3>
+                <p className="text-xs text-gray-500 mt-1 font-semibold">Polar view of ticket urgency across your queue.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-center mt-6">
+                  <div className="h-64">
+                    {totalCount ? (
+                      <PolarArea data={priorityChartData} options={polarOptions} />
+                    ) : (
+                      <div className="h-full flex items-center justify-center rounded-2xl border border-dashed border-gray-200 text-xs font-bold text-gray-400">
+                        No priority data
+                      </div>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 gap-2.5">
+                    {[
+                      ['Open', openCount, 'bg-red-50 text-red-600 border-red-100'],
+                      ['In Progress / Review', progressCount, 'bg-amber-50 text-amber-600 border-amber-100'],
+                      ['Needs Clarification', clarificationCount, 'bg-blue-50 text-blue-600 border-blue-100'],
+                      ['Resolved / Closed', resolvedCount, 'bg-emerald-50 text-emerald-600 border-emerald-100']
+                    ].map(([label, value, style]) => (
+                      <div key={label} className={`rounded-2xl border px-4 py-3 ${style}`}>
+                        <p className="text-[10px] font-extrabold uppercase tracking-wider font-sora">{label}</p>
+                        <p className="text-xl font-extrabold mt-1 font-sora">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   /* ══════════════════════════════════════════
      PROFILE TAB
@@ -2073,6 +2391,11 @@ const UserDashboard = () => {
                     )}
                   </div>
                 )},
+                { name: 'Analytics', icon: (
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v5.625C7.5 19.346 6.996 19.875 6.375 19.875h-2.25A1.375 1.375 0 0 1 3 18.5v-5.375zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v10.125c0 .621-.504 1.125-1.125 1.125h-2.25a1.375 1.375 0 0 1-1.375-1.375V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v14.625c0 .621-.504 1.125-1.125 1.125h-2.25a1.375 1.375 0 0 1-1.375-1.375V4.125z" />
+                  </svg>
+                )},
                 { name: 'Profile', icon: (
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
@@ -2110,17 +2433,17 @@ const UserDashboard = () => {
                 <span className="text-[10px] text-gray-400 font-extrabold tracking-widest uppercase block">Need Help?</span>
               </div>
               {[
-                { label: 'User Guide', icon: (
+                { label: 'User Guide', onClick: () => setIsUserGuideOpen(true), icon: (
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
                   </svg>
                 )},
-                { label: 'Chat Support', icon: (
+                { label: 'Chat Support', onClick: openChatSupport, icon: (
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
                   </svg>
                 )},
-                { label: 'Contact Support', icon: (
+                { label: 'Contact Support', onClick: undefined, icon: (
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.824-1.806-5.194-4.176-7-7l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
                   </svg>
@@ -2128,7 +2451,8 @@ const UserDashboard = () => {
               ].map((hlp, idx) => (
                 <button
                   key={idx}
-                  onClick={() => alert(`${hlp.label} will be active in release version.`)}
+                  onClick={hlp.onClick}
+                  disabled={!hlp.onClick}
                   className="w-full flex items-center space-x-3 px-3.5 py-2 hover:bg-gray-50 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-800 transition-all text-left"
                 >
                   <span className="text-gray-400">{hlp.icon}</span>
@@ -2158,165 +2482,90 @@ const UserDashboard = () => {
         </main>
       </div>
 
-      {/* ── RAISE NEW QUERY MODAL ── */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="absolute inset-0 bg-brandNavy/30 backdrop-blur-sm" onClick={handleCloseModal} />
-          <div className={`relative bg-white w-full ${isCategoryLocked ? 'max-w-xl' : 'max-w-md'} rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-10 animate-scale-in transition-all duration-300`}>
+      {/* -- RAISE NEW QUERY MODAL -- */}
+      <RaiseTicketModal
+        isOpen={isModalOpen}
+        isCategoryLocked={isCategoryLocked}
+        isVendor={isVendor}
+        isSubmittedSuccessfully={isSubmittedSuccessfully}
+        handleCloseModal={handleCloseModal}
+        buttonColor={buttonColor}
+        handleSubmitTicket={handleSubmitTicket}
+        formCategory={formCategory}
+        getCategoryPlaceholders={getCategoryPlaceholders}
+        formSubject={formSubject}
+        setFormSubject={setFormSubject}
+        categories={categories}
+        setFormCategory={setFormCategory}
+        formPriority={formPriority}
+        setFormPriority={setFormPriority}
+        formDescription={formDescription}
+        setFormDescription={setFormDescription}
+        getAISuggestion={getAISuggestion}
+        aiLoading={aiLoading}
+        aiSuggestion={aiSuggestion}
+        handleApplyAISuggestion={handleApplyAISuggestion}
+        handleDragOver={handleDragOver}
+        handleDrop={handleDrop}
+        handleFileChange={handleFileChange}
+        attachment={attachment}
+        setAttachment={setAttachment}
+        attachmentError={attachmentError}
+        isSubmitting={isSubmitting}
+      />
+
+      {isUserGuideOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brandNavy/30 backdrop-blur-sm">
+          <div className="absolute inset-0" onClick={() => setIsUserGuideOpen(false)} />
+          <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-scale-in font-dmSans">
             <div className={`h-2 w-full ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
-            
-            {isSubmittedSuccessfully ? (
-              <div className="p-8 text-center flex flex-col items-center justify-center min-h-[350px] animate-fade-in font-dmSans">
-                <div className="checkmark-wrapper">
-                  <svg className="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
-                    <circle className="checkmark-circle" cx="26" cy="26" r="25" fill="none" />
-                    <path className="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
-                  </svg>
+            <div className="p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-extrabold text-brandDarkNavy font-sora">User Guide</h3>
+                  <p className="text-xs text-gray-500 mt-1 font-semibold">Quick steps for using the QMS dashboard.</p>
                 </div>
-                <h3 className="text-xl font-extrabold text-brandDarkNavy font-sora mt-4">
-                  Query Submitted Successfully!
-                </h3>
-                <p className="text-xs text-gray-500 mt-2 font-semibold max-w-xs leading-relaxed">
-                  Your ticket has been raised. Support coordinators will update you shortly.
-                </p>
                 <button
-                  onClick={handleCloseModal}
-                  className={`mt-6 px-6 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md ${buttonColor}`}
+                  type="button"
+                  onClick={() => setIsUserGuideOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors flex-shrink-0"
                 >
-                  Close Window
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
-            ) : (
-              <div className="p-5 sm:p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-extrabold text-brandDarkNavy font-sora">Raise New Query</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">Submit a ticket to operations</p>
-                  </div>
-                  <button onClick={handleCloseModal} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-
-                <form onSubmit={handleSubmitTicket} className="space-y-3.5">
-                  <div>
-                    <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Subject / Title</label>
-                    <input type="text" required placeholder={getCategoryPlaceholders(formCategory).subject}
-                      value={formSubject} onChange={e => setFormSubject(e.target.value)}
-                      className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-sm bg-gray-50/50" />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
+              <div className="mt-5 space-y-3">
+                {[
+                  ['Raise a Query', 'Open Dashboard, choose a category, fill details, and submit your ticket.'],
+                  ['Track Status', 'Use Track Status or My Queries to follow progress, priority, and resolution.'],
+                  ['Chat Support', 'Open Messages to read admin replies and send follow-up messages.'],
+                  ['Contact Support', 'Use Contact Support to create a support request with the ticket form.']
+                ].map(([title, desc], index) => (
+                  <div key={title} className="flex gap-3 rounded-xl border border-gray-100 bg-gray-50/50 p-3">
+                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-extrabold text-white shrink-0 ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`}>
+                      {index + 1}
+                    </span>
                     <div>
-                      <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">
-                        Category
-                      </label>
-                      <select value={formCategory} onChange={e => setFormCategory(e.target.value)} disabled={isCategoryLocked}
-                        className={`w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none transition-all text-xs bg-gray-50/50 cursor-pointer font-medium text-gray-700 ${isCategoryLocked ? 'bg-gray-150/70 border-gray-200/50 text-gray-400 cursor-not-allowed' : 'focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20'}`}>
-                        {categories.map(cat => <option key={cat.category_id} value={cat.category_id}>{cat.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Priority</label>
-                      <select value={formPriority} onChange={e => setFormPriority(e.target.value)}
-                        className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-xs bg-gray-50/50 cursor-pointer font-medium text-gray-700">
-                        <option value="Low">Low</option>
-                        <option value="Medium">Medium</option>
-                        <option value="High">High</option>
-                        <option value="Urgent">Urgent</option>
-                      </select>
+                      <p className="text-xs font-extrabold text-brandDarkNavy font-sora">{title}</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5 font-semibold leading-relaxed">{desc}</p>
                     </div>
                   </div>
-
-                  <div>
-                    <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Description</label>
-                    <textarea required rows={isCategoryLocked ? 4 : 2} placeholder={getCategoryPlaceholders(formCategory).description}
-                      value={formDescription} onChange={e => {
-                        const value = e.target.value;
-                        setFormDescription(value);
-                        getAISuggestion(value);
-                      }}
-                      className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-sm bg-gray-50/50 resize-none font-medium text-gray-700" />
-                    {aiLoading && (
-                      <p className="mt-1.5 text-[10px] font-bold text-brandNavy">
-                        Analyzing ticket...
-                      </p>
-                    )}
-                    {aiSuggestion && (
-                      <div className="mt-2 rounded-lg border border-brandNavy/10 bg-brandNavy/5 px-3 py-2 flex items-center justify-between gap-3">
-                        <p className="text-[10px] font-bold text-brandDarkNavy">
-                          💡 AI Suggested Category: <span className="text-brandNavy">{aiSuggestion}</span>
-                        </p>
-                        <button
-                          type="button"
-                          onClick={handleApplyAISuggestion}
-                          disabled={isCategoryLocked}
-                          className="shrink-0 rounded-md bg-brandNavy px-2.5 py-1.5 text-[9px] font-extrabold uppercase tracking-wider text-white transition-colors hover:bg-brandDarkNavy disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          Apply Suggestion
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Attachment</label>
-                    <div
-                      onDragOver={handleDragOver} onDrop={handleDrop}
-                      onClick={() => document.getElementById('dashboard-file-upload').click()}
-                      className="border-2 border-dashed border-gray-200 rounded-xl p-3 text-center cursor-pointer hover:bg-gray-50/50 hover:border-brandNavy/30 transition-all flex flex-col items-center justify-center min-h-[90px]"
-                    >
-                      <input id="dashboard-file-upload" type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.xlsx" onChange={handleFileChange} />
-                      {!attachment ? (
-                        <>
-                          <div className="w-9 h-9 rounded-lg bg-brandNavy/10 text-brandNavy flex items-center justify-center mb-2">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-                            </svg>
-                          </div>
-                          <p className="text-xs font-bold text-brandDarkNavy font-sora">Click to upload or drag</p>
-                          <p className="text-[10px] text-gray-400 mt-0.5 font-medium">PDF, JPG, PNG, XLSX (25MB max)</p>
-                        </>
-                      ) : (
-                        <div className="flex flex-col items-center">
-                          <svg className="w-7 h-7 text-brandRed mb-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                          </svg>
-                          <p className="text-xs font-bold text-brandDarkNavy truncate max-w-[160px] font-sora">{attachment.name}</p>
-                          <p className="text-[9px] text-gray-400 mt-0.5 font-bold">{(attachment.size / (1024 * 1024)).toFixed(2)} MB</p>
-                          <button type="button" onClick={e => { e.stopPropagation(); setAttachment(null); }}
-                            className="mt-1.5 text-[9px] font-extrabold text-brandRed hover:underline uppercase tracking-wider">
-                            Remove
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    {attachmentError && <p className="text-xs text-brandRed font-bold mt-1">{attachmentError}</p>}
-                  </div>
-
-                  <div className="pt-1 flex items-center justify-end gap-2">
-                    <button type="button" onClick={handleCloseModal}
-                      className="px-4 py-2 rounded-lg text-xs font-bold text-gray-600 hover:text-gray-800 hover:bg-gray-100 border border-gray-200 transition-colors">
-                      Cancel
-                    </button>
-                    <button type="submit" disabled={isSubmitting || !formSubject || !formDescription}
-                      className={`px-5 py-2 rounded-lg text-xs font-bold text-white shadow-sm transition-all duration-300 flex items-center gap-1.5 ${buttonColor} ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}>
-                      {isSubmitting ? (
-                        <><div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" /><span>Submitting...</span></>
-                      ) : (
-                        <><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" /></svg><span>Submit</span></>
-                      )}
-                    </button>
-                  </div>
-                </form>
+                ))}
               </div>
-            )}
+              <div className="mt-5 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsUserGuideOpen(false)}
+                  className={`px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow-md transition-all ${buttonColor}`}
+                >
+                  Got it
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
-
       {/* ── TICKET DETAILS MODAL ── */}
       {selectedTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brandNavy/35 backdrop-blur-sm overflow-y-auto animate-fade-in">

@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Bar, Doughnut, Line } from 'react-chartjs-2';
+import { Bar, Doughnut, Line, PolarArea } from 'react-chartjs-2';
 import {
   BarElement,
   CategoryScale,
@@ -11,11 +11,13 @@ import {
   LinearScale,
   LineElement,
   PointElement,
+  RadialLinearScale,
   Tooltip,
   ArcElement
 } from 'chart.js';
 import api from '../utils/api';
 import relianceLogo from '../assets/reliance_logo.png';
+import AdminTicketDetails from '../components/AdminTicketDetails';
 
 ChartJS.register(
   ArcElement,
@@ -26,6 +28,7 @@ ChartJS.register(
   LinearScale,
   LineElement,
   PointElement,
+  RadialLinearScale,
   Tooltip
 );
 
@@ -35,6 +38,61 @@ const AGENTS = [
   'Amit Patel',
   'Neha Gupta',
   'Vikas Singh'
+];
+
+const INITIAL_ADMIN_DIRECTORY = [
+  {
+    id: 1,
+    name: 'Admin Manager',
+    email: 'admin@reliance.com',
+    role: 'Super Admin',
+    department: 'Supply Chain Operations',
+    status: 'Active'
+  },
+  {
+    id: 2,
+    name: 'Rahul Sharma',
+    email: 'rahul.sharma@reliance.com',
+    role: 'Support Admin',
+    department: 'Finance',
+    status: 'Active'
+  },
+  {
+    id: 3,
+    name: 'Swadha Kumari',
+    email: 'swadha.kumari@reliance.com',
+    role: 'IT Support',
+    department: 'IT Support',
+    status: 'Active'
+  },
+  {
+    id: 4,
+    name: 'Amit Patel',
+    email: 'amit.patel@reliance.com',
+    role: 'Operations Admin',
+    department: 'Operations',
+    status: 'Active'
+  },
+  {
+    id: 5,
+    name: 'Neha Gupta',
+    email: 'neha.gupta@reliance.com',
+    role: 'Compliance Admin',
+    department: 'Compliance',
+    status: 'Inactive'
+  }
+];
+
+const DEPARTMENT_DIRECTORY = [
+  { name: 'Supply Chain Operations', head: 'Admin Manager', members: 12, accent: 'brandNavy' },
+  { name: 'IT Support', head: 'Swadha Kumari', members: 8, accent: 'cyan' },
+  { name: 'Finance', head: 'Rahul Sharma', members: 10, accent: 'green' },
+  { name: 'Operations', head: 'Amit Patel', members: 15, accent: 'purple' },
+  { name: 'Compliance', head: 'Neha Gupta', members: 6, accent: 'orange' },
+  { name: 'Procurement', head: 'Vikas Singh', members: 9, accent: 'blue' },
+  { name: 'Store Operations', head: 'Emily Davis', members: 11, accent: 'teal' },
+  { name: 'Finance & Reporting', head: 'Sarah Smith', members: 7, accent: 'indigo' },
+  { name: 'Retail Operations', head: 'Robert Lee', members: 13, accent: 'rose' }
 ];
 
 const AdminDashboard = () => {
@@ -51,7 +109,6 @@ const AdminDashboard = () => {
   const [activeMessageTicket, setActiveMessageTicket] = useState(null);
   const [messageText, setMessageText] = useState('');
   const [messageAttachment, setMessageAttachment] = useState(null);
-  const [announcements, setAnnouncements] = useState([]);
   const [messagesStats, setMessagesStats] = useState({ open: 0, pending: 0, resolved: 0, announcements: 0 });
   const [messagesSearchQuery, setMessagesSearchQuery] = useState('');
   const [isMessageSubmitting, setIsMessageSubmitting] = useState(false);
@@ -68,6 +125,19 @@ const AdminDashboard = () => {
   const [queryMessages, setQueryMessages] = useState([]);
   const [queryComment, setQueryComment] = useState('');
   const [queryIsSubmitting, setQueryIsSubmitting] = useState(false);
+
+  // Admin management states
+  const [adminDirectory, setAdminDirectory] = useState(INITIAL_ADMIN_DIRECTORY);
+  const [adminSearchQuery, setAdminSearchQuery] = useState('');
+  const [isAdminFormOpen, setIsAdminFormOpen] = useState(false);
+  const [editingAdmin, setEditingAdmin] = useState(null);
+  const [adminForm, setAdminForm] = useState({
+    name: '',
+    email: '',
+    role: 'Support Admin',
+    department: 'Operations',
+    status: 'Active'
+  });
 
   const QUICK_REPLIES = [
     "Hello, we have received your query and our team is reviewing the details.",
@@ -106,7 +176,10 @@ const AdminDashboard = () => {
   const getAssignedTeam = (categoryName) => {
     if (!categoryName) return 'Operations';
     const name = categoryName.toLowerCase();
-    if (name.includes('kyc') || name.includes('vendor')) return 'Vendor Management';
+    if (name.includes('kyc') || name.includes('vendor')) return 'Supply Chain Operations';
+    if (name.includes('procurement') || name.includes('purchase')) return 'Procurement';
+    if (name.includes('store')) return 'Store Operations';
+    if (name.includes('reporting') || name.includes('budget') || name.includes('reconciliation')) return 'Finance & Reporting';
     if (name.includes('payment') || name.includes('billing') || name.includes('finance')) return 'Finance';
     if (name.includes('portal') || name.includes('technical') || name.includes('database') || name.includes('it ')) return 'IT Support';
     if (name.includes('compliance') || name.includes('gst')) return 'Compliance';
@@ -114,14 +187,12 @@ const AdminDashboard = () => {
     return 'Operations';
   };
 
-  const fetchAnnouncementsAndStats = async () => {
+  const fetchMessagesStats = async () => {
     try {
       const statsRes = await api.get('/tickets/stats');
       setMessagesStats(statsRes.data);
-      const annRes = await api.get('/tickets/announcements');
-      setAnnouncements(annRes.data);
     } catch (err) {
-      console.error('Error fetching announcements/stats:', err);
+      console.error('Error fetching message stats:', err);
     }
   };
 
@@ -268,6 +339,80 @@ const AdminDashboard = () => {
     }
   };
 
+  const resetAdminForm = () => {
+    setAdminForm({
+      name: '',
+      email: '',
+      role: 'Support Admin',
+      department: 'Operations',
+      status: 'Active'
+    });
+    setEditingAdmin(null);
+  };
+
+  const openAddAdminForm = () => {
+    resetAdminForm();
+    setIsAdminFormOpen(true);
+  };
+
+  const openEditAdminForm = (admin) => {
+    setEditingAdmin(admin);
+    setAdminForm({
+      name: admin.name,
+      email: admin.email,
+      role: admin.role,
+      department: admin.department,
+      status: admin.status
+    });
+    setIsAdminFormOpen(true);
+  };
+
+  const closeAdminForm = () => {
+    setIsAdminFormOpen(false);
+    resetAdminForm();
+  };
+
+  const handleAdminFormSubmit = (event) => {
+    event.preventDefault();
+    if (!adminForm.name.trim() || !adminForm.email.trim()) return;
+
+    if (editingAdmin) {
+      setAdminDirectory(prev =>
+        prev.map(admin =>
+          admin.id === editingAdmin.id
+            ? { ...admin, ...adminForm, name: adminForm.name.trim(), email: adminForm.email.trim() }
+            : admin
+        )
+      );
+    } else {
+      setAdminDirectory(prev => [
+        ...prev,
+        {
+          id: Date.now(),
+          ...adminForm,
+          name: adminForm.name.trim(),
+          email: adminForm.email.trim()
+        }
+      ]);
+    }
+
+    closeAdminForm();
+  };
+
+  const handleDeleteAdmin = (adminId) => {
+    setAdminDirectory(prev => prev.filter(admin => admin.id !== adminId));
+  };
+
+  const handleToggleAdminStatus = (adminId) => {
+    setAdminDirectory(prev =>
+      prev.map(admin =>
+        admin.id === adminId
+          ? { ...admin, status: admin.status === 'Active' ? 'Inactive' : 'Active' }
+          : admin
+      )
+    );
+  };
+
   const handleSendQueryComment = async (e) => {
     if (e) e.preventDefault();
     if (!queryTicket || !queryComment.trim()) return;
@@ -291,12 +436,12 @@ const AdminDashboard = () => {
     }
   };
 
-  // Poll for messages, announcements, and drawer details
+  // Poll for messages, stats, and drawer details
   useEffect(() => {
     if (activeTab !== 'Messages' && !drawerTicket && !queryTicket) return;
     
     if (activeTab === 'Messages') {
-      fetchAnnouncementsAndStats();
+      fetchMessagesStats();
       if (activeMessageTicket?.ticket_id) {
         fetchActiveTicketMessages(activeMessageTicket.ticket_id);
       }
@@ -317,7 +462,7 @@ const AdminDashboard = () => {
     
     const interval = setInterval(() => {
       if (activeTab === 'Messages') {
-        fetchAnnouncementsAndStats();
+        fetchMessagesStats();
         if (activeMessageTicket?.ticket_id) {
           fetchActiveTicketMessages(activeMessageTicket.ticket_id);
         }
@@ -402,43 +547,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const getAnnIcon = (category) => {
-    switch (category) {
-      case 'maintenance':
-        return (
-          <div className="w-8 h-8 rounded-full bg-brandRed/10 text-brandRed flex items-center justify-center shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A1.89 1.89 0 0020 18.17l-5.83-5.83M11.42 15.17l2.42-2.42M11.42 15.17L3 6.75M13.84 12.75l2.42-2.42m-2.42 2.42L21 3M16.26 10.33l-2.42 2.42M13.84 12.75L6.75 21M13.84 12.75L3 21" />
-            </svg>
-          </div>
-        );
-      case 'guidelines':
-        return (
-          <div className="w-8 h-8 rounded-full bg-brandNavy/10 text-brandNavy flex items-center justify-center shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75z" />
-            </svg>
-          </div>
-        );
-      case 'sla':
-        return (
-          <div className="w-8 h-8 rounded-full bg-yellow-50 text-yellow-600 flex items-center justify-center shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
-            </svg>
-          </div>
-        );
-      default:
-        return (
-          <div className="w-8 h-8 rounded-full bg-gray-50 text-gray-500 flex items-center justify-center shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-            </svg>
-          </div>
-        );
-    }
-  };
-
   // Fetch all tickets on mount
   const fetchTickets = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
@@ -469,7 +577,7 @@ const AdminDashboard = () => {
     window.addEventListener('focus', refreshTickets);
     document.addEventListener('visibilitychange', refreshOnVisible);
 
-    const interval = setInterval(refreshTickets, 3000);
+    const interval = setInterval(refreshTickets, 10000);
     return () => {
       clearInterval(interval);
       window.removeEventListener('tickets:changed', refreshTickets);
@@ -568,6 +676,21 @@ const AdminDashboard = () => {
       )
     },
     {
+      name: 'Departments', icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M8.25 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m4.5-6h1.5m-1.5 3h1.5m-1.5 3h1.5M8.25 21v-3.375c0-.621.504-1.125 1.125-1.125h3.25c.621 0 1.125.504 1.125 1.125V21" />
+        </svg>
+      )
+    },
+    {
+      name: 'Admin Management', icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="w-5 h-5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 3.75 6.75 5.7v4.54c0 3.9 2.19 7.47 5.25 9 3.06-1.53 5.25-5.1 5.25-9V5.7L12 3.75Z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 11.25a2.1 2.1 0 1 0 0-4.2 2.1 2.1 0 0 0 0 4.2ZM8.85 15.45c.74-1.24 1.82-1.86 3.15-1.86s2.41.62 3.15 1.86" />
+        </svg>
+      )
+    },
+    {
       name: 'Profile', icon: (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
@@ -627,23 +750,23 @@ const AdminDashboard = () => {
       {/* ----------------- CORE WORKSPACE ----------------- */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar */}
-        <aside className="w-[220px] premium-glass border-r border-white/50 shrink-0 hidden md:flex flex-col justify-between p-4 z-20">
-          <div className="space-y-1">
+        <aside className="w-[248px] premium-glass border-r border-white/50 shrink-0 hidden md:flex flex-col justify-between p-4 z-20">
+          <div className="space-y-1.5">
             {sidebarItems.map((item) => {
               const isActive = activeTab === item.name;
               return (
                 <button
                   key={item.name}
                   onClick={() => setActiveTab(item.name)}
-                  className={`w-full flex items-center space-x-3 px-3.5 py-3 rounded-2xl text-sm transition-all duration-300 relative ${isActive ? 'bg-white/85 text-brandNavy font-semibold shadow-[0_12px_28px_rgba(15,27,76,0.08)] border border-white/70' : 'text-gray-500 hover:text-brandNavy hover:bg-white/70 hover:shadow-sm'
+                  className={`w-full min-h-[48px] flex items-center gap-3 px-4 py-3 rounded-2xl text-sm text-left transition-all duration-300 relative ${isActive ? 'bg-white/85 text-brandNavy font-semibold shadow-[0_12px_28px_rgba(15,27,76,0.08)] border border-white/70' : 'text-gray-500 hover:text-brandNavy hover:bg-white/70 hover:shadow-sm'
                     }`}
                 >
                   {/* Active highlight vertical strip */}
                   {isActive && (
                     <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-md bg-gradient-to-b from-brandNavy to-brandRed" />
                   )}
-                  <span className={`${isActive ? 'text-brandNavy' : 'text-gray-400 hover:text-gray-600'}`}>{item.icon}</span>
-                  <span className="font-medium">{item.name}</span>
+                  <span className={`w-5 h-5 shrink-0 flex items-center justify-center ${isActive ? 'text-brandNavy' : 'text-gray-400 hover:text-gray-600'}`}>{item.icon}</span>
+                  <span className="font-medium whitespace-nowrap leading-none">{item.name}</span>
                 </button>
               );
             })}
@@ -652,12 +775,14 @@ const AdminDashboard = () => {
           {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className="w-full flex items-center space-x-3 px-3.5 py-3 rounded-2xl text-sm text-gray-500 hover:text-brandRed hover:bg-white/75 hover:shadow-sm transition-all duration-300"
+            className="w-full min-h-[48px] flex items-center gap-3 px-4 py-3 rounded-2xl text-sm text-left text-gray-500 hover:text-brandRed hover:bg-white/75 hover:shadow-sm transition-all duration-300"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 text-gray-400 hover:text-inherit">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-            </svg>
-            <span className="font-medium">Sign Out</span>
+            <span className="w-5 h-5 shrink-0 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 text-gray-400 hover:text-inherit">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+              </svg>
+            </span>
+            <span className="font-medium whitespace-nowrap leading-none">Sign Out</span>
           </button>
         </aside>
 
@@ -683,6 +808,10 @@ const AdminDashboard = () => {
         return renderMessages();
       case 'Analytics':
         return renderAnalytics();
+      case 'Departments':
+        return renderDepartments();
+      case 'Admin Management':
+        return renderAdminManagement();
       case 'Profile':
         return renderProfile();
       default:
@@ -718,7 +847,10 @@ const AdminDashboard = () => {
     const getAssignedTeam = (categoryName) => {
       if (!categoryName) return 'Operations';
       const name = categoryName.toLowerCase();
-      if (name.includes('kyc') || name.includes('vendor')) return 'Vendor Management';
+      if (name.includes('kyc') || name.includes('vendor')) return 'Supply Chain Operations';
+      if (name.includes('procurement') || name.includes('purchase')) return 'Procurement';
+      if (name.includes('store')) return 'Store Operations';
+      if (name.includes('reporting') || name.includes('budget') || name.includes('reconciliation')) return 'Finance & Reporting';
       if (name.includes('payment') || name.includes('billing') || name.includes('finance')) return 'Finance';
       if (name.includes('portal') || name.includes('technical') || name.includes('database') || name.includes('it ')) return 'IT Support';
       if (name.includes('compliance') || name.includes('gst')) return 'Compliance';
@@ -773,8 +905,8 @@ const AdminDashboard = () => {
       return acc;
     }, {});
 
-    const deptList = ['Vendor Management', 'IT Support', 'Finance', 'Operations', 'Compliance']
-      .map(name => ({ label: name === 'Vendor Management' ? 'Vendor Mgmt' : name, name, count: departmentCounts[name] || 0 }))
+    const deptList = DEPARTMENT_DIRECTORY
+      .map(({ name }) => ({ label: name, name, count: departmentCounts[name] || 0 }))
       .filter(item => item.count > 0 || tickets.length === 0);
 
     const totalCount = tickets.length;
@@ -1504,13 +1636,838 @@ const AdminDashboard = () => {
     );
   }
 
-  // Announcements list (static fallback helper)
   function renderAnalytics() {
+    const parseTicketDate = (value) => {
+      if (!value) return null;
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? null : date;
+    };
+    const isResolvedStatus = (status) => status === 'Resolved' || status === 'Closed';
+
+    const totalCount = tickets.length;
+    const openCount = tickets.filter(t => t.status === 'Open').length;
+    const progressCount = tickets.filter(t => t.status === 'In Progress' || t.status === 'Under Review').length;
+    const waitingCount = tickets.filter(t => t.status === 'Needs Clarification').length;
+    const resolvedCount = tickets.filter(t => isResolvedStatus(t.status)).length;
+    const urgentCount = tickets.filter(t => t.priority === 'Urgent' || t.priority === 'Critical' || t.priority === 'High').length;
+    const unassignedCount = tickets.filter(t => !t.assigned_to || t.assigned_to === 'Unassigned').length;
+    const completionRate = totalCount ? Math.round((resolvedCount / totalCount) * 100) : 0;
+
+    const monthKeys = Array.from({ length: 6 }, (_, index) => {
+      const date = new Date();
+      date.setMonth(date.getMonth() - (5 - index), 1);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    });
+    const monthLabels = monthKeys.map(key => {
+      const [year, month] = key.split('-').map(Number);
+      return new Date(year, month - 1, 1).toLocaleString([], { month: 'short' });
+    });
+    const monthlyCounts = monthKeys.map(key =>
+      tickets.filter(ticket => {
+        const created = parseTicketDate(ticket.created_at);
+        if (!created) return false;
+        return `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}` === key;
+      }).length
+    );
+
+    const teamCounts = tickets.reduce((acc, ticket) => {
+      const team = getAssignedTeam(ticket.category_name);
+      acc[team] = (acc[team] || 0) + 1;
+      return acc;
+    }, {});
+    const teamData = Object.entries(teamCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6);
+    const teamLabels = teamData.length ? teamData.map(([team]) => team) : ['No tickets'];
+    const teamValues = teamData.length ? teamData.map(([, count]) => count) : [0];
+
+    const priorityOrder = ['Low', 'Medium', 'High', 'Critical', 'Urgent'];
+    const priorityValues = priorityOrder.map(priority => tickets.filter(t => t.priority === priority).length);
+
+    const chartBlue = '#0F1B4C';
+    const chartRed = '#E31837';
+    const chartAmber = '#F59E0B';
+    const chartGreen = '#10B981';
+    const chartMuted = '#CBD5E1';
+    const priorityColors = [chartMuted, chartBlue, chartAmber, chartRed, '#B91C1C'];
+
+    const chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(15, 27, 76, 0.92)',
+          titleColor: '#ffffff',
+          bodyColor: '#ffffff',
+          padding: 12,
+          cornerRadius: 12,
+          displayColors: false,
+          borderColor: 'rgba(255, 255, 255, 0.25)',
+          borderWidth: 1
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#64748B', font: { size: 10, weight: '700' } },
+          border: { display: false }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(148, 163, 184, 0.18)', drawBorder: false },
+          ticks: { color: '#64748B', precision: 0, font: { size: 10, weight: '700' } },
+          border: { display: false }
+        }
+      }
+    };
+
+    const doughnutOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(15, 27, 76, 0.92)',
+          titleColor: '#ffffff',
+          bodyColor: '#ffffff',
+          padding: 12,
+          cornerRadius: 12,
+          displayColors: false
+        }
+      }
+    };
+
+    const polarOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(15, 27, 76, 0.92)',
+          titleColor: '#ffffff',
+          bodyColor: '#ffffff',
+          padding: 12,
+          cornerRadius: 12,
+          displayColors: false
+        }
+      },
+      scales: {
+        r: {
+          beginAtZero: true,
+          ticks: { display: false, precision: 0 },
+          grid: { color: 'rgba(148, 163, 184, 0.2)' },
+          angleLines: { color: 'rgba(148, 163, 184, 0.18)' },
+          pointLabels: { color: '#64748B', font: { size: 10, weight: '700' } }
+        }
+      }
+    };
+
+    const trendChartData = {
+      labels: monthLabels,
+      datasets: [{
+        label: 'Tickets Created',
+        data: monthlyCounts,
+        borderColor: chartRed,
+        backgroundColor: 'rgba(227, 24, 55, 0.08)',
+        pointBackgroundColor: '#ffffff',
+        pointBorderColor: chartRed,
+        pointBorderWidth: 3,
+        pointRadius: 5,
+        tension: 0.4,
+        fill: true
+      }]
+    };
+
+    const statusChartData = {
+      labels: ['Open', 'In Progress', 'Waiting', 'Resolved'],
+      datasets: [{
+        data: [openCount, progressCount, waitingCount, resolvedCount],
+        backgroundColor: [chartRed, chartAmber, chartBlue, chartGreen],
+        borderColor: '#ffffff',
+        borderWidth: 4,
+        hoverOffset: 6
+      }]
+    };
+
+    const teamChartData = {
+      labels: teamLabels,
+      datasets: [{
+        label: 'Tickets',
+        data: teamValues,
+        backgroundColor: 'rgba(15, 27, 76, 0.82)',
+        borderColor: chartBlue,
+        hoverBackgroundColor: chartRed,
+        borderRadius: 14,
+        borderSkipped: false,
+        maxBarThickness: 48
+      }]
+    };
+
+    const priorityChartData = {
+      labels: priorityOrder,
+      datasets: [{
+        label: 'Tickets',
+        data: priorityValues,
+        backgroundColor: priorityColors.map(color => `${color}CC`),
+        borderColor: '#ffffff',
+        borderWidth: 2
+      }]
+    };
+
+    const analyticsCards = [
+      { label: 'Total Tickets', value: totalCount, sub: 'All admin-visible tickets', color: 'text-brandNavy' },
+      { label: 'Completion Rate', value: `${completionRate}%`, sub: `${resolvedCount} resolved or closed`, color: 'text-green-600' },
+      { label: 'Priority Queue', value: urgentCount, sub: 'High, critical, or urgent', color: 'text-brandRed' },
+      { label: 'Unassigned', value: unassignedCount, sub: 'Needs ownership', color: 'text-amber-600' }
+    ];
+
     return (
-      <div className="premium-glass rounded-[24px] p-8 text-left">
-        <h3 className="text-lg font-extrabold text-[#0B1F5F] font-sora">Operational Insights</h3>
-        <p className="text-xs text-gray-400 mt-1">Real-time charts and metric graphs detail service levels and SLA performance.</p>
-        <div className="py-12 text-center text-gray-400 text-xs font-bold">Analytics dashboards are fully operational.</div>
+      <div className="space-y-6 text-left">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-extrabold text-brandDarkNavy font-sora">Operational Insights</h1>
+            <p className="text-xs text-slate-500 mt-1 font-semibold">Live admin analytics calculated from the current ticket queue.</p>
+          </div>
+          <span className="text-[10px] font-bold text-brandNavy bg-brandNavy/10 border border-brandNavy/20 px-3 py-1 rounded-full font-sora self-start sm:self-auto">
+            {totalCount} Tickets
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+          {analyticsCards.map(card => (
+            <div key={card.label} className="premium-glass premium-hover rounded-[22px] p-5">
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider font-sora">{card.label}</p>
+              <h3 className={`text-2xl md:text-3xl font-extrabold mt-2 font-sora leading-none ${card.color}`}>{card.value}</h3>
+              <p className="text-[10px] font-bold text-brandNavy/70 mt-3 font-dmSans">{card.sub}</p>
+            </div>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="premium-glass rounded-[24px] p-10 text-center text-xs font-bold text-slate-400">
+            Loading analytics...
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+              <div className="premium-glass premium-hover rounded-[22px] p-6">
+                <h2 className="text-sm font-extrabold text-slate-800 font-sora">Monthly Ticket Trends</h2>
+                <p className="text-[10px] text-slate-400 mt-0.5 font-dmSans font-medium">6-month ticket submission rates</p>
+                <div className="h-72 mt-6">
+                  {totalCount ? (
+                    <Line data={trendChartData} options={chartOptions} />
+                  ) : (
+                    <div className="h-full flex items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs font-bold text-slate-400">
+                      No monthly trend data available
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="premium-glass premium-hover rounded-[22px] p-6">
+                <h2 className="text-sm font-extrabold text-slate-800 font-sora">Tickets by Team</h2>
+                <p className="text-[10px] text-slate-400 mt-0.5 font-dmSans font-medium">Distribution across operational teams</p>
+                <div className="h-72 mt-6">
+                  {totalCount ? (
+                    <Bar data={teamChartData} options={chartOptions} />
+                  ) : (
+                    <div className="h-full flex items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs font-bold text-slate-400">
+                      No team data available
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+              <div className="premium-glass premium-hover rounded-[22px] p-6">
+                <h2 className="text-sm font-extrabold text-slate-800 font-sora">Status Split</h2>
+                <p className="text-[10px] text-slate-400 mt-0.5 font-dmSans font-medium">Current queue state</p>
+                <div className="h-64 mt-5 relative">
+                  {totalCount ? (
+                    <>
+                      <Doughnut data={statusChartData} options={doughnutOptions} />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span className="text-2xl font-extrabold text-brandNavy font-sora leading-none">{totalCount}</span>
+                        <span className="text-[8px] text-slate-400 mt-1 font-extrabold uppercase">Tickets</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="h-full flex items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs font-bold text-slate-400">
+                      No status data
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="premium-glass premium-hover rounded-[22px] p-6 xl:col-span-2">
+                <h2 className="text-sm font-extrabold text-slate-800 font-sora">Priority Mix</h2>
+                <p className="text-[10px] text-slate-400 mt-0.5 font-dmSans font-medium">Polar view of workload urgency</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-center mt-5">
+                  <div className="h-64">
+                    {totalCount ? (
+                      <PolarArea data={priorityChartData} options={polarOptions} />
+                    ) : (
+                      <div className="h-full flex items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs font-bold text-slate-400">
+                        No priority data available
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2.5">
+                    {priorityOrder.map((priority, index) => (
+                      <div key={priority} className="flex items-center justify-between rounded-2xl border border-white/60 bg-white/70 px-4 py-2.5 shadow-sm backdrop-blur-md">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: priorityColors[index] }} />
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 font-sora">{priority}</span>
+                        </div>
+                        <span className="text-sm font-extrabold text-brandNavy font-sora">{priorityValues[index]}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="premium-glass rounded-[22px] p-6">
+              <h2 className="text-sm font-extrabold text-slate-800 font-sora mb-4">Queue Health</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                {[
+                  ['Open', openCount, 'bg-brandRed/10 text-brandRed border-brandRed/20'],
+                  ['In Progress / Review', progressCount, 'bg-amber-50 text-amber-700 border-amber-200'],
+                  ['Waiting for User', waitingCount, 'bg-brandNavy/10 text-brandNavy border-brandNavy/20'],
+                  ['Resolved / Closed', resolvedCount, 'bg-green-50 text-green-700 border-green-200']
+                ].map(([label, value, style]) => (
+                  <div key={label} className={`rounded-2xl border px-4 py-3 ${style}`}>
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider font-sora">{label}</p>
+                    <p className="text-2xl font-extrabold mt-2 font-sora">{value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  function renderDepartments() {
+    const accentStyles = {
+      brandNavy: {
+        soft: 'bg-brandNavy/10 text-brandNavy border-brandNavy/20',
+        card: 'from-brandNavy/10 to-white border-brandNavy/20',
+        button: 'bg-brandNavy text-white',
+        bar: 'bg-brandNavy',
+        dot: 'bg-brandNavy'
+      },
+      cyan: {
+        soft: 'bg-cyan-50 text-cyan-700 border-cyan-100',
+        card: 'from-cyan-50 to-white border-cyan-100',
+        button: 'bg-cyan-600 text-white',
+        bar: 'bg-cyan-600',
+        dot: 'bg-cyan-600'
+      },
+      green: {
+        soft: 'bg-green-50 text-green-700 border-green-100',
+        card: 'from-green-50 to-white border-green-100',
+        button: 'bg-green-600 text-white',
+        bar: 'bg-green-600',
+        dot: 'bg-green-600'
+      },
+      purple: {
+        soft: 'bg-purple-50 text-purple-700 border-purple-100',
+        card: 'from-purple-50 to-white border-purple-100',
+        button: 'bg-purple-600 text-white',
+        bar: 'bg-purple-600',
+        dot: 'bg-purple-600'
+      },
+      orange: {
+        soft: 'bg-orange-50 text-orange-700 border-orange-100',
+        card: 'from-orange-50 to-white border-orange-100',
+        button: 'bg-orange-600 text-white',
+        bar: 'bg-orange-600',
+        dot: 'bg-orange-600'
+      },
+      blue: {
+        soft: 'bg-blue-50 text-blue-700 border-blue-100',
+        card: 'from-blue-50 to-white border-blue-100',
+        button: 'bg-blue-600 text-white',
+        bar: 'bg-blue-600',
+        dot: 'bg-blue-600'
+      },
+      teal: {
+        soft: 'bg-teal-50 text-teal-700 border-teal-100',
+        card: 'from-teal-50 to-white border-teal-100',
+        button: 'bg-teal-600 text-white',
+        bar: 'bg-teal-600',
+        dot: 'bg-teal-600'
+      },
+      indigo: {
+        soft: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+        card: 'from-indigo-50 to-white border-indigo-100',
+        button: 'bg-indigo-600 text-white',
+        bar: 'bg-indigo-600',
+        dot: 'bg-indigo-600'
+      },
+      rose: {
+        soft: 'bg-rose-50 text-rose-700 border-rose-100',
+        card: 'from-rose-50 to-white border-rose-100',
+        button: 'bg-rose-600 text-white',
+        bar: 'bg-rose-600',
+        dot: 'bg-rose-600'
+      }
+    };
+
+    const getResolutionHours = (ticket) => {
+      const isComplete = ticket.status === 'Resolved' || ticket.status === 'Closed';
+      const startValue = ticket.created_at || ticket.createdAt || ticket.created_on;
+      const endValue = ticket.updated_at || ticket.resolved_at || ticket.closed_at;
+      if (!isComplete || !startValue || !endValue) return null;
+      const start = new Date(startValue);
+      const end = new Date(endValue);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return null;
+      return (end - start) / 3600000;
+    };
+
+    const departmentStats = DEPARTMENT_DIRECTORY.map((department) => {
+      const deptTickets = tickets.filter((ticket) => getAssignedTeam(ticket.category_name) === department.name);
+      const open = deptTickets.filter((ticket) => ticket.status === 'Open').length;
+      const inProgress = deptTickets.filter((ticket) => ticket.status === 'In Progress').length;
+      const resolved = deptTickets.filter((ticket) => ticket.status === 'Resolved' || ticket.status === 'Closed').length;
+      const resolutionTimes = deptTickets.map(getResolutionHours).filter((hours) => hours !== null);
+      const avgResolution = resolutionTimes.length
+        ? resolutionTimes.reduce((sum, hours) => sum + hours, 0) / resolutionTimes.length
+        : 0;
+      const resolutionRate = deptTickets.length ? Math.round((resolved / deptTickets.length) * 100) : 0;
+
+      return {
+        ...department,
+        total: deptTickets.length,
+        open,
+        inProgress,
+        resolved,
+        avgResolution,
+        resolutionRate
+      };
+    });
+
+    const totalMembers = departmentStats.reduce((sum, department) => sum + department.members, 0);
+    const totalTickets = departmentStats.reduce((sum, department) => sum + department.total, 0);
+    const allResolutionTimes = tickets.map(getResolutionHours).filter((hours) => hours !== null);
+    const avgResolution = allResolutionTimes.length
+      ? allResolutionTimes.reduce((sum, hours) => sum + hours, 0) / allResolutionTimes.length
+      : 0;
+
+    return (
+      <div className="space-y-6 text-left">
+        <div>
+          <h2 className="font-sora text-3xl font-extrabold text-brandNavy">Departments</h2>
+          <p className="text-sm text-gray-500 mt-1">Overview of all departments and their ticket performance.</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {[
+            {
+              label: 'Total Departments',
+              value: DEPARTMENT_DIRECTORY.length,
+              iconClass: 'bg-brandNavy/10 text-brandNavy'
+            },
+            {
+              label: 'Total Members',
+              value: totalMembers,
+              iconClass: 'bg-purple-50 text-purple-700'
+            },
+            {
+              label: 'Total Tickets',
+              value: totalTickets,
+              iconClass: 'bg-green-50 text-green-700'
+            },
+            {
+              label: 'Avg Resolution',
+              value: avgResolution ? `${avgResolution.toFixed(1)}h` : '0h',
+              iconClass: 'bg-orange-50 text-orange-700'
+            }
+          ].map((card) => (
+            <div key={card.label} className="premium-glass rounded-[18px] p-6 border border-white/60 flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center ${card.iconClass}`}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M8.25 6.75h1.5m-1.5 3h1.5m4.5-3h1.5m-1.5 3h1.5M8.25 21v-3.375c0-.621.504-1.125 1.125-1.125h3.25c.621 0 1.125.504 1.125 1.125V21" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-500">{card.label}</p>
+                <p className="mt-1 text-2xl font-extrabold font-sora text-brandNavy">{card.value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+          {departmentStats.map((department) => {
+            const styles = accentStyles[department.accent] || accentStyles.brandNavy;
+            return (
+              <div key={department.name} className={`premium-glass rounded-[20px] border overflow-hidden bg-gradient-to-br ${styles.card}`}>
+                <div className="p-6 border-b border-white/70">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="font-sora text-lg font-extrabold text-brandNavy">{department.name}</h3>
+                      <p className="text-xs font-semibold text-slate-500 mt-1">Head: {department.head}</p>
+                    </div>
+                    <div className={`w-11 h-11 rounded-[12px] flex items-center justify-center ${styles.button}`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M8.25 6.75h1.5m-1.5 3h1.5m4.5-3h1.5m-1.5 3h1.5M8.25 21v-3.375c0-.621.504-1.125 1.125-1.125h3.25c.621 0 1.125.504 1.125 1.125V21" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className={`inline-flex items-center gap-2 mt-4 rounded-full border px-3 py-1 text-xs font-extrabold ${styles.soft}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Z" />
+                    </svg>
+                    {department.members} Members
+                  </div>
+                </div>
+
+                <div className="bg-white/70 p-6 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs font-bold text-slate-500">Total Tickets</p>
+                      <p className="mt-1 text-2xl font-extrabold font-sora text-brandNavy">{department.total}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-500">Avg Resolution</p>
+                      <p className="mt-1 text-2xl font-extrabold font-sora text-brandNavy">
+                        {department.avgResolution ? `${department.avgResolution.toFixed(1)}h` : '0h'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-sm font-semibold">
+                    <div className="flex justify-between"><span className="text-slate-600">Open</span><span className="text-blue-600">{department.open}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-600">In Progress</span><span className="text-orange-600">{department.inProgress}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-600">Resolved</span><span className="text-green-600">{department.resolved}</span></div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
+                      <span>Resolution Rate</span>
+                      <span className={styles.soft.split(' ')[1]}>{department.resolutionRate}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
+                      <div className={`h-full rounded-full ${styles.bar}`} style={{ width: `${department.resolutionRate}%` }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="premium-glass rounded-[20px] border border-white/60 p-6 overflow-hidden">
+          <h3 className="font-sora text-lg font-extrabold text-brandNavy mb-5">Department Performance Comparison</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] text-left">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  {['Department', 'Members', 'Total', 'Open', 'In Progress', 'Resolved', 'Avg Time', 'Rate'].map((heading) => (
+                    <th key={heading} className="px-2 py-3 text-xs font-extrabold text-brandNavy/80">{heading}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {departmentStats.map((department) => {
+                  const styles = accentStyles[department.accent] || accentStyles.brandNavy;
+                  return (
+                    <tr key={department.name} className="border-b border-slate-100 last:border-b-0">
+                      <td className="px-2 py-4 text-sm font-extrabold text-brandNavy">
+                        <span className={`inline-block w-2 h-2 rounded-full mr-2 ${styles.dot}`} />
+                        {department.name}
+                      </td>
+                      <td className="px-2 py-4 text-sm font-semibold text-slate-600">{department.members}</td>
+                      <td className="px-2 py-4 text-sm font-extrabold text-brandNavy">{department.total}</td>
+                      <td className="px-2 py-4 text-sm font-semibold text-blue-600">{department.open}</td>
+                      <td className="px-2 py-4 text-sm font-semibold text-orange-600">{department.inProgress}</td>
+                      <td className="px-2 py-4 text-sm font-semibold text-green-600">{department.resolved}</td>
+                      <td className="px-2 py-4 text-sm font-extrabold text-brandNavy">
+                        {department.avgResolution ? `${department.avgResolution.toFixed(1)}h` : '0h'}
+                      </td>
+                      <td className="px-2 py-4 text-sm font-extrabold text-brandNavy">{department.resolutionRate}%</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderAdminManagement() {
+    const searchTerm = adminSearchQuery.trim().toLowerCase();
+    const filteredAdmins = adminDirectory.filter((admin) => {
+      if (!searchTerm) return true;
+      return [admin.name, admin.email, admin.role, admin.department, admin.status]
+        .some((value) => value.toLowerCase().includes(searchTerm));
+    });
+    const activeAdmins = adminDirectory.filter((admin) => admin.status === 'Active').length;
+    const superAdmins = adminDirectory.filter((admin) => admin.role === 'Super Admin').length;
+    const supportAdmins = adminDirectory.filter((admin) => admin.role !== 'Super Admin').length;
+
+    const getAdminInitials = (name) => (
+      name
+        .split(' ')
+        .map((part) => part[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    );
+
+    const getRoleBadgeClass = (role) => {
+      if (role === 'Super Admin') return 'bg-brandRed/10 text-brandRed border-brandRed/15';
+      if (role === 'IT Support') return 'bg-cyan-50 text-cyan-700 border-cyan-100';
+      if (role === 'Operations Admin') return 'bg-purple-50 text-purple-700 border-purple-100';
+      return 'bg-brandNavy/10 text-brandNavy border-brandNavy/15';
+    };
+
+    return (
+      <div className="space-y-6 text-left">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <h2 className="font-sora text-3xl font-extrabold text-brandNavy">Admin Management</h2>
+            <p className="text-sm text-gray-500 mt-1">Manage admins, roles, departments, and permissions.</p>
+          </div>
+          <button
+            type="button"
+            onClick={openAddAdminForm}
+            className="inline-flex items-center justify-center gap-2 rounded-[14px] bg-brandNavy px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-brandNavy/20 hover:bg-brandNavy/90 transition"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.4" stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Add Admin
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {[
+            { label: 'Total Admins', value: adminDirectory.length, border: 'border-slate-200', text: 'text-brandNavy' },
+            { label: 'Active', value: activeAdmins, border: 'border-green-200', text: 'text-green-700' },
+            { label: 'Super Admins', value: superAdmins, border: 'border-brandRed/25', text: 'text-brandRed' },
+            { label: 'Support Admins', value: supportAdmins, border: 'border-blue-200', text: 'text-blue-700' }
+          ].map((card) => (
+            <div key={card.label} className={`premium-glass rounded-[18px] p-6 border ${card.border}`}>
+              <p className={`text-xs font-bold ${card.text}`}>{card.label}</p>
+              <p className={`mt-3 text-3xl font-extrabold font-sora ${card.text}`}>{card.value}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="premium-glass rounded-[18px] p-5 border border-white/60">
+          <div className="relative">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+            </svg>
+            <input
+              type="text"
+              value={adminSearchQuery}
+              onChange={(event) => setAdminSearchQuery(event.target.value)}
+              placeholder="Search admins by name, email, role, or department..."
+              className="w-full rounded-[14px] border border-slate-200 bg-white/80 py-3 pl-12 pr-4 text-sm font-semibold text-brandNavy outline-none transition focus:border-brandNavy/40 focus:ring-4 focus:ring-brandNavy/10"
+            />
+          </div>
+        </div>
+
+        <div className="premium-glass rounded-[20px] border border-white/60 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[880px] text-left">
+              <thead className="bg-white/50 border-b border-slate-100">
+                <tr>
+                  {['ADMIN', 'EMAIL', 'ROLE', 'DEPARTMENT', 'STATUS', 'ACTIONS'].map((heading) => (
+                    <th key={heading} className="px-6 py-4 text-[11px] font-extrabold text-brandNavy/80">
+                      {heading}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAdmins.map((admin) => (
+                  <tr key={admin.id} className="border-b border-slate-100 last:border-b-0 hover:bg-white/45 transition">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brandNavy to-brandRed text-white flex items-center justify-center text-sm font-extrabold">
+                          {getAdminInitials(admin.name)}
+                        </div>
+                        <span className="text-sm font-extrabold text-brandNavy">{admin.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-semibold text-slate-600">{admin.email}</td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-extrabold ${getRoleBadgeClass(admin.role)}`}>
+                        {admin.role}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-semibold text-slate-600">{admin.department}</td>
+                    <td className="px-6 py-4">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAdminStatus(admin.id)}
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-extrabold transition ${
+                          admin.status === 'Active'
+                            ? 'bg-green-50 text-green-700 hover:bg-green-100'
+                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                        }`}
+                      >
+                        {admin.status}
+                      </button>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => openEditAdminForm(admin)}
+                          className="text-brandNavy hover:text-brandRed transition"
+                          aria-label={`Edit ${admin.name}`}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAdmin(admin.id)}
+                          className="text-brandRed hover:text-brandRed/70 transition"
+                          aria-label={`Delete ${admin.name}`}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673A2.25 2.25 0 0 1 15.916 21H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredAdmins.length === 0 && (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-12 text-center text-sm font-bold text-slate-400">
+                      No admins found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {isAdminFormOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <button
+              type="button"
+              className="absolute inset-0 bg-brandNavy/35 backdrop-blur-sm"
+              onClick={closeAdminForm}
+              aria-label="Close admin form"
+            />
+            <form
+              onSubmit={handleAdminFormSubmit}
+              className="relative w-full max-w-xl premium-glass rounded-[24px] border border-white/70 p-6 shadow-2xl"
+            >
+              <div className="flex items-start justify-between gap-4 mb-5">
+                <div>
+                  <h3 className="font-sora text-xl font-extrabold text-brandNavy">
+                    {editingAdmin ? 'Edit Admin' : 'Add Admin'}
+                  </h3>
+                  <p className="text-xs font-semibold text-gray-400 mt-1">Update admin access details for this dashboard.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeAdminForm}
+                  className="w-9 h-9 rounded-full bg-white border border-slate-100 text-slate-400 hover:text-brandRed transition flex items-center justify-center"
+                  aria-label="Close"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="text-xs font-extrabold text-brandNavy">
+                  Name
+                  <input
+                    type="text"
+                    required
+                    value={adminForm.name}
+                    onChange={(event) => setAdminForm((prev) => ({ ...prev, name: event.target.value }))}
+                    className="mt-2 w-full rounded-[14px] border border-slate-200 bg-white/85 px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-brandNavy/40 focus:ring-4 focus:ring-brandNavy/10"
+                  />
+                </label>
+                <label className="text-xs font-extrabold text-brandNavy">
+                  Email
+                  <input
+                    type="email"
+                    required
+                    value={adminForm.email}
+                    onChange={(event) => setAdminForm((prev) => ({ ...prev, email: event.target.value }))}
+                    className="mt-2 w-full rounded-[14px] border border-slate-200 bg-white/85 px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-brandNavy/40 focus:ring-4 focus:ring-brandNavy/10"
+                  />
+                </label>
+                <label className="text-xs font-extrabold text-brandNavy">
+                  Role
+                  <select
+                    value={adminForm.role}
+                    onChange={(event) => setAdminForm((prev) => ({ ...prev, role: event.target.value }))}
+                    className="mt-2 w-full rounded-[14px] border border-slate-200 bg-white/85 px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-brandNavy/40 focus:ring-4 focus:ring-brandNavy/10"
+                  >
+                    <option>Super Admin</option>
+                    <option>Support Admin</option>
+                    <option>IT Support</option>
+                    <option>Operations Admin</option>
+                    <option>Compliance Admin</option>
+                  </select>
+                </label>
+                <label className="text-xs font-extrabold text-brandNavy">
+                  Department
+                  <select
+                    value={adminForm.department}
+                    onChange={(event) => setAdminForm((prev) => ({ ...prev, department: event.target.value }))}
+                    className="mt-2 w-full rounded-[14px] border border-slate-200 bg-white/85 px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-brandNavy/40 focus:ring-4 focus:ring-brandNavy/10"
+                  >
+                    {DEPARTMENT_DIRECTORY.map((department) => (
+                      <option key={department.name}>{department.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="md:col-span-2 text-xs font-extrabold text-brandNavy">
+                  Status
+                  <select
+                    value={adminForm.status}
+                    onChange={(event) => setAdminForm((prev) => ({ ...prev, status: event.target.value }))}
+                    className="mt-2 w-full rounded-[14px] border border-slate-200 bg-white/85 px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-brandNavy/40 focus:ring-4 focus:ring-brandNavy/10"
+                  >
+                    <option>Active</option>
+                    <option>Inactive</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={closeAdminForm}
+                  className="rounded-[14px] border border-slate-200 bg-white px-5 py-3 text-sm font-extrabold text-slate-500 hover:text-brandNavy transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-[14px] bg-brandNavy px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-brandNavy/20 hover:bg-brandNavy/90 transition"
+                >
+                  {editingAdmin ? 'Save Changes' : 'Create Admin'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
     );
   }
@@ -1803,44 +2760,28 @@ const AdminDashboard = () => {
           {/* Column 3: Contextual Details */}
           <div className="lg:col-span-3 space-y-4">
             {activeMessageTicket ? (
-              <div className="premium-glass rounded-[24px] p-4.5 text-left">
-                <h4 className="text-xs font-extrabold text-brandDarkNavy font-sora uppercase tracking-wider mb-3">Ticket Details</h4>
-                <div className="space-y-2.5 text-[11px] font-bold text-gray-600">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">User Email</span>
-                    <span className="text-brandDarkNavy">{activeMessageTicket.raised_by}</span>
+              <div className="premium-glass rounded-[24px] p-5 text-left">
+                <h4 className="text-sm font-extrabold text-brandDarkNavy font-sora uppercase tracking-wider mb-4">Ticket Details</h4>
+                <div className="space-y-3 text-xs font-bold">
+                  <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
+                    <span className="text-gray-400 shrink-0">User Email</span>
+                    <span className="text-brandDarkNavy text-right break-all leading-snug">{activeMessageTicket.raised_by}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Category</span>
-                    <span className="text-brandDarkNavy">Category #{activeMessageTicket.category_id}</span>
+                  <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
+                    <span className="text-gray-400 shrink-0">Category</span>
+                    <span className="text-brandDarkNavy text-right leading-snug">Category #{activeMessageTicket.category_id}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Priority</span>
-                    <span className="text-brandDarkNavy">{activeMessageTicket.priority}</span>
+                  <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
+                    <span className="text-gray-400 shrink-0">Priority</span>
+                    <span className="text-brandDarkNavy text-right leading-snug">{activeMessageTicket.priority}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Assigned Agent</span>
-                    <span className="text-brandDarkNavy">{activeMessageTicket.assigned_to || 'None'}</span>
+                  <div className="flex items-start justify-between gap-4">
+                    <span className="text-gray-400 shrink-0">Assigned Agent</span>
+                    <span className="text-brandDarkNavy text-right leading-snug">{activeMessageTicket.assigned_to || 'None'}</span>
                   </div>
                 </div>
               </div>
             ) : null}
-
-            {/* System Announcements */}
-            <div className="premium-glass rounded-[24px] p-4.5 text-left">
-              <h4 className="text-xs font-extrabold text-brandDarkNavy font-sora uppercase tracking-wider mb-3.5">Announcements Seeding</h4>
-              <div className="space-y-3">
-                {announcements.map((ann) => (
-                  <div key={ann.announcement_id} className="flex items-start space-x-2.5 p-1 rounded-xl">
-                    {getAnnIcon(ann.category)}
-                    <div className="min-w-0">
-                      <h5 className="text-[10px] font-extrabold text-brandDarkNavy leading-snug">{ann.title}</h5>
-                      <p className="text-[9px] text-gray-400 mt-0.5 font-medium">{ann.content}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -1848,211 +2789,23 @@ const AdminDashboard = () => {
   }
 
   function renderDetailsDrawer() {
-    if (!drawerTicket) return null;
-
-    const assignedTeam = getAssignedTeam(drawerTicket.category_name || `Cat #${drawerTicket.category_id}`);
-
     return (
-      <div className="fixed inset-0 z-50 flex justify-end">
-        {/* Backdrop overlay */}
-        <div 
-          onClick={handleCloseDrawer}
-          className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 opacity-100" 
-        />
-        
-        {/* Drawer panel */}
-        <div className="relative w-full max-w-lg bg-white h-full shadow-2xl flex flex-col z-10 animate-slide-in">
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-slate-50">
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="text-xs font-extrabold text-brandNavy bg-brandNavy/10 border border-brandNavy/20 px-2 py-0.5 rounded-lg font-sora">
-                  {drawerTicket.ticket_id}
-                </span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border font-sora ${
-                  drawerTicket.status === 'Open'
-                    ? 'bg-brandNavy/10 text-brandNavy border-brandNavy/20'
-                    : drawerTicket.status === 'In Progress'
-                      ? 'bg-brandNavy/10 text-brandNavy border-brandNavy/20'
-                      : drawerTicket.status === 'Resolved'
-                        ? 'bg-green-50 text-green-700 border-green-200'
-                        : 'bg-slate-100 text-slate-600 border-slate-200'
-                }`}>
-                  {drawerTicket.status}
-                </span>
-              </div>
-              <h2 className="text-sm font-extrabold text-slate-800 font-sora mt-1.5 max-w-[340px] truncate leading-none">
-                {drawerTicket.title}
-              </h2>
-            </div>
-            <button 
-              onClick={handleCloseDrawer}
-              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-1.5 rounded-xl transition-all"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Details Scrollable Content */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            
-            {/* Meta Attributes Panel */}
-            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-gray-150 text-xs">
-              <div>
-                <span className="text-gray-400 font-bold block uppercase tracking-wider text-[8px] mb-0.5">Raised By</span>
-                <span className="font-extrabold text-slate-700 break-all font-dmSans">{drawerTicket.raised_by}</span>
-              </div>
-              <div>
-                <span className="text-gray-400 font-bold block uppercase tracking-wider text-[8px] mb-0.5">Category</span>
-                <span className="font-extrabold text-slate-700 font-dmSans">{drawerTicket.category_name || `Category #${drawerTicket.category_id}`}</span>
-              </div>
-              <div>
-                <span className="text-gray-400 font-bold block uppercase tracking-wider text-[8px] mb-0.5">Assigned Team</span>
-                <span className="font-extrabold text-brandNavy font-dmSans">{assignedTeam}</span>
-              </div>
-              <div>
-                <span className="text-gray-400 font-bold block uppercase tracking-wider text-[8px] mb-0.5">Created Date</span>
-                <span className="font-extrabold text-slate-700 font-dmSans">
-                  {drawerTicket.created_at ? new Date(drawerTicket.created_at).toLocaleString() : 'Today'}
-                </span>
-              </div>
-            </div>
-
-            {/* Quick Actions Panel */}
-            <div className="grid grid-cols-2 gap-4 border-b border-slate-100 pb-4">
-              {/* Assign Agent */}
-              <div>
-                <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5 block font-sora">Assign Agent</label>
-                <select
-                  value={drawerTicket.assigned_to || 'Unassigned'}
-                  onChange={e => handleDrawerAgentChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-750 focus:outline-none focus:border-brandNavy font-dmSans"
-                >
-                  <option>Unassigned</option>
-                  {AGENTS.map(agent => (
-                    <option key={agent} value={agent}>{agent}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Edit Status */}
-              <div>
-                <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5 block font-sora">Update Status</label>
-                <select
-                  value={drawerTicket.status || 'Open'}
-                  onChange={e => handleDrawerStatusChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-750 focus:outline-none focus:border-brandNavy font-dmSans"
-                >
-                  <option value="Open">Open</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Resolved">Resolved</option>
-                  <option value="Closed">Closed</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Query Description */}
-            <div>
-              <h3 className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-2 font-sora">Query Description</h3>
-              <div className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 text-xs text-slate-650 leading-relaxed font-dmSans min-h-[80px] whitespace-pre-wrap">
-                {drawerTicket.description}
-              </div>
-            </div>
-
-            {/* Attachment */}
-            {drawerTicket.has_attachment && (
-              <div>
-                <h3 className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider mb-2 font-sora">Attachment</h3>
-                <button
-                  onClick={() => downloadAttachment(drawerTicket.attachment_path)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-brandNavy/10 hover:bg-brandNavy/10 text-brandNavy font-bold rounded-xl text-xs transition-colors font-dmSans border border-brandNavy/20"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                  </svg>
-                  <span>Download Attachment</span>
-                </button>
-              </div>
-            )}
-
-            {/* Message Thread / Chat Section */}
-            <div className="border-t border-slate-100 pt-6 space-y-4">
-              <h3 className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider font-sora">Activity Feed & Messages</h3>
-              
-              <div className="space-y-3.5 max-h-[220px] overflow-y-auto pr-1">
-                {drawerMessages.length === 0 ? (
-                  <p className="text-[11px] text-slate-400 text-center py-4 font-dmSans">No activity messages yet. Send a response below.</p>
-                ) : (
-                  drawerMessages.map((msg, i) => {
-                    const isAdmin = msg.sender_role === 'admin';
-                    return (
-                      <div key={i} className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}>
-                        <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-xs font-dmSans leading-relaxed ${
-                          isAdmin 
-                            ? 'bg-brandNavy text-white rounded-tr-none' 
-                            : 'bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200/50'
-                        }`}>
-                          <p>{msg.message_text}</p>
-                          {msg.has_attachment && (
-                            <button
-                              onClick={() => downloadAttachment(msg.attachment_path)}
-                              className={`mt-1.5 flex items-center space-x-1 font-bold text-[10px] underline ${
-                                isAdmin ? 'text-white/80 hover:text-white' : 'text-brandNavy hover:text-brandNavy'
-                              }`}
-                            >
-                              <span>📎 Attachment</span>
-                            </button>
-                          )}
-                        </div>
-                        <span className="text-[8px] text-slate-400 font-bold mt-1 px-1">
-                          {isAdmin ? 'You' : 'Vendor'} · {getRelativeTime(msg.created_at)}
-                        </span>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              {/* Chat Reply Box */}
-              <form onSubmit={handleSendDrawerMessage} className="mt-2 flex items-center space-x-2">
-                <input
-                  type="text"
-                  placeholder="Type a message or select a quick reply..."
-                  value={drawerMessageText}
-                  onChange={e => setDrawerMessageText(e.target.value)}
-                  className="flex-1 px-4 py-2 border border-slate-250 rounded-xl text-xs focus:outline-none focus:border-brandNavy text-slate-850 font-dmSans bg-slate-50/50 focus:bg-white transition-colors"
-                />
-                <button
-                  type="submit"
-                  disabled={drawerIsMessageSubmitting}
-                  className="bg-brandNavy hover:bg-brandDarkNavy disabled:bg-brandNavy/50 text-white p-2.5 rounded-xl transition-all shadow-md shrink-0"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4.5 h-4.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                  </svg>
-                </button>
-              </form>
-
-              {/* Quick replies in drawer */}
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {QUICK_REPLIES.slice(0, 3).map((reply, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setDrawerMessageText(reply)}
-                    className="text-[9px] font-bold text-brandNavy bg-brandNavy/10 hover:bg-brandNavy/20 border border-brandNavy/20 rounded-lg px-2.5 py-1.5 transition-all text-left"
-                  >
-                    {reply}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
+      <AdminTicketDetails
+        drawerTicket={drawerTicket}
+        drawerMessages={drawerMessages}
+        drawerMessageText={drawerMessageText}
+        setDrawerMessageText={setDrawerMessageText}
+        drawerIsMessageSubmitting={drawerIsMessageSubmitting}
+        handleCloseDrawer={handleCloseDrawer}
+        handleDrawerAgentChange={handleDrawerAgentChange}
+        handleDrawerStatusChange={handleDrawerStatusChange}
+        handleSendDrawerMessage={handleSendDrawerMessage}
+        downloadAttachment={downloadAttachment}
+        getRelativeTime={getRelativeTime}
+        getAssignedTeam={getAssignedTeam}
+        agents={AGENTS}
+        quickReplies={QUICK_REPLIES}
+      />
     );
   }
 }
