@@ -2241,7 +2241,7 @@ const UserDashboard = () => {
                       className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-sm bg-gray-50/50 resize-none font-medium text-gray-700" />
                     {aiLoading && (
                       <p className="mt-1.5 text-[10px] font-bold text-brandNavy">
-                        🤖 Analyzing ticket...
+                        Analyzing ticket...
                       </p>
                     )}
                     {aiSuggestion && (
