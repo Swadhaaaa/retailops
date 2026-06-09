@@ -117,12 +117,3 @@ User:
 
 Update these credentials if seed data changes.
 
-## Current Limitations
-
-- Frontend API base URL is currently hardcoded to `http://localhost:5000/api`.
-- Backend `routes/admin.py` and `routes/user.py` exist but are currently empty.
-- No root-level automated test suite is included.
-- No Docker setup is included.
-- `backend/.env` contains local runtime configuration and should not be committed with real secrets.
-- Groq category suggestion falls back to a default category when the API key is missing or the Groq request fails.
-- Some admin management and department views are frontend-local features and are not backed by dedicated admin database routes.
