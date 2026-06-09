@@ -1,4 +1,4 @@
-# AI-Assisted Query Management System
+# Query Management System
 
 ## Project Overview
 
