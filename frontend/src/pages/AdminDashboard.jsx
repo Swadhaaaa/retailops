@@ -1266,7 +1266,7 @@ const AdminDashboard = () => {
                 <thead>
                   <tr className="bg-white/55 text-[9px] text-slate-400 font-extrabold font-sora tracking-widest border-b border-white/70 uppercase backdrop-blur-md">
                     <th className="py-3.5 px-6">Ticket ID</th>
-                    <th className="py-3.5 px-6">Vendor Name</th>
+                    <th className="py-3.5 px-6">User Name</th>
                     <th className="py-3.5 px-6">Category</th>
                     <th className="py-3.5 px-6">Assigned Team</th>
                     <th className="py-3.5 px-6">Priority</th>
@@ -1320,7 +1320,7 @@ const AdminDashboard = () => {
                             {query.ticket_id}
                           </button>
                         </td>
-                        {/* Vendor Name */}
+                        {/* User Name */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-xs font-bold text-slate-700 font-dmSans">{vendorName}</span>
                         </td>
@@ -1492,7 +1492,7 @@ const AdminDashboard = () => {
 
                   <section className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
-                      <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora mb-3">Vendor Details</h3>
+                      <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora mb-3">User Details</h3>
                       <div className="space-y-1.5 text-xs font-semibold text-slate-600">
                         <p>Name: <span className="text-brandDarkNavy font-extrabold">{selectedTicket.vendor_name || selectedTicket.raised_by}</span></p>
                         <p>Email: <span>{selectedTicket.raised_by}</span></p>

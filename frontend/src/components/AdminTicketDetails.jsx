@@ -175,7 +175,7 @@ const AdminTicketDetails = ({
                         )}
                       </div>
                       <span className="text-[8px] text-slate-400 font-bold mt-1 px-1">
-                        {isAdmin ? 'You' : 'Vendor'} · {getRelativeTime(msg.created_at)}
+                        {isAdmin ? 'You' : 'User'} · {getRelativeTime(msg.created_at)}
                       </span>
                     </div>
                   );

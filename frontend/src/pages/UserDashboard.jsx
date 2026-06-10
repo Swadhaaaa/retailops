@@ -221,7 +221,7 @@ const staticCategories = [
   { category_id: 13, name: 'Account & Security', description: 'Security settings and account recovery' },
   { category_id: 14, name: 'Refunds & Returns', description: 'Product return requests and refunds' },
   { category_id: 15, name: 'GST Compliance', description: 'Regulatory, policy, and audit support' },
-  { category_id: 16, name: 'KYC Verification', description: 'Vendor onboarding, agreements, and disputes' },
+  { category_id: 16, name: 'KYC Verification', description: 'User onboarding, agreements, and disputes' },
   { category_id: 17, name: 'Store Operations', description: 'In-store operational queries and escalations' },
   { category_id: 18, name: 'HR & Workforce', description: 'Staff queries, attendance, and HR support' },
   { category_id: 19, name: 'IT Infrastructure', description: 'Network, hardware, and system outages' },
@@ -272,7 +272,7 @@ const getCategoryPlaceholders = (catId) => {
     case 5:
       return {
         subject: 'e.g. Request for updated tax certificates',
-        description: 'e.g. We need the latest GST certificate from our vendor profiles to verify tax benefits.'
+        description: 'e.g. We need the latest GST certificate from our user profiles to verify tax benefits.'
       };
     case 6:
       return {
@@ -326,8 +326,8 @@ const getCategoryPlaceholders = (catId) => {
       };
     case 16:
       return {
-        subject: 'e.g. Vendor agreement renewal query',
-        description: 'e.g. The annual contract with vendor ABC is expiring next month. Need renewal terms.'
+        subject: 'e.g. User agreement renewal query',
+        description: 'e.g. The annual contract with user ABC is expiring next month. Need renewal terms.'
       };
     case 17:
       return {
@@ -1139,7 +1139,7 @@ const UserDashboard = () => {
     if (name.includes('technical') || name.includes('sync') || name.includes('infrastructure')) return 'IT Operations';
     if (name.includes('delivery') || name.includes('logistics')) return 'Logistics';
     if (name.includes('compliance') || name.includes('audit') || name.includes('documentation')) return 'Compliance';
-    if (name.includes('vendor')) return 'Vendor Management';
+    if (name.includes('vendor')) return 'User Management';
     if (name.includes('order')) return 'Order Management';
     return 'Retail Operations';
   };
@@ -1320,7 +1320,7 @@ const UserDashboard = () => {
                     </span>
                   </div>
 
-                  {/* Subtitle / Vendor Name */}
+                  {/* Subtitle / User Name */}
                   <p className="text-xs text-gray-400 font-semibold mb-6 font-dmSans">
                     {userName || 'ABC Suppliers Ltd'}
                   </p>

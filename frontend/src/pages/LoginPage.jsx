@@ -44,27 +44,12 @@ const LoginPage = () => {
   const [loggedUser, setLoggedUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [formKey, setFormKey] = useState(0); // For triggering slide-up animations
-  const [introStage, setIntroStage] = useState('center'); // center, pulse, move, done
+  const [introStage, setIntroStage] = useState('done'); // center, pulse, move, done
 
-  // Cinematic intro timeline
+  // Keep the login page interactive immediately. The old cinematic intro blocked
+  // role selection for 3 seconds, which made the first click feel unresponsive.
   useEffect(() => {
-    const timer1 = setTimeout(() => {
-      setIntroStage('pulse');
-    }, 700);
-
-    const timer2 = setTimeout(() => {
-      setIntroStage('move');
-    }, 1800);
-
-    const timer3 = setTimeout(() => {
-      setIntroStage('done');
-    }, 3000);
-
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
-    };
+    setIntroStage('done');
   }, []);
 
   // Reset email/password when role changes
@@ -74,7 +59,6 @@ const LoginPage = () => {
   }, [role]);
 
   const handleRoleSelect = (roleId) => {
-    if (introStage !== 'done') return; // Disable selection during intro
     setRole(roleId);
   };
 
@@ -233,9 +217,7 @@ const LoginPage = () => {
         {/* 1. SCREEN: ROLE SELECTION */}
         {screen === 'role_selection' && (
           <div className="w-full max-w-[450px]">
-            <div className={`transition-all duration-700 delay-[300ms] transform ${
-              introStage === 'move' || introStage === 'done' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
-            }`}>
+            <div className="transition-all duration-150 transform opacity-100 translate-y-0">
               <h2 className="text-4xl font-extrabold text-brandDarkNavy tracking-tight mb-2 font-sora">
                 Welcome
               </h2>
@@ -246,7 +228,7 @@ const LoginPage = () => {
 
             {/* Role Card Tiles */}
             <div className="space-y-4 mb-8">
-              {roles.map((item, idx) => {
+              {roles.map((item) => {
                 const isSelected = role === item.id;
                 let cardStyles = 'border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700';
                 
@@ -258,15 +240,11 @@ const LoginPage = () => {
                   }
                 }
 
-                const delayClass = idx === 0 ? 'delay-[500ms]' : 'delay-[700ms]';
-
                 return (
                   <div
                     key={item.id}
                     onClick={() => handleRoleSelect(item.id)}
-                    className={`relative flex items-center justify-between border rounded-2xl p-5 cursor-pointer transition-all duration-500 transform ${
-                      introStage === 'move' || introStage === 'done' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-                    } ${delayClass} ${cardStyles}`}
+                    className={`relative flex items-center justify-between border rounded-2xl p-5 cursor-pointer transition-all duration-150 transform opacity-100 translate-y-0 ${cardStyles}`}
                   >
                     <div className="flex items-center space-x-4 pl-1">
                       {/* Role Icon Container */}
@@ -305,9 +283,7 @@ const LoginPage = () => {
             <button
               onClick={handleContinue}
               disabled={!role}
-              className={`w-full py-4 rounded-2xl text-sm font-semibold tracking-wide flex items-center justify-center space-x-2 transition-all duration-[600ms] transform delay-[900ms] shadow-lg ${
-                introStage === 'move' || introStage === 'done' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6 pointer-events-none'
-              } ${!role
+              className={`w-full py-4 rounded-2xl text-sm font-semibold tracking-wide flex items-center justify-center space-x-2 transition-all duration-150 transform opacity-100 translate-y-0 shadow-lg ${!role
                   ? 'bg-[#B2C0D6] text-white cursor-not-allowed shadow-none'
                   : role === 'vendor'
                     ? 'bg-brandRed hover:bg-[#C2112C] text-white hover:shadow-brandRed/30'
@@ -321,9 +297,7 @@ const LoginPage = () => {
             </button>
 
             {/* Authentication Footer Label */}
-            <div className={`mt-6 flex items-center justify-center space-x-2 text-xs text-gray-400 transition-all duration-500 delay-[1100ms] transform ${
-              introStage === 'move' || introStage === 'done' ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-            }`}>
+            <div className="mt-6 flex items-center justify-center space-x-2 text-xs text-gray-400 transition-all duration-150 transform opacity-100 translate-y-0">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-3.5 h-3.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
               </svg>
