@@ -60,28 +60,44 @@ def init_db():
     """)
 
     conn.execute("""
-    CREATE TABLE IF NOT EXISTS messages (
-        message_id INTEGER,
-        ticket_id VARCHAR,
-        sender_id VARCHAR,
-        sender_role VARCHAR,
-        message_text TEXT,
-        is_ping BOOLEAN DEFAULT false,
-        attachment_path VARCHAR,
+    CREATE TABLE IF NOT EXISTS ticket_activity (
+        activity_id INTEGER PRIMARY KEY,
+        ticket_id VARCHAR NOT NULL,
+        action_type VARCHAR NOT NULL,
+        action_text TEXT NOT NULL,
+        actor_id VARCHAR,
+        actor_role VARCHAR DEFAULT 'system',
+        from_value VARCHAR,
+        to_value VARCHAR,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
 
-    conn.execute("""
-    CREATE TABLE IF NOT EXISTS notifications (
-        notif_id INTEGER,
-        user_id VARCHAR,
-        ticket_id VARCHAR,
-        message TEXT,
-        is_read BOOLEAN DEFAULT false,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
+    # MESSAGES FEATURE
+    # conn.execute("""
+    # CREATE TABLE IF NOT EXISTS messages (
+    #     message_id INTEGER,
+    #     ticket_id VARCHAR,
+    #     sender_id VARCHAR,
+    #     sender_role VARCHAR,
+    #     message_text TEXT,
+    #     is_ping BOOLEAN DEFAULT false,
+    #     attachment_path VARCHAR,
+    #     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    # )
+    # """)
+
+    #  MESSAGES FEATURE
+    # conn.execute("""
+    # CREATE TABLE IF NOT EXISTS notifications (
+    #     notif_id INTEGER,
+    #     user_id VARCHAR,
+    #     ticket_id VARCHAR,
+    #     message TEXT,
+    #     is_read BOOLEAN DEFAULT false,
+    #     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    # )
+    # """)
 
     conn.execute("""
     CREATE TABLE IF NOT EXISTS announcements (
@@ -95,12 +111,13 @@ def init_db():
     """)
 
     # Migration checks
-    try:
-        columns = [row[1] for row in conn.execute("PRAGMA table_info('messages')").fetchall()]
-        if 'attachment_path' not in columns:
-            conn.execute("ALTER TABLE messages ADD COLUMN attachment_path VARCHAR")
-    except Exception as e:
-        print(f"Migration error for messages table: {e}")
+    # TEMPORARILY DISABLED - MESSAGES FEATURE
+    # try:
+    #     columns = [row[1] for row in conn.execute("PRAGMA table_info('messages')").fetchall()]
+    #     if 'attachment_path' not in columns:
+    #         conn.execute("ALTER TABLE messages ADD COLUMN attachment_path VARCHAR")
+    # except Exception as e:
+    #     print(f"Migration error for messages table: {e}")
 
     conn.close()
 

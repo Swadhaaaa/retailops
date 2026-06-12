@@ -228,6 +228,9 @@ const staticCategories = [
   { category_id: 20, name: 'Finance & Reporting', description: 'Financial reports, budgets, and reconciliation' }
 ];
 
+// TEMPORARILY DISABLED - MESSAGES FEATURE
+const MESSAGES_FEATURE_ENABLED = false;
+
 const getCategoryIcon = (catId) => {
   const styles = getCategoryStyles(catId);
   return <DefaultCategoryIcon className={`w-6 h-6 ${styles.textColor}`} />;
@@ -374,10 +377,22 @@ const UserDashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoryLocked, setIsCategoryLocked] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [selectedTicketView, setSelectedTicketView] = useState('simple');
   const [isSubmittedSuccessfully, setIsSubmittedSuccessfully] = useState(false);
   const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
+  const [isChatSupportOpen, setIsChatSupportOpen] = useState(false);
 
-  // Messages Specific States
+  useEffect(() => {
+    if (!selectedTicket || typeof document === 'undefined') return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [selectedTicket]);
+
+  // TEMPORARILY DISABLED - MESSAGES FEATURE
+  // Messages-specific state is preserved for easy restoration, but all UI/API entry points are guarded by MESSAGES_FEATURE_ENABLED.
   const [messages, setMessages] = useState([]);
   const [activeMessageTicket, setActiveMessageTicket] = useState(null);
   const [messageText, setMessageText] = useState('');
@@ -396,7 +411,19 @@ const UserDashboard = () => {
     "This issue is resolved. You can close this ticket."
   ];
 
+  const openTicketDetails = (ticket, view = 'simple') => {
+    setSelectedTicketView(view);
+    setSelectedTicket(ticket);
+  };
+
+  const closeTicketDetails = () => {
+    setSelectedTicket(null);
+    setSelectedTicketView('simple');
+  };
+
   const fetchAnnouncementsAndStats = async () => {
+    // TEMPORARILY DISABLED - MESSAGES FEATURE
+    if (!MESSAGES_FEATURE_ENABLED) return;
     try {
       const statsRes = await api.get('/tickets/stats');
       setMessagesStats(statsRes.data);
@@ -408,6 +435,8 @@ const UserDashboard = () => {
   };
 
   const fetchActiveTicketMessages = async (ticketId) => {
+    // TEMPORARILY DISABLED - MESSAGES FEATURE
+    if (!MESSAGES_FEATURE_ENABLED) return;
     try {
       const res = await api.get(`/tickets/${ticketId}`);
       setMessages(res.data.messages || []);
@@ -420,6 +449,8 @@ const UserDashboard = () => {
 
   // Poll for messages and announcements
   useEffect(() => {
+    // TEMPORARILY DISABLED - MESSAGES FEATURE
+    if (!MESSAGES_FEATURE_ENABLED) return;
     if (activeTab !== 'Messages') return;
     
     fetchAnnouncementsAndStats();
@@ -439,12 +470,16 @@ const UserDashboard = () => {
 
   // Set default active message ticket on load
   useEffect(() => {
+    // TEMPORARILY DISABLED - MESSAGES FEATURE
+    if (!MESSAGES_FEATURE_ENABLED) return;
     if (tickets.length > 0 && !activeMessageTicket) {
       setActiveMessageTicket(tickets[0]);
     }
   }, [tickets, activeMessageTicket]);
 
   const handleSendMessage = async (e) => {
+    // TEMPORARILY DISABLED - MESSAGES FEATURE
+    if (!MESSAGES_FEATURE_ENABLED) return;
     if (e) e.preventDefault();
     if (!messageText.trim() && !messageAttachment) return;
     if (!activeMessageTicket) return;
@@ -644,6 +679,8 @@ const UserDashboard = () => {
   }, []);
 
   const switchTab = (tab) => {
+    // TEMPORARILY DISABLED - MESSAGES FEATURE
+    if (!MESSAGES_FEATURE_ENABLED && tab === 'Messages') return;
     setActiveTab(tab);
     setTransitionKey(k => k + 1);
   };
@@ -653,15 +690,34 @@ const UserDashboard = () => {
   const handleCategoryClick = (categoryId) => {
     setFormCategory(categoryId.toString());
     setIsCategoryLocked(true);
+    setAiSuggestion('');
+    setAiLoading(false);
     setIsModalOpen(true);
   };
 
   const openChatSupport = () => {
+    setIsChatSupportOpen(true);
+  };
+
+  const openMessagesFromSupport = () => {
+    // TEMPORARILY DISABLED - MESSAGES FEATURE
+    if (!MESSAGES_FEATURE_ENABLED) return;
+    setIsChatSupportOpen(false);
     switchTab('Messages');
     if (!activeMessageTicket && tickets.length > 0) {
       setActiveMessageTicket(tickets[0]);
       fetchActiveTicketMessages(tickets[0].ticket_id);
     }
+  };
+
+  const viewTicketsFromSupport = () => {
+    setIsChatSupportOpen(false);
+    switchTab('My Queries');
+  };
+
+  const raiseTicketFromSupport = () => {
+    setIsChatSupportOpen(false);
+    openContactSupport();
   };
 
   const openContactSupport = () => {
@@ -820,7 +876,8 @@ const UserDashboard = () => {
         </svg>
       )
     },
-    {
+    // TEMPORARILY DISABLED - MESSAGES FEATURE
+    ...(MESSAGES_FEATURE_ENABLED ? [{
       name: 'Messages', icon: (
         <div className="relative">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
@@ -833,7 +890,7 @@ const UserDashboard = () => {
           )}
         </div>
       )
-    },
+    }] : []),
     {
       name: 'Analytics', icon: (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
@@ -852,11 +909,13 @@ const UserDashboard = () => {
 
   const getStatusBadgeStyles = (status) => {
     switch (status) {
-      case 'Open': return 'bg-brandNavy/10 text-brandNavy border-brandNavy/20';
-      case 'In Progress': return 'bg-brandGold/12 text-brandGold border-brandGold/30';
-      case 'Resolved': return 'bg-brandRed/10 text-brandRed border-brandRed/20';
-      case 'Urgent': return 'bg-brandRed/10 text-brandRed border-brandRed/20';
-      default: return 'bg-brandMuted/10 text-brandMuted border-brandMuted/20';
+      case 'Resolved':
+      case 'Closed':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'In Progress':
+        return 'bg-amber-50 text-amber-700 border-amber-200';
+      default:
+        return 'bg-brandRed/10 text-brandRed border-brandRed/20';
     }
   };
 
@@ -932,7 +991,8 @@ const UserDashboard = () => {
                 </svg>
               )
             },
-            {
+            // TEMPORARILY DISABLED - MESSAGES FEATURE
+            ...(MESSAGES_FEATURE_ENABLED ? [{
               label: 'Messages', desc: 'Check replies and notifications',
               bg: 'bg-brandGold', shadow: 'shadow-brandGold/20', glowHover: 'hover:shadow-[0_14px_28px_rgba(245,166,35,.18)]',
               borderHover: 'hover:border-brandGold/30',
@@ -942,7 +1002,7 @@ const UserDashboard = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
                 </svg>
               )
-            }
+            }] : [])
           ].map((card) => (
             <div
               key={card.label}
@@ -1070,7 +1130,7 @@ const UserDashboard = () => {
                 return (
                   <div
                     key={query.ticket_id}
-                    onClick={() => setSelectedTicket(query)}
+                    onClick={() => openTicketDetails(query, 'simple')}
                     className="ticket-card group bg-white rounded-2xl border border-gray-100 p-5 shadow-sm cursor-pointer"
                   >
                     <div className="flex items-start justify-between mb-4">
@@ -1106,29 +1166,189 @@ const UserDashboard = () => {
 
   const getTicketProgress = (ticket) => {
     let currentStep = 1;
-    let progressPercent = 25;
+    let progressPercent = 12;
 
-    if (ticket.status === 'Closed') {
+    if (ticket.status === 'Resolved' || ticket.status === 'Closed') {
       currentStep = 5;
       progressPercent = 100;
-    } else if (ticket.status === 'Resolved') {
+    } else if (ticket.status === 'Under Review') {
       currentStep = 4;
-      progressPercent = 80;
-    } else if (ticket.status === 'In Progress' || ticket.status === 'Under Review') {
+      progressPercent = 78;
+    } else if (ticket.status === 'Needs Clarification') {
       currentStep = 3;
-      progressPercent = 60;
+      progressPercent = 62;
+    } else if (ticket.status === 'In Progress') {
+      currentStep = 3;
+      progressPercent = 55;
     } else if (ticket.assigned_to) {
       currentStep = 2;
-      progressPercent = 45;
-    } else if (ticket.status === 'Needs Clarification') {
-      currentStep = 2;
-      progressPercent = 40;
+      progressPercent = 35;
     } else {
       currentStep = 1;
-      progressPercent = 25;
+      progressPercent = 12;
     }
 
     return { currentStep, progressPercent };
+  };
+
+  const getFallbackJourneyTime = (dateStr, minutesToAdd) => {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    date.setMinutes(date.getMinutes() + minutesToAdd);
+    return date.toISOString();
+  };
+
+  const formatJourneyTimestamp = (dateStr) => {
+    if (!dateStr) return 'Pending';
+    return formatTicketDate(dateStr);
+  };
+
+  const getTicketJourneyStep = (ticket) => {
+    if (!ticket) return 0;
+    const status = ticket.status || 'Open';
+    if (status === 'Resolved' || status === 'Closed') return 4;
+    if (status === 'Under Review' || status === 'Needs Clarification') return 3;
+    if (status === 'In Progress') return 2;
+    if (ticket.assigned_to && ticket.assigned_to !== 'Unassigned') return 1;
+    return 0;
+  };
+
+  const getTicketJourneyStages = (ticket) => {
+    if (!ticket) return [];
+    const categoryName = categories.find(c => c.category_id === ticket.category_id)?.name || `Category #${ticket.category_id}`;
+    const assignedTeam = ticket.assigned_to || getDepartmentForCategory(categoryName);
+    const journeyStep = getTicketJourneyStep(ticket);
+
+    return [
+      {
+        title: 'Ticket Created',
+        timestamp: ticket.created_at,
+        owner: userName || ticket.raised_by || 'User',
+        action: 'Your query was submitted to Reliance Retail QMS.'
+      },
+      {
+        title: 'Assigned to Team',
+        timestamp: journeyStep >= 1 ? ticket.assigned_at || getFallbackJourneyTime(ticket.created_at, 20) : null,
+        owner: assignedTeam,
+        action: `${assignedTeam} is responsible for this query.`
+      },
+      {
+        title: 'Investigation Started',
+        timestamp: journeyStep >= 2 ? ticket.investigation_started_at || getFallbackJourneyTime(ticket.created_at, 120) : null,
+        owner: assignedTeam,
+        action: 'Support is checking the details and validating next steps.'
+      },
+      {
+        title: 'Under Review',
+        timestamp: journeyStep >= 3 ? ticket.review_started_at || getFallbackJourneyTime(ticket.created_at, 360) : null,
+        owner: 'Reliance Review Desk',
+        action: 'The response is being reviewed before closure.'
+      },
+      {
+        title: 'Resolved',
+        timestamp: journeyStep >= 4 ? ticket.resolved_at || getFallbackJourneyTime(ticket.created_at, 1440) : null,
+        owner: assignedTeam,
+        action: 'Resolution is completed and available for your confirmation.'
+      }
+    ];
+  };
+
+  const renderAdvancedTicketJourneyMap = (ticket) => {
+    const journeyStep = getTicketJourneyStep(ticket);
+    const journeyStages = getTicketJourneyStages(ticket);
+
+    return (
+      <div className="rounded-2xl border border-brandNavy/10 bg-white p-3.5 shadow-[0_12px_32px_rgba(15,27,76,0.07)]">
+        <div className="mb-3 flex flex-wrap items-center gap-2.5">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-brandNavy/10 text-brandNavy text-[10px] font-extrabold">J</span>
+          <h4 className="text-[13px] font-extrabold text-brandDarkNavy font-sora leading-none">Advanced Ticket Journey Map</h4>
+          <span className="rounded-full bg-brandRed/10 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-brandRed leading-none">Status tracking</span>
+        </div>
+
+        <div className="relative">
+          <div className="absolute left-[14px] top-6 bottom-6 w-px bg-gradient-to-b from-brandNavy/35 via-brandRed/25 to-gray-200" />
+          <div className="space-y-1.5">
+            {journeyStages.map((stage, index) => {
+              const isCurrent = index === journeyStep;
+              const isCompleted = index < journeyStep;
+              const isFuture = index > journeyStep;
+              const iconClass = isCurrent
+                ? 'bg-brandRed text-white ring-brandRed/15 shadow-lg shadow-brandRed/20'
+                : isCompleted
+                  ? 'bg-brandNavy text-white ring-brandNavy/10 shadow-md shadow-brandNavy/15'
+                  : 'bg-gray-100 text-gray-400 ring-gray-100';
+              const cardClass = isCurrent
+                ? 'border-brandRed/25 bg-gradient-to-br from-brandRed/[0.08] via-white to-brandNavy/[0.04] shadow-md shadow-brandRed/8'
+                : isCompleted
+                  ? 'border-brandNavy/12 bg-white shadow-sm'
+                  : 'border-gray-100 bg-gray-50/80 opacity-70';
+
+              return (
+                <div key={stage.title} className="relative flex gap-3">
+                  <div className={`z-10 mt-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ring-[3px] ${iconClass}`}>
+                    {isCompleted ? (
+                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.8" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                    ) : isCurrent ? (
+                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.6" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                      </svg>
+                    ) : (
+                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.4" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0 3.75h.008v.008H12v-.008Z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z" />
+                      </svg>
+                    )}
+                  </div>
+
+                  <div className={`flex-1 rounded-xl border px-3.5 py-2 transition-all ${cardClass}`}>
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2.5">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h5 className={`text-[13px] font-extrabold font-sora leading-tight ${isFuture ? 'text-gray-400' : 'text-brandDarkNavy'}`}>{stage.title}</h5>
+                          {isCurrent && <span className="rounded-full bg-brandRed px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-white leading-none">Current</span>}
+                          {isCompleted && <span className="rounded-full bg-brandNavy/10 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-brandNavy leading-none">Completed</span>}
+                        </div>
+                        <p className={`mt-1 text-[11px] font-semibold leading-snug ${isFuture ? 'text-gray-400' : 'text-gray-600'}`}>{stage.action}</p>
+                      </div>
+                      <p className={`shrink-0 text-right text-[10px] font-extrabold leading-tight ${isFuture ? 'text-gray-400' : 'text-brandNavy'}`}>{formatJourneyTimestamp(stage.timestamp)}</p>
+                    </div>
+
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-[10px] font-bold leading-tight">
+                      <div className="min-w-0 flex items-center">
+                        <span className="mr-1.5 uppercase tracking-wider text-gray-400">Responsible</span>
+                        <span className={isFuture ? 'text-gray-400' : 'text-gray-700'}>{stage.owner}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="mr-1.5 uppercase tracking-wider text-gray-400">Stage Status</span>
+                        <span className={isCurrent ? 'text-brandRed' : isCompleted ? 'text-brandNavy' : 'text-gray-400'}>
+                          {isCurrent ? 'In focus' : isCompleted ? 'Active' : 'Pending'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const getProgressBarStyles = (status) => {
+    if (status === 'Resolved' || status === 'Closed') {
+      return 'bg-gradient-to-r from-emerald-500 to-emerald-600';
+    }
+
+    if (status === 'In Progress' || status === 'Under Review') {
+      return 'bg-gradient-to-r from-amber-400 to-amber-600';
+    }
+
+    return 'bg-gradient-to-r from-brandRed to-red-600';
   };
 
   const getDepartmentForCategory = (categoryName) => {
@@ -1162,19 +1382,13 @@ const UserDashboard = () => {
 
   const getTrackStatusBadgeStyles = (status) => {
     switch (status) {
-      case 'Open':
-        return 'bg-blue-50 text-blue-600 border-blue-200';
-      case 'Under Review':
       case 'In Progress':
-        return 'bg-indigo-50 text-indigo-600 border-indigo-200';
-      case 'Needs Clarification':
-        return 'bg-purple-50 text-purple-600 border-purple-200';
+        return 'bg-amber-50 text-amber-700 border-amber-200';
       case 'Resolved':
-        return 'bg-rose-50 text-rose-600 border-rose-200';
       case 'Closed':
-        return 'bg-red-50 text-red-600 border-red-200';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       default:
-        return 'bg-gray-50 text-gray-600 border-gray-200';
+        return 'bg-brandRed/10 text-brandRed border-brandRed/20';
     }
   };
 
@@ -1227,11 +1441,11 @@ const UserDashboard = () => {
             <div className="hidden md:block absolute left-8 right-8 top-1/2 -translate-y-1/2 h-0.5 bg-gray-100 -z-10" />
 
             {[
-              { num: 1, label: 'Open', color: 'bg-blue-600 ring-blue-100 text-blue-600', line: 'bg-gradient-to-r from-blue-600 to-indigo-600' },
-              { num: 2, label: 'Assigned', color: 'bg-indigo-600 ring-indigo-100 text-indigo-600', line: 'bg-gradient-to-r from-indigo-600 to-purple-600' },
-              { num: 3, label: 'In Progress', color: 'bg-purple-600 ring-purple-100 text-purple-600', line: 'bg-gradient-to-r from-purple-600 to-rose-600' },
-              { num: 4, label: 'Resolved', color: 'bg-rose-600 ring-rose-100 text-rose-600', line: 'bg-gradient-to-r from-rose-600 to-red-600' },
-              { num: 5, label: 'Closed', color: 'bg-red-600 ring-red-100 text-red-600' }
+              { num: 1, label: 'Open', color: 'bg-brandRed ring-brandRed/10 text-brandRed', line: 'bg-gradient-to-r from-brandRed to-brandRed' },
+              { num: 2, label: 'Assigned', color: 'bg-brandRed ring-brandRed/10 text-brandRed', line: 'bg-gradient-to-r from-brandRed to-amber-500' },
+              { num: 3, label: 'In Progress', color: 'bg-amber-500 ring-amber-100 text-amber-600', line: 'bg-gradient-to-r from-amber-500 to-amber-500' },
+              { num: 4, label: 'Under Review', color: 'bg-amber-500 ring-amber-100 text-amber-600', line: 'bg-gradient-to-r from-amber-500 to-emerald-500' },
+              { num: 5, label: 'Resolved', color: 'bg-emerald-600 ring-emerald-100 text-emerald-600' }
             ].map((step, idx) => (
               <React.Fragment key={idx}>
                 {/* Step Item */}
@@ -1296,7 +1510,7 @@ const UserDashboard = () => {
               return (
                 <div
                   key={ticket.ticket_id}
-                  onClick={() => setSelectedTicket(ticket)}
+                  onClick={() => openTicketDetails(ticket, 'track')}
                   className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-all cursor-pointer text-left relative overflow-hidden group animate-slide-up-fade"
                 >
                   {/* Subtle red/blue accent indicator on hover */}
@@ -1364,7 +1578,7 @@ const UserDashboard = () => {
                     {/* Progress Bar Container */}
                     <div className="w-full bg-gray-150 h-2 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-gradient-to-r from-blue-600 via-purple-600 to-red-600 rounded-full transition-all duration-500"
+                        className={`h-full ${getProgressBarStyles(ticket.status)} rounded-full transition-all duration-500`}
                         style={{ width: `${progressPercent}%` }}
                       />
                     </div>
@@ -2188,93 +2402,152 @@ const UserDashboard = () => {
   /* ══════════════════════════════════════════
      PROFILE TAB
   ══════════════════════════════════════════ */
-  const renderProfile = () => (
-    <div className="space-y-8 text-left">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-extrabold text-brandDarkNavy font-sora">Profile Settings</h1>
-        <p className="text-sm text-gray-500 mt-1">Manage your account credentials, partner details, and alert preferences.</p>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-between text-center lg:col-span-1 min-h-[300px]">
-          <div className="space-y-4">
-            <div className={`w-20 h-20 rounded-full flex items-center justify-center font-bold text-xl text-white shadow-md mx-auto ${isVendor ? 'bg-gradient-to-br from-brandRed to-[#A50E23]' : 'bg-gradient-to-br from-brandNavy to-[#080E29]'}`}>
-              {getInitials(userName)}
-            </div>
-            <div>
-              <h3 className="font-extrabold text-lg text-brandDarkNavy font-sora">{userName}</h3>
-              <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">{roleLabel}</span>
-            </div>
-            <div className="bg-gray-50 border border-gray-100/80 rounded-xl px-4 py-2 inline-block">
-              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">User Account ID</span>
-              <span className="text-xs font-bold text-brandDarkNavy font-sora">VND-2026-8947</span>
-            </div>
-          </div>
-          <button onClick={handleLogout}
-            className="mt-6 px-5 py-2.5 rounded-xl text-xs font-bold border border-gray-200 text-gray-500 hover:text-brandRed hover:bg-brandRed/5 hover:border-brandRed/10 transition-all duration-300 w-full">
-            Sign Out Account
-          </button>
+  const renderProfile = () => {
+    const activeTickets = tickets.filter(ticket => !['Resolved', 'Closed'].includes(ticket.status)).length;
+    const resolvedTickets = tickets.filter(ticket => ['Resolved', 'Closed'].includes(ticket.status)).length;
+    const urgentTickets = tickets.filter(ticket => ['Urgent', 'High', 'Critical'].includes(ticket.priority)).length;
+
+    return (
+      <div className="space-y-8 text-left">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-brandDarkNavy font-sora">Profile Settings</h1>
+          <p className="text-sm text-gray-500 mt-1">Manage your user account, notification preferences, and support activity.</p>
         </div>
-        <div className="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm lg:col-span-2 space-y-6">
-          <h3 className="font-extrabold text-base text-brandDarkNavy font-sora">Corporate Association Details</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-left">
-            {[
-              { label: 'Registered Name', val: userName },
-              { label: 'Registered Email', val: userEmail },
-              { label: 'Department Division', val: 'Supply Chain Operations' },
-              { label: 'Support Tier Level', val: 'Tier-1 Enterprise SLA' }
-            ].map(({ label, val }) => (
-              <div key={label}>
-                <label className="block text-[10px] font-extrabold text-gray-400 font-sora tracking-widest uppercase mb-2">{label}</label>
-                <input type="text" disabled value={val} className="w-full border border-gray-150 px-4 py-2.5 rounded-xl text-xs font-bold bg-gray-50 text-gray-500 outline-none" />
+
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          <div className="xl:col-span-4 bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className={`h-2 w-full ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
+            <div className="p-6 text-center">
+              <div className={`w-24 h-24 rounded-3xl flex items-center justify-center font-extrabold text-2xl text-white shadow-lg mx-auto ${isVendor ? 'bg-gradient-to-br from-brandRed to-[#A50E23]' : 'bg-gradient-to-br from-brandNavy to-[#080E29]'}`}>
+                {getInitials(userName)}
               </div>
-            ))}
+              <h3 className="font-extrabold text-xl text-brandDarkNavy font-sora mt-5">{userName}</h3>
+              <p className="text-xs font-bold text-gray-400 mt-1">{userEmail}</p>
+              <span className={`inline-flex items-center gap-1.5 mt-4 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider border ${isVendor ? 'bg-brandRed/5 text-brandRed border-brandRed/20' : 'bg-brandNavy/5 text-brandNavy border-brandNavy/20'}`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                {roleLabel}
+              </span>
+
+              <div className="grid grid-cols-3 gap-2 mt-6">
+                {[
+                  ['Active', activeTickets],
+                  ['Resolved', resolvedTickets],
+                  ['Urgent', urgentTickets]
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-2xl border border-gray-100 bg-gray-50/70 px-3 py-3">
+                    <p className="text-lg font-extrabold text-brandDarkNavy font-sora">{value}</p>
+                    <p className="text-[9px] font-extrabold text-gray-400 uppercase tracking-wider">{label}</p>
+                  </div>
+                ))}
+              </div>
+
+              <button onClick={handleLogout}
+                className="mt-6 px-5 py-3 rounded-2xl text-xs font-extrabold border border-gray-200 text-gray-500 hover:text-brandRed hover:bg-brandRed/5 hover:border-brandRed/10 transition-all duration-300 w-full">
+                Sign Out Account
+              </button>
+            </div>
           </div>
-          <hr className="border-gray-100" />
-          <div className="space-y-4 text-left">
-            <h3 className="font-extrabold text-sm text-brandDarkNavy font-sora">Notification Alert Rules</h3>
-            {[
-              { 
-                label: 'Email ticket progression digests', 
-                sub: 'Receive notification when ticket state updates.',
-                enabled: emailAlerts,
-                toggle: () => setEmailAlerts(!emailAlerts)
-              },
-              { 
-                label: 'SMS critical urgency escalations', 
-                sub: 'Text alert when a query is marked Urgent.',
-                enabled: smsAlerts,
-                toggle: () => setSmsAlerts(!smsAlerts)
-              }
-            ].map(({ label, sub, enabled, toggle }) => (
-              <div key={label} className="flex items-center justify-between py-1">
+
+          <div className="xl:col-span-8 space-y-6">
+            <div className="bg-white p-6 md:p-7 rounded-3xl border border-gray-100 shadow-sm">
+              <div className="flex items-start justify-between gap-4 mb-6">
                 <div>
-                  <p className="text-xs font-bold text-gray-700">{label}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5 font-semibold font-dmSans">{sub}</p>
+                  <h3 className="font-extrabold text-base text-brandDarkNavy font-sora">Account Information</h3>
+                  <p className="text-xs text-gray-400 mt-1 font-semibold">Read-only details linked with your QMS login.</p>
                 </div>
-                <div 
-                  onClick={toggle}
-                  className={`w-10 h-6 rounded-full p-1 cursor-pointer flex items-center transition-all duration-300 ${
-                    enabled 
-                      ? (isVendor ? 'bg-brandRed justify-end' : 'bg-brandNavy justify-end') 
-                      : 'bg-gray-200 justify-start'
-                  }`}
-                >
-                  <div className="w-4 h-4 bg-white rounded-full shadow-sm" />
+                <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-extrabold">
+                  Active
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-left">
+                {[
+                  { label: 'Full Name', val: userName },
+                  { label: 'Email Address', val: userEmail },
+                  { label: 'Account Type', val: 'QMS Portal User' },
+                  { label: 'User ID', val: userEmail?.split('@')[0] || 'user-account' },
+                  { label: 'Primary Department', val: 'Supply Chain Operations' },
+                  { label: 'Support Access', val: MESSAGES_FEATURE_ENABLED ? 'Ticket, Messages, Tracking' : 'Ticket, Tracking, Help Center' }
+                ].map(({ label, val }) => (
+                  <div key={label}>
+                    <label className="block text-[10px] font-extrabold text-gray-400 font-sora tracking-widest uppercase mb-2">{label}</label>
+                    <div className="w-full border border-gray-150 px-4 py-3 rounded-2xl text-xs font-bold bg-gray-50/70 text-gray-600">
+                      {val}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                <h3 className="font-extrabold text-sm text-brandDarkNavy font-sora">Notification Preferences</h3>
+                <p className="text-xs text-gray-400 mt-1 mb-5 font-semibold">Choose how ticket updates reach you.</p>
+                {[
+                  {
+                    label: 'Email ticket updates',
+                    sub: 'Receive status changes and admin replies by email.',
+                    enabled: emailAlerts,
+                    toggle: () => setEmailAlerts(!emailAlerts)
+                  },
+                  {
+                    label: 'SMS urgent alerts',
+                    sub: 'Get text alerts for high priority or urgent queries.',
+                    enabled: smsAlerts,
+                    toggle: () => setSmsAlerts(!smsAlerts)
+                  }
+                ].map(({ label, sub, enabled, toggle }) => (
+                  <div key={label} className="flex items-center justify-between py-4 border-b border-gray-100 last:border-b-0">
+                    <div className="pr-4">
+                      <p className="text-xs font-extrabold text-gray-700">{label}</p>
+                      <p className="text-[10px] text-gray-400 mt-1 font-semibold leading-relaxed">{sub}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={toggle}
+                      className={`w-11 h-6 rounded-full p-1 cursor-pointer flex items-center transition-all duration-300 shrink-0 ${
+                        enabled
+                          ? (isVendor ? 'bg-brandRed justify-end' : 'bg-brandNavy justify-end')
+                          : 'bg-gray-200 justify-start'
+                      }`}
+                    >
+                      <span className="w-4 h-4 bg-white rounded-full shadow-sm" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                <h3 className="font-extrabold text-sm text-brandDarkNavy font-sora">Security & Access</h3>
+                <p className="text-xs text-gray-400 mt-1 mb-5 font-semibold">Current session and account protection details.</p>
+                <div className="space-y-3">
+                  {[
+                    ['Password', 'Protected by encrypted login credentials'],
+                    ['Session', 'Active on this browser'],
+                    ['Last Login', 'Available after next authentication'],
+                    ['Account Status', 'Verified and enabled']
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-2xl border border-gray-100 bg-gray-50/60 px-4 py-3">
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400">{label}</p>
+                      <p className="text-xs font-bold text-brandDarkNavy mt-1">{value}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
       case 'Dashboard': return renderDashboard();
       case 'My Queries': return renderMyQueries();
       case 'Track Status': return renderTrackStatus();
-      case 'Messages': return renderMessages();
+      // TEMPORARILY DISABLED - MESSAGES FEATURE
+      case 'Messages': return MESSAGES_FEATURE_ENABLED ? renderMessages() : renderDashboard();
       case 'Analytics': return renderAnalytics();
       case 'Profile': return renderProfile();
       default: return renderDashboard();
@@ -2284,6 +2557,12 @@ const UserDashboard = () => {
   /* ══════════════════════════════════════════
      MAIN RENDER
   ══════════════════════════════════════════ */
+  const supportStats = {
+    active: tickets.filter(ticket => ['Open', 'In Progress', 'Needs Clarification'].includes(ticket.status)).length,
+    underReview: tickets.filter(ticket => ticket.status === 'Under Review').length,
+    resolved: tickets.filter(ticket => ['Resolved', 'Closed'].includes(ticket.status)).length
+  };
+
   return (
     <div className="min-h-screen bg-[#F6F7FB] font-dmSans flex flex-col relative">
 
@@ -2316,31 +2595,36 @@ const UserDashboard = () => {
         </div>
 
         <div className="flex items-center space-x-4">
-          <button
-            onClick={() => switchTab('Messages')}
-            className={`p-2.5 rounded-xl border border-gray-150/60 hover:bg-gray-50 text-gray-500 transition-all relative ${activeTab === 'Messages' ? 'bg-gray-50 text-brandNavy border-gray-200' : ''}`}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-            </svg>
-            <span className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ring-2 ring-white notif-pulse ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
-          </button>
+          {/* TEMPORARILY DISABLED - MESSAGES FEATURE */}
+          {MESSAGES_FEATURE_ENABLED && (
+            <>
+              <button
+                onClick={() => switchTab('Messages')}
+                className={`p-2.5 rounded-xl border border-gray-150/60 hover:bg-gray-50 text-gray-500 transition-all relative ${activeTab === 'Messages' ? 'bg-gray-50 text-brandNavy border-gray-200' : ''}`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                </svg>
+                <span className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ring-2 ring-white notif-pulse ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
+              </button>
 
-          <button
-            onClick={() => switchTab('Dashboard')}
-            className="p-2.5 rounded-xl border border-gray-150/60 hover:bg-gray-50 text-gray-500 transition-all relative"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-            </svg>
-            {tickets.filter(t => t.priority === 'Urgent' || t.status === 'Open').length > 0 && (
-              <span className={`absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-full text-[8px] font-extrabold text-white ring-2 ring-white ${notifPopped ? 'badge-pop' : ''} ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`}>
-                {tickets.filter(t => t.priority === 'Urgent' || t.status === 'Open').length}
-              </span>
-            )}
-          </button>
+              <button
+                onClick={() => switchTab('Dashboard')}
+                className="p-2.5 rounded-xl border border-gray-150/60 hover:bg-gray-50 text-gray-500 transition-all relative"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                </svg>
+                {tickets.filter(t => t.priority === 'Urgent' || t.status === 'Open').length > 0 && (
+                  <span className={`absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-full text-[8px] font-extrabold text-white ring-2 ring-white ${notifPopped ? 'badge-pop' : ''} ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`}>
+                    {tickets.filter(t => t.priority === 'Urgent' || t.status === 'Open').length}
+                  </span>
+                )}
+              </button>
+            </>
+          )}
 
-          <div className="flex items-center space-x-3 pl-3 border-l border-gray-100">
+          <div className={`flex items-center space-x-3 ${MESSAGES_FEATURE_ENABLED ? 'pl-3 border-l border-gray-100' : ''}`}>
             <div className="text-right hidden sm:block">
               <p className="text-xs font-extrabold text-brandDarkNavy font-sora">{userName}</p>
               <p className="text-[10px] text-gray-400 font-semibold mt-0.5">{userEmail}</p>
@@ -2379,7 +2663,8 @@ const UserDashboard = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
                   </svg>
                 )},
-                { name: 'Messages', icon: (
+                // TEMPORARILY DISABLED - MESSAGES FEATURE
+                ...(MESSAGES_FEATURE_ENABLED ? [{ name: 'Messages', icon: (
                   <div className="relative">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
@@ -2390,7 +2675,7 @@ const UserDashboard = () => {
                       </span>
                     )}
                   </div>
-                )},
+                )}] : []),
                 { name: 'Analytics', icon: (
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v5.625C7.5 19.346 6.996 19.875 6.375 19.875h-2.25A1.375 1.375 0 0 1 3 18.5v-5.375zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v10.125c0 .621-.504 1.125-1.125 1.125h-2.25a1.375 1.375 0 0 1-1.375-1.375V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v14.625c0 .621-.504 1.125-1.125 1.125h-2.25a1.375 1.375 0 0 1-1.375-1.375V4.125z" />
@@ -2438,7 +2723,7 @@ const UserDashboard = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
                   </svg>
                 )},
-                { label: 'Chat Support', onClick: openChatSupport, icon: (
+                { label: 'Help Center', onClick: openChatSupport, icon: (
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
                   </svg>
@@ -2539,7 +2824,8 @@ const UserDashboard = () => {
                 {[
                   ['Raise a Query', 'Open Dashboard, choose a category, fill details, and submit your ticket.'],
                   ['Track Status', 'Use Track Status or My Queries to follow progress, priority, and resolution.'],
-                  ['Chat Support', 'Open Messages to read admin replies and send follow-up messages.'],
+                  // TEMPORARILY DISABLED - MESSAGES FEATURE
+                  ...(MESSAGES_FEATURE_ENABLED ? [['Messages', 'Open Messages to read admin replies and send follow-up messages.']] : []),
                   ['Contact Support', 'Use Contact Support to create a support request with the ticket form.']
                 ].map(([title, desc], index) => (
                   <div key={title} className="flex gap-3 rounded-xl border border-gray-100 bg-gray-50/50 p-3">
@@ -2567,76 +2853,200 @@ const UserDashboard = () => {
         </div>
       )}
       {/* ── TICKET DETAILS MODAL ── */}
+      {isChatSupportOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brandNavy/35 backdrop-blur-md">
+          <div className="absolute inset-0" onClick={() => setIsChatSupportOpen(false)} />
+          <div className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-white/70 bg-white/90 shadow-[0_30px_90px_rgba(9,19,57,0.28)] animate-scale-in font-dmSans backdrop-blur-xl">
+            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(227,24,55,0.08)_0%,rgba(255,255,255,0.72)_34%,rgba(15,27,76,0.08)_100%)] pointer-events-none" />
+            <div className="absolute -top-24 -right-20 h-56 w-56 rounded-full bg-brandRed/10 blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-28 -left-24 h-64 w-64 rounded-full bg-brandNavy/12 blur-3xl pointer-events-none" />
+
+            <div className="relative">
+              <div className="bg-gradient-to-r from-brandNavy via-[#17245D] to-brandRed px-6 py-5 text-white">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/15 shadow-lg backdrop-blur">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="h-6 w-6">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-extrabold tracking-widest uppercase text-white/65">Support Center</p>
+                      <h3 className="mt-1 text-2xl font-extrabold font-sora tracking-tight">How can we route your request?</h3>
+                      <p className="mt-2 max-w-xl text-xs font-semibold leading-relaxed text-white/72">
+                        Use your existing ticket workflow to review issues, continue conversations, or raise a new support request.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsChatSupportOpen(false)}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white/70 transition-all hover:bg-white/20 hover:text-white"
+                    aria-label="Close support center"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="h-4 w-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="relative p-6">
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: 'Active', value: supportStats.active, tone: 'text-brandRed', bg: 'from-brandRed/12 to-white' },
+                    { label: 'Under Review', value: supportStats.underReview, tone: 'text-brandNavy', bg: 'from-brandNavy/12 to-white' },
+                    { label: 'Resolved', value: supportStats.resolved, tone: 'text-emerald-600', bg: 'from-emerald-500/12 to-white' }
+                  ].map((stat) => (
+                    <div key={stat.label} className={`rounded-2xl border border-white/70 bg-gradient-to-br ${stat.bg} p-4 shadow-[0_10px_28px_rgba(15,27,76,0.08)] backdrop-blur`}>
+                      <p className={`text-2xl font-black font-sora ${stat.tone}`}>{stat.value}</p>
+                      <p className="mt-1 text-[10px] font-extrabold uppercase tracking-widest text-gray-400">{stat.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-5 grid gap-4 md:grid-cols-2">
+                {[
+                  {
+                    label: 'View My Tickets',
+                    desc: 'Review all raised tickets and open the right query.',
+                    onClick: viewTicketsFromSupport,
+                    accent: 'from-brandNavy to-[#1D2D70]',
+                    chip: 'Ticket Hub',
+                    icon: (
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="h-7 w-7">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3.75h10.5A2.25 2.25 0 0 1 19.5 6v12A2.25 2.25 0 0 1 17.25 20.25H6.75A2.25 2.25 0 0 1 4.5 18V6A2.25 2.25 0 0 1 6.75 3.75Zm2.25 4.5h6m-6 3.75h6m-6 3.75h3" />
+                      </svg>
+                    )
+                  },
+                  // TEMPORARILY DISABLED - MESSAGES FEATURE
+                  ...(MESSAGES_FEATURE_ENABLED ? [{
+                    label: 'Open Messages Center',
+                    desc: 'Continue an active conversation with support.',
+                    onClick: openMessagesFromSupport,
+                    accent: 'from-brandRed to-[#A80F26]',
+                    chip: 'Live Thread',
+                    icon: (
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="h-7 w-7">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm3.75 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm3.75 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+                      </svg>
+                    )
+                  }] : []),
+                  {
+                    label: 'Raise New Ticket',
+                    desc: 'Create a fresh support request with details and attachments.',
+                    onClick: raiseTicketFromSupport,
+                    accent: 'from-[#23347A] to-brandRed',
+                    chip: 'New Request',
+                    icon: (
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="h-7 w-7">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15M6.75 3.75h10.5" />
+                      </svg>
+                    )
+                  }
+                ].map((action) => (
+                  <button
+                    key={action.label}
+                    type="button"
+                    onClick={action.onClick}
+                    className="group relative min-h-[210px] overflow-hidden rounded-2xl border border-white/80 bg-white/75 p-4 text-left shadow-[0_14px_38px_rgba(15,27,76,0.10)] backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_55px_rgba(15,27,76,0.18)]"
+                  >
+                    <div className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${action.accent}`} />
+                    <div className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${action.accent} text-white shadow-lg transition-transform duration-300 group-hover:scale-105`}>
+                      {action.icon}
+                    </div>
+                    <div className="mt-5">
+                      <span className="inline-flex rounded-full bg-brandNavy/5 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-widest text-brandNavy/70">
+                        {action.chip}
+                      </span>
+                      <h4 className="mt-3 text-sm font-extrabold text-brandDarkNavy font-sora leading-snug">{action.label}</h4>
+                      <p className="mt-2 text-[11px] font-semibold leading-relaxed text-gray-500">{action.desc}</p>
+                    </div>
+                    <div className="absolute bottom-4 right-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 text-gray-300 transition-all group-hover:bg-brandNavy group-hover:text-white">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="h-4 w-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                      </svg>
+                    </div>
+                  </button>
+                ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedTicket && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brandNavy/35 backdrop-blur-sm overflow-y-auto animate-fade-in">
-          <div className="absolute inset-0 bg-brandNavy/10 backdrop-blur-[1px]" onClick={() => setSelectedTicket(null)} />
-          <div className="relative bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-gray-100/90 overflow-hidden z-10 animate-scale-in flex flex-col font-dmSans">
-            <div className={`h-2 w-full ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-brandNavy/35 backdrop-blur-sm overflow-hidden animate-fade-in">
+          <div className="absolute inset-0 bg-brandNavy/10 backdrop-blur-[1px]" onClick={closeTicketDetails} />
+          <div className={`relative bg-white w-full ${selectedTicketView === 'track' ? 'max-w-6xl max-h-[calc(100vh-5.5rem)]' : 'max-w-2xl'} rounded-2xl shadow-2xl border border-gray-100/90 overflow-hidden z-10 animate-scale-in flex flex-col font-dmSans`}>
+            <div className={`h-1.5 w-full ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
             
-            <button onClick={() => setSelectedTicket(null)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-lg hover:bg-gray-100 active:bg-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200">
+            <button onClick={closeTicketDetails}
+              className="absolute top-3 right-3 w-8 h-8 rounded-lg hover:bg-gray-100 active:bg-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
               </svg>
             </button>
 
-            <div className="p-4 pb-3 flex items-center justify-between border-b border-gray-100">
-              <div>
+            <div className="px-5 py-3 flex items-center justify-between border-b border-gray-100">
+              <div className="min-w-0 pr-10">
                 <span className="text-[9px] uppercase text-gray-400 font-extrabold tracking-widest font-sora block mb-0.5">
                   Ticket Details
                 </span>
-                <div className="flex flex-wrap items-baseline gap-2">
-                  <h2 className="text-lg md:text-xl font-black text-brandDarkNavy font-sora tracking-tight leading-tight pr-6">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h2 className="text-base md:text-xl font-black text-brandDarkNavy font-sora tracking-tight leading-tight">
                     {selectedTicket.title}
                   </h2>
-                  <span className="text-[10px] font-extrabold text-gray-400 bg-gray-50 border border-gray-200/60 px-1.5 py-0.5 rounded font-sora select-none">
+                  <span className="text-[10px] font-extrabold text-gray-400 bg-gray-50 border border-gray-200/60 px-2 py-1 rounded-lg font-sora select-none leading-none">
                     #{selectedTicket.ticket_id}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5 p-4 bg-gray-50/30">
+            <div className={`grid ${selectedTicketView === 'track' ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'} gap-2.5 px-4 py-3 bg-gray-50/30`}>
               {/* Category */}
-              <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-3 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
-                <div className="w-8 h-8 rounded-lg bg-brandNavy/5 text-brandNavy flex items-center justify-center flex-shrink-0 border border-brandNavy/10">
+              <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
+                <div className="w-7 h-7 rounded-lg bg-brandNavy/5 text-brandNavy flex items-center justify-center flex-shrink-0 border border-brandNavy/10">
                   {getCategoryIcon(selectedTicket.category_id)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[9px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Category</p>
-                  <p className="text-xs font-bold text-brandDarkNavy mt-0.5 break-words" title={categories.find(c => c.category_id === selectedTicket.category_id)?.name}>
+                  <p className="text-[9px] uppercase text-gray-400 font-extrabold tracking-wider font-sora leading-none">Category</p>
+                  <p className="text-xs font-bold text-brandDarkNavy mt-1 leading-snug break-words" title={categories.find(c => c.category_id === selectedTicket.category_id)?.name}>
                     {categories.find(c => c.category_id === selectedTicket.category_id)?.name || `Category #${selectedTicket.category_id}`}
                   </p>
                 </div>
               </div>
 
-              {/* Status */}
-              <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-3 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0 border ${
-                  selectedTicket.status === 'Resolved' ? 'text-emerald-600 bg-emerald-50/50 border-emerald-100' :
-                  selectedTicket.status === 'In Progress' ? 'text-amber-500 bg-amber-50/50 border-amber-100' :
-                  selectedTicket.status === 'Open' ? 'text-brandNavy bg-blue-50/50 border-blue-100' : 'text-brandRed bg-rose-50/50 border-rose-100'
-                }`}>
-                  <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-[9px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Status</p>
-                  <span className={`inline-block text-[10px] font-extrabold mt-0.5 px-2 py-0.5 rounded border ${
-                    selectedTicket.status === 'Resolved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' :
-                    selectedTicket.status === 'In Progress' ? 'bg-amber-50 text-amber-700 border-amber-200/50' :
-                    selectedTicket.status === 'Open' ? 'bg-blue-50 text-blue-700 border-blue-200/50' :
-                    'bg-rose-50 text-rose-700 border-rose-200/50'
+              {selectedTicketView === 'track' && (
+                <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0 border ${
+                    selectedTicket.status === 'Resolved' ? 'text-emerald-600 bg-emerald-50/50 border-emerald-100' :
+                    selectedTicket.status === 'In Progress' ? 'text-amber-500 bg-amber-50/50 border-amber-100' :
+                    selectedTicket.status === 'Open' ? 'text-brandNavy bg-blue-50/50 border-blue-100' : 'text-brandRed bg-rose-50/50 border-rose-100'
                   }`}>
-                    {selectedTicket.status}
-                  </span>
+                    <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-[9px] uppercase text-gray-400 font-extrabold tracking-wider font-sora leading-none">Status</p>
+                    <span className={`inline-block text-[10px] font-extrabold mt-1 px-2 py-0.5 rounded border leading-none ${
+                      selectedTicket.status === 'Resolved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' :
+                      selectedTicket.status === 'In Progress' ? 'bg-amber-50 text-amber-700 border-amber-200/50' :
+                      selectedTicket.status === 'Open' ? 'bg-blue-50 text-blue-700 border-blue-200/50' :
+                      'bg-rose-50 text-rose-700 border-rose-200/50'
+                    }`}>
+                      {selectedTicket.status}
+                    </span>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Priority */}
-              <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-3 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0 border ${
+              <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0 border ${
                   selectedTicket.priority === 'Urgent' ? 'text-brandRed bg-rose-50/50 border-rose-100 animate-pulse' :
                   selectedTicket.priority === 'High' ? 'text-orange-500 bg-orange-50/50 border-orange-100' :
                   selectedTicket.priority === 'Medium' ? 'text-amber-500 bg-amber-50/50 border-amber-100' :
@@ -2647,8 +3057,8 @@ const UserDashboard = () => {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-[9px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Priority</p>
-                  <span className={`inline-block text-[10px] font-extrabold mt-0.5 px-2 py-0.5 rounded border ${
+                  <p className="text-[9px] uppercase text-gray-400 font-extrabold tracking-wider font-sora leading-none">Priority</p>
+                  <span className={`inline-block text-[10px] font-extrabold mt-1 px-2 py-0.5 rounded border leading-none ${
                     selectedTicket.priority === 'Urgent' ? 'bg-red-50 text-red-700 border-red-200/50' :
                     selectedTicket.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200/50' :
                     selectedTicket.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border-amber-200/50' :
@@ -2660,15 +3070,15 @@ const UserDashboard = () => {
               </div>
 
               {/* Submitted Date */}
-              <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-3 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
-                <div className="w-8 h-8 rounded-lg bg-gray-50 text-gray-500 flex items-center justify-center flex-shrink-0 border border-gray-100">
+              <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
+                <div className="w-7 h-7 rounded-lg bg-gray-50 text-gray-500 flex items-center justify-center flex-shrink-0 border border-gray-100">
                   <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
                   </svg>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[9px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Submitted</p>
-                  <p className="text-xs font-bold text-brandDarkNavy mt-0.5 break-words" title={selectedTicket.created_at}>
+                  <p className="text-[9px] uppercase text-gray-400 font-extrabold tracking-wider font-sora leading-none">Submitted</p>
+                  <p className="text-xs font-bold text-brandDarkNavy mt-1 leading-snug break-words" title={selectedTicket.created_at}>
                     {formatTicketDate(selectedTicket.created_at)}
                   </p>
                 </div>
@@ -2678,53 +3088,103 @@ const UserDashboard = () => {
             {/* Divider */}
             <div className="border-t border-gray-100 mx-4" />
 
-            <div className="p-4 flex-1 flex flex-col space-y-4">
-              {/* Description Block */}
-              <div>
-                <h4 className="text-[9px] uppercase text-gray-400 font-extrabold tracking-widest font-sora mb-2">Description</h4>
-                <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-4 text-xs text-gray-600 leading-relaxed whitespace-pre-wrap font-medium break-words">
-                  {selectedTicket.description}
+            {selectedTicketView === 'track' ? (
+              <div className="grid flex-1 grid-cols-1 lg:grid-cols-12 gap-3.5 px-4 py-3 min-h-0">
+                <div className="lg:col-span-8 min-h-0">
+                  {renderAdvancedTicketJourneyMap(selectedTicket)}
                 </div>
-              </div>
 
-              {/* Attachment File Card */}
-              {selectedTicket.attachment_path && (
-                <div className="pt-1">
-                  <h4 className="text-[9px] uppercase text-gray-400 font-extrabold tracking-widest font-sora mb-2">Attachments</h4>
-                  <div className="border border-gray-200/85 hover:border-gray-300 rounded-xl p-3 flex items-center justify-between bg-white gap-3 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.015)]">
-                    <div className="flex items-center space-x-3 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-brandNavy/5 text-brandNavy flex items-center justify-center flex-shrink-0 border border-brandNavy/10">
-                        <svg className="w-4.5 h-4.5 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" />
-                        </svg>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[8px] uppercase text-gray-400 font-extrabold tracking-wider font-sora">Attachment File</p>
-                        <p className="text-xs font-bold text-brandDarkNavy truncate max-w-[180px] sm:max-w-[240px] mt-0.5" title={selectedTicket.attachment_path.split('_').slice(1).join('_') || selectedTicket.attachment_path}>
-                          {selectedTicket.attachment_path.split('_').slice(1).join('_') || selectedTicket.attachment_path}
-                        </p>
+                <div className="lg:col-span-4 flex flex-col gap-3 min-h-0">
+                  {/* Description Block */}
+                  <div className="min-h-0">
+                    <h4 className="text-[9px] uppercase text-gray-400 font-extrabold tracking-widest font-sora mb-2 leading-none">Description</h4>
+                    <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5 text-xs text-gray-600 leading-relaxed whitespace-pre-wrap font-medium break-words line-clamp-[10]">
+                      {selectedTicket.description}
+                    </div>
+                  </div>
+
+                  {/* Attachment File Card */}
+                  {selectedTicket.attachment_path && (
+                    <div>
+                      <h4 className="text-[9px] uppercase text-gray-400 font-extrabold tracking-widest font-sora mb-2 leading-none">Attachments</h4>
+                      <div className="border border-gray-200/85 hover:border-gray-300 rounded-xl p-3 flex items-center justify-between bg-white gap-3 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.015)]">
+                        <div className="flex items-center space-x-2 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-brandNavy/5 text-brandNavy flex items-center justify-center flex-shrink-0 border border-brandNavy/10">
+                            <svg className="w-4 h-4 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" />
+                            </svg>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[8px] uppercase text-gray-400 font-extrabold tracking-wider font-sora leading-none">Attachment File</p>
+                            <p className="text-xs font-bold text-brandDarkNavy truncate max-w-[180px] sm:max-w-[240px] mt-1 leading-snug" title={selectedTicket.attachment_path.split('_').slice(1).join('_') || selectedTicket.attachment_path}>
+                              {selectedTicket.attachment_path.split('_').slice(1).join('_') || selectedTicket.attachment_path}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <button
+                          onClick={() => downloadAttachment(selectedTicket.attachment_path)}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-brandNavy bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 transition-all duration-200 shrink-0 shadow-sm"
+                        >
+                          <svg className="w-3.5 h-3.5 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                          </svg>
+                          Download
+                        </button>
                       </div>
                     </div>
-                    
-                    <button
-                      onClick={() => downloadAttachment(selectedTicket.attachment_path)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-brandNavy bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 transition-all duration-200 shrink-0 shadow-sm"
-                    >
-                      <svg className="w-3.5 h-3.5 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                      </svg>
-                      Download File
-                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="px-4 py-4 space-y-4">
+                {/* Description Block */}
+                <div>
+                  <h4 className="text-[9px] uppercase text-gray-400 font-extrabold tracking-widest font-sora mb-2 leading-none">Description</h4>
+                  <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-4 text-sm text-gray-600 leading-relaxed whitespace-pre-wrap font-medium break-words">
+                    {selectedTicket.description}
                   </div>
                 </div>
-              )}
-            </div>
+
+                {/* Attachment File Card */}
+                {selectedTicket.attachment_path && (
+                  <div>
+                    <h4 className="text-[9px] uppercase text-gray-400 font-extrabold tracking-widest font-sora mb-2 leading-none">Attachments</h4>
+                    <div className="border border-gray-200/85 hover:border-gray-300 rounded-xl p-3 flex items-center justify-between bg-white gap-3 transition-all shadow-[0_2px_8px_rgba(0,0,0,0.015)]">
+                      <div className="flex items-center space-x-2 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-brandNavy/5 text-brandNavy flex items-center justify-center flex-shrink-0 border border-brandNavy/10">
+                          <svg className="w-4 h-4 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75Z" />
+                          </svg>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[8px] uppercase text-gray-400 font-extrabold tracking-wider font-sora leading-none">Attachment File</p>
+                          <p className="text-xs font-bold text-brandDarkNavy truncate max-w-[180px] sm:max-w-[240px] mt-1 leading-snug" title={selectedTicket.attachment_path.split('_').slice(1).join('_') || selectedTicket.attachment_path}>
+                            {selectedTicket.attachment_path.split('_').slice(1).join('_') || selectedTicket.attachment_path}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={() => downloadAttachment(selectedTicket.attachment_path)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-brandNavy bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 transition-all duration-200 shrink-0 shadow-sm"
+                      >
+                        <svg className="w-3.5 h-3.5 text-brandNavy" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        Download
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Footer Close Actions */}
-            <div className="p-4 flex justify-end gap-3 bg-gray-50/50 border-t border-gray-100">
+            <div className="px-4 py-2 flex justify-end gap-3 bg-gray-50/50 border-t border-gray-100">
               <button
-                onClick={() => setSelectedTicket(null)}
-                className="px-6 py-3 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200 hover:border-gray-300 transition-all duration-200"
+                onClick={closeTicketDetails}
+                className="px-5 py-2 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200 hover:border-gray-300 transition-all duration-200"
               >
                 Close Details
               </button>

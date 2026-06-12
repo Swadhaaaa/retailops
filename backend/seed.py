@@ -10,7 +10,8 @@ conn = get_db()
 conn.execute("DELETE FROM users")
 conn.execute("DELETE FROM categories")
 conn.execute("DELETE FROM tickets")
-conn.execute("DELETE FROM messages")
+# TEMPORARILY DISABLED - MESSAGES FEATURE
+# conn.execute("DELETE FROM messages")
 
 # Hash passwords
 admin_password = bcrypt.generate_password_hash("Admin@123").decode('utf-8')
@@ -79,7 +80,7 @@ categories = [
     (13, 'Account & Security', 'Security settings and account recovery', 'security'),
     (14, 'Refunds & Returns', 'Product return requests and refunds', 'returns'),
     (15, 'GST Compliance', 'Regulatory, policy, and audit support', 'compliance'),
-    (16, 'KYC Verification', 'Vendor onboarding, agreements, and disputes', 'vendor'),
+    (16, 'KYC Verification', 'User onboarding, agreements, and disputes', 'vendor'),
     (17, 'Store Operations', 'In-store operational queries and escalations', 'operations'),
     (18, 'HR & Workforce', 'Staff queries, attendance, and HR support', 'hr'),
     (19, 'IT Infrastructure', 'Network, hardware, and system outages', 'infrastructure'),
@@ -95,7 +96,7 @@ for category in categories:
 conn.execute("DELETE FROM announcements")
 announcements = [
     (1, 'System Maintenance', 'Scheduled on 10 Jun 2026, 02:00 AM', 'maintenance', '2026-06-10 02:00:00'),
-    (2, 'New Vendor Guidelines', 'Effective from 01 Jun 2026', 'guidelines', '2026-06-01 00:00:00'),
+    (2, 'New User Guidelines', 'Effective from 01 Jun 2026', 'guidelines', '2026-06-01 00:00:00'),
     (3, 'SLA Policy Updates', 'Effective from 15 May 2026', 'sla', '2026-05-15 00:00:00')
 ]
 for ann in announcements:

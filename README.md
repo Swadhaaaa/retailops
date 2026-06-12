@@ -115,5 +115,9 @@ User:
 - Email: `user1@test.com`
 - Password: `User@123`
 
+<<<<<<< HEAD
 Update these credentials if seed data changes.
 
+=======
+Update these credentials if seed data changes. 
+>>>>>>> 627dfce (commented messages and updates same in backend, tracked status made more better)

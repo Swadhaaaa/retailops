@@ -20,6 +20,121 @@ def get_conn():
     return duckdb.connect('tickets.db')
 
 
+def ensure_ticket_activity_table(conn):
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS ticket_activity (
+            activity_id INTEGER PRIMARY KEY,
+            ticket_id VARCHAR NOT NULL,
+            action_type VARCHAR NOT NULL,
+            action_text TEXT NOT NULL,
+            actor_id VARCHAR,
+            actor_role VARCHAR DEFAULT 'system',
+            from_value VARCHAR,
+            to_value VARCHAR,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.execute("""
+        INSERT INTO ticket_activity (
+            activity_id, ticket_id, action_type, action_text,
+            actor_id, actor_role, from_value, to_value, created_at
+        )
+        SELECT
+            ROW_NUMBER() OVER (ORDER BY t.created_at, t.ticket_id)
+              + COALESCE((SELECT MAX(activity_id) FROM ticket_activity), 0),
+            t.ticket_id,
+            'created',
+            'Ticket created',
+            t.raised_by,
+            'user',
+            NULL,
+            t.status,
+            t.created_at
+        FROM tickets t
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM ticket_activity a
+            WHERE a.ticket_id = t.ticket_id
+              AND a.action_type = 'created'
+        )
+    """)
+
+
+def get_actor_role(conn, actor_id):
+    if not actor_id:
+        return 'system'
+
+    user = conn.execute("""
+        SELECT role FROM users
+        WHERE user_id = ? OR email = ?
+        LIMIT 1
+    """, [actor_id, actor_id]).fetchone()
+
+    return user[0] if user and user[0] else 'admin'
+
+
+def record_ticket_activity(
+    conn,
+    ticket_id,
+    action_type,
+    action_text,
+    actor_id=None,
+    actor_role=None,
+    from_value=None,
+    to_value=None,
+    created_at=None
+):
+    ensure_ticket_activity_table(conn)
+    activity_id = get_next_id(conn, 'ticket_activity', 'activity_id')
+    timestamp = created_at or datetime.now()
+    role = actor_role or get_actor_role(conn, actor_id)
+
+    conn.execute("""
+        INSERT INTO ticket_activity (
+            activity_id, ticket_id, action_type, action_text,
+            actor_id, actor_role, from_value, to_value, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, [
+        activity_id,
+        ticket_id,
+        action_type,
+        action_text,
+        actor_id,
+        role,
+        from_value,
+        to_value,
+        timestamp
+    ])
+
+
+def get_ticket_activity(conn, ticket_id):
+    ensure_ticket_activity_table(conn)
+    rows = conn.execute("""
+        SELECT activity_id, ticket_id, action_type, action_text,
+               actor_id, actor_role, from_value, to_value, created_at
+        FROM ticket_activity
+        WHERE ticket_id = ?
+        ORDER BY created_at DESC, activity_id DESC
+    """, [ticket_id]).fetchall()
+
+    return [
+        {
+            'activity_id': row[0],
+            'ticket_id': row[1],
+            'action_type': row[2],
+            'action_text': row[3],
+            'actor_id': row[4],
+            'actor_role': row[5],
+            'from_value': row[6],
+            'to_value': row[7],
+            'created_at': str(row[8])
+        }
+        for row in rows
+    ]
+
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -97,7 +212,9 @@ def ticket_to_dict(ticket):
         'created_at': str(ticket[8]),
         'attachment_path': attachment_path,
         'has_attachment': bool(attachment_path),
-        'attachment_download_url': f'/api/tickets/download/{attachment_path}' if attachment_path else None
+        'attachment_download_url': f'/api/tickets/download/{attachment_path}' if attachment_path else None,
+        'updated_at': str(ticket[10]) if len(ticket) > 10 and ticket[10] else None,
+        'resolved_at': str(ticket[11]) if len(ticket) > 11 and ticket[11] else None
     }
 
 
@@ -117,8 +234,10 @@ def admin_ticket_to_dict(ticket):
         'attachment_path': attachment_path,
         'has_attachment': bool(attachment_path),
         'attachment_download_url': f'/api/tickets/download/{attachment_path}' if attachment_path else None,
-        'vendor_name': ticket[10] if len(ticket) > 10 else None,
-        'category_name': ticket[11] if len(ticket) > 11 else None
+        'updated_at': str(ticket[10]) if len(ticket) > 10 and ticket[10] else None,
+        'resolved_at': str(ticket[11]) if len(ticket) > 11 and ticket[11] else None,
+        'vendor_name': ticket[12] if len(ticket) > 12 else None,
+        'category_name': ticket[13] if len(ticket) > 13 else None
     }
 
 
@@ -184,6 +303,8 @@ def create_ticket():
                 file.save(file_path)
                 attachment_path = unique_filename
 
+        created_at = datetime.now()
+
         conn.execute("""
            INSERT INTO tickets (
                      ticket_id, title, description, category_id, priority,
@@ -198,10 +319,22 @@ def create_ticket():
             priority,
             'Open',
             current_user,
-            datetime.now(),
+            created_at,
             attachment_path,
             sla_deadline
             ])
+
+        record_ticket_activity(
+            conn,
+            ticket_id,
+            'created',
+            f'Ticket created by {current_user}',
+            current_user,
+            'user',
+            None,
+            'Open',
+            created_at
+        )
 
         conn.close()
 
@@ -226,7 +359,8 @@ def get_tickets():
 
         tickets = conn.execute("""
             SELECT ticket_id, title, description, category_id, priority,
-                   status, raised_by, assigned_to, created_at, attachment_path
+                   status, raised_by, assigned_to, created_at, attachment_path,
+                   updated_at, resolved_at
             FROM tickets
             WHERE raised_by = ?
             ORDER BY created_at DESC
@@ -250,6 +384,7 @@ def get_single_ticket(ticket_id):
         ticket = conn.execute("""
             SELECT t.ticket_id, t.title, t.description, t.category_id, t.priority,
                    t.status, t.raised_by, t.assigned_to, t.created_at, t.attachment_path,
+                   t.updated_at, t.resolved_at,
                    u.name AS vendor_name, c.name AS category_name
             FROM tickets t
             LEFT JOIN users u ON t.raised_by = u.user_id OR t.raised_by = u.email
@@ -261,35 +396,39 @@ def get_single_ticket(ticket_id):
             conn.close()
             return jsonify({'error': 'Ticket not found'}), 404
 
-        messages = conn.execute("""
-            SELECT message_id, ticket_id, sender_id, sender_role,
-                   message_text, is_ping, created_at, attachment_path
-            FROM messages
-            WHERE ticket_id = ?
-            ORDER BY created_at ASC
-        """, [ticket_id]).fetchall()
+        ticket_data = admin_ticket_to_dict(ticket)
+        ticket_data['activity'] = get_ticket_activity(conn, ticket_id)
 
         conn.close()
 
-        ticket_data = admin_ticket_to_dict(ticket)
-
-        ticket_data['messages'] = [
-            {
-                'message_id': msg[0],
-                'ticket_id': msg[1],
-                'sender_id': msg[2],
-                'sender_role': msg[3],
-                'message_text': msg[4],
-                'is_ping': msg[5],
-                'created_at': str(msg[6]),
-                'attachment_path': msg[7],
-                'has_attachment': bool(msg[7]),
-                'attachment_download_url': f'/api/tickets/download/{msg[7]}' if msg[7] else None
-            }
-            for msg in messages
-        ]
+        # TEMPORARILY DISABLED - MESSAGES FEATURE
+        # Message thread loading is intentionally disabled. Keep the key so older UI paths remain safe.
+        ticket_data['messages'] = []
 
         return jsonify(ticket_data)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@tickets_bp.route('/<ticket_id>/activity', methods=['GET'])
+@jwt_required()
+def get_ticket_activity_history(ticket_id):
+    try:
+        conn = get_conn()
+
+        ticket = conn.execute("""
+            SELECT ticket_id FROM tickets WHERE ticket_id = ?
+        """, [ticket_id]).fetchone()
+
+        if not ticket:
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        activity = get_ticket_activity(conn, ticket_id)
+        conn.close()
+
+        return jsonify(activity)
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -305,6 +444,7 @@ def admin_get_all_tickets():
         tickets = conn.execute("""
             SELECT t.ticket_id, t.title, t.description, t.category_id, t.priority,
                    t.status, t.raised_by, t.assigned_to, t.created_at, t.attachment_path,
+                   t.updated_at, t.resolved_at,
                    u.name AS vendor_name, c.name AS category_name
             FROM tickets t
             LEFT JOIN users u ON t.raised_by = u.user_id OR t.raised_by = u.email
@@ -333,12 +473,55 @@ def assign_agent(ticket_id):
 
         conn = get_conn()
 
+        ticket = conn.execute("""
+            SELECT assigned_to, status
+            FROM tickets
+            WHERE ticket_id = ?
+        """, [ticket_id]).fetchone()
+
+        if not ticket:
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        previous_agent = ticket[0]
+        previous_status = ticket[1]
+        now = datetime.now()
+
         conn.execute("""
             UPDATE tickets
             SET assigned_to = ?,
-                status = 'In Progress'
+                status = 'In Progress',
+                updated_at = ?
             WHERE ticket_id = ?
-        """, [agent, ticket_id])
+        """, [agent, now, ticket_id])
+
+        current_user = get_jwt_identity()
+
+        if previous_agent != agent:
+            record_ticket_activity(
+                conn,
+                ticket_id,
+                'assigned',
+                f'Ticket assigned to {agent}',
+                current_user,
+                None,
+                previous_agent or 'Unassigned',
+                agent,
+                now
+            )
+
+        if previous_status != 'In Progress':
+            record_ticket_activity(
+                conn,
+                ticket_id,
+                'status_changed',
+                'Status changed to In Progress',
+                current_user,
+                None,
+                previous_status,
+                'In Progress',
+                now
+            )
 
         conn.close()
 
@@ -371,34 +554,56 @@ def update_ticket_status(ticket_id):
         conn = get_conn()
 
         ticket = conn.execute("""
-            SELECT raised_by FROM tickets WHERE ticket_id = ?
+            SELECT raised_by, status FROM tickets WHERE ticket_id = ?
         """, [ticket_id]).fetchone()
 
         if not ticket:
             conn.close()
             return jsonify({'error': 'Ticket not found'}), 404
 
+        now = datetime.now()
+        resolved_at = now if status in ['Resolved', 'Closed'] else None
+        previous_status = ticket[1]
+
         conn.execute("""
             UPDATE tickets
-            SET status = ?
+            SET status = ?,
+                updated_at = ?,
+                resolved_at = ?
             WHERE ticket_id = ?
-        """, [status, ticket_id])
+        """, [status, now, resolved_at, ticket_id])
 
-        notif_id = get_next_id(conn, 'notifications', 'notif_id')
-
-        conn.execute("""
-            INSERT INTO notifications (
-                notif_id, user_id, ticket_id, message, is_read, created_at
+        if previous_status != status:
+            current_user = get_jwt_identity()
+            record_ticket_activity(
+                conn,
+                ticket_id,
+                'status_changed',
+                f'Status changed to {status}',
+                current_user,
+                None,
+                previous_status,
+                status,
+                now
             )
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, [
-            notif_id,
-            ticket[0],
-            ticket_id,
-            f'Your ticket {ticket_id} status has been updated to {status}',
-            False,
-            datetime.now()
-        ])
+
+        # TEMPORARILY DISABLED - MESSAGES FEATURE
+        # Notification records are part of the disabled Messages/Notifications surface.
+        # notif_id = get_next_id(conn, 'notifications', 'notif_id')
+        #
+        # conn.execute("""
+        #     INSERT INTO notifications (
+        #         notif_id, user_id, ticket_id, message, is_read, created_at
+        #     )
+        #     VALUES (?, ?, ?, ?, ?, ?)
+        # """, [
+        #     notif_id,
+        #     ticket[0],
+        #     ticket_id,
+        #     f'Your ticket {ticket_id} status has been updated to {status}',
+        #     False,
+        #     datetime.now()
+        # ])
 
         conn.close()
 
@@ -424,18 +629,35 @@ def update_ticket_priority(ticket_id):
         conn = get_conn()
 
         ticket = conn.execute("""
-            SELECT ticket_id FROM tickets WHERE ticket_id = ?
+            SELECT ticket_id, priority FROM tickets WHERE ticket_id = ?
         """, [ticket_id]).fetchone()
 
         if not ticket:
             conn.close()
             return jsonify({'error': 'Ticket not found'}), 404
 
+        now = datetime.now()
+
         conn.execute("""
             UPDATE tickets
-            SET priority = ?
+            SET priority = ?,
+                updated_at = ?
             WHERE ticket_id = ?
-        """, [priority, ticket_id])
+        """, [priority, now, ticket_id])
+
+        if ticket[1] != priority:
+            current_user = get_jwt_identity()
+            record_ticket_activity(
+                conn,
+                ticket_id,
+                'priority_changed',
+                f'Priority changed to {priority}',
+                current_user,
+                None,
+                ticket[1],
+                priority,
+                now
+            )
 
         conn.close()
 
@@ -450,6 +672,9 @@ def update_ticket_priority(ticket_id):
 @jwt_required()
 def ping_user(ticket_id):
     try:
+        # TEMPORARILY DISABLED - MESSAGES FEATURE
+        return jsonify({'error': 'Messages feature is temporarily disabled'}), 404
+
         current_user = get_jwt_identity()
         data = request.get_json()
         message = data.get('message', '').strip()
@@ -520,6 +745,9 @@ def ping_user(ticket_id):
 @jwt_required()
 def add_message(ticket_id):
     try:
+        # TEMPORARILY DISABLED - MESSAGES FEATURE
+        return jsonify({'error': 'Messages feature is temporarily disabled'}), 404
+
         current_user = get_jwt_identity()
         
         attachment_path = None
@@ -609,6 +837,9 @@ def add_message(ticket_id):
 @jwt_required()
 def get_notifications():
     try:
+        # TEMPORARILY DISABLED - MESSAGES FEATURE
+        return jsonify([])
+
         current_user = get_jwt_identity()
         conn = get_conn()
 
@@ -643,6 +874,9 @@ def get_notifications():
 @jwt_required()
 def mark_notification_read(notif_id):
     try:
+        # TEMPORARILY DISABLED - MESSAGES FEATURE
+        return jsonify({'error': 'Messages feature is temporarily disabled'}), 404
+
         current_user = get_jwt_identity()
         conn = get_conn()
 

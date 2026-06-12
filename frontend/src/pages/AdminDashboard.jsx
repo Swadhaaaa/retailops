@@ -83,6 +83,9 @@ const INITIAL_ADMIN_DIRECTORY = [
   }
 ];
 
+// TEMPORARILY DISABLED - MESSAGES FEATURE
+const MESSAGES_FEATURE_ENABLED = false;
+
 const DEPARTMENT_DIRECTORY = [
   { name: 'Supply Chain Operations', head: 'Admin Manager', members: 12, accent: 'brandNavy' },
   { name: 'IT Support', head: 'Swadha Kumari', members: 8, accent: 'cyan' },
@@ -125,6 +128,7 @@ const AdminDashboard = () => {
   const [queryMessages, setQueryMessages] = useState([]);
   const [queryComment, setQueryComment] = useState('');
   const [queryIsSubmitting, setQueryIsSubmitting] = useState(false);
+  const [isQueryQueueCollapsed, setIsQueryQueueCollapsed] = useState(false);
 
   // Admin management states
   const [adminDirectory, setAdminDirectory] = useState(INITIAL_ADMIN_DIRECTORY);
@@ -188,6 +192,8 @@ const AdminDashboard = () => {
   };
 
   const fetchMessagesStats = async () => {
+    // TEMPORARILY DISABLED - MESSAGES FEATURE
+    if (!MESSAGES_FEATURE_ENABLED) return;
     try {
       const statsRes = await api.get('/tickets/stats');
       setMessagesStats(statsRes.data);
@@ -197,6 +203,8 @@ const AdminDashboard = () => {
   };
 
   const fetchActiveTicketMessages = async (ticketId) => {
+    // TEMPORARILY DISABLED - MESSAGES FEATURE
+    if (!MESSAGES_FEATURE_ENABLED) return;
     try {
       const res = await api.get(`/tickets/${ticketId}`);
       setMessages(res.data.messages || []);
@@ -224,6 +232,8 @@ const AdminDashboard = () => {
   };
 
   const handleSendDrawerMessage = async (e) => {
+    // TEMPORARILY DISABLED - MESSAGES FEATURE
+    if (!MESSAGES_FEATURE_ENABLED) return;
     if (e) e.preventDefault();
     if (!drawerMessageText.trim() || !drawerTicket) return;
 
@@ -414,6 +424,8 @@ const AdminDashboard = () => {
   };
 
   const handleSendQueryComment = async (e) => {
+    // TEMPORARILY DISABLED - MESSAGES FEATURE
+    if (!MESSAGES_FEATURE_ENABLED) return;
     if (e) e.preventDefault();
     if (!queryTicket || !queryComment.trim()) return;
 
@@ -438,9 +450,11 @@ const AdminDashboard = () => {
 
   // Poll for messages, stats, and drawer details
   useEffect(() => {
+    // TEMPORARILY DISABLED - MESSAGES FEATURE
+    if (!MESSAGES_FEATURE_ENABLED && activeTab === 'Messages') return;
     if (activeTab !== 'Messages' && !drawerTicket && !queryTicket) return;
     
-    if (activeTab === 'Messages') {
+    if (MESSAGES_FEATURE_ENABLED && activeTab === 'Messages') {
       fetchMessagesStats();
       if (activeMessageTicket?.ticket_id) {
         fetchActiveTicketMessages(activeMessageTicket.ticket_id);
@@ -461,7 +475,7 @@ const AdminDashboard = () => {
     }
     
     const interval = setInterval(() => {
-      if (activeTab === 'Messages') {
+      if (MESSAGES_FEATURE_ENABLED && activeTab === 'Messages') {
         fetchMessagesStats();
         if (activeMessageTicket?.ticket_id) {
           fetchActiveTicketMessages(activeMessageTicket.ticket_id);
@@ -484,7 +498,8 @@ const AdminDashboard = () => {
   }, [activeTab, activeMessageTicket?.ticket_id, drawerTicket?.ticket_id, queryTicket?.ticket_id]);
 
   useEffect(() => {
-    if (tickets.length > 0 && !activeMessageTicket) {
+    // TEMPORARILY DISABLED - MESSAGES FEATURE
+    if (MESSAGES_FEATURE_ENABLED && tickets.length > 0 && !activeMessageTicket) {
       setActiveMessageTicket(tickets[0]);
     }
     if (activeTab === 'Queries' && tickets.length > 0 && !queryTicket) {
@@ -493,6 +508,8 @@ const AdminDashboard = () => {
   }, [tickets, activeMessageTicket, activeTab, queryTicket]);
 
   const handleSendMessage = async (e) => {
+    // TEMPORARILY DISABLED - MESSAGES FEATURE
+    if (!MESSAGES_FEATURE_ENABLED) return;
     if (e) e.preventDefault();
     if (!messageText.trim() && !messageAttachment) return;
     if (!activeMessageTicket) return;
@@ -654,7 +671,8 @@ const AdminDashboard = () => {
         </svg>
       )
     },
-    {
+    // TEMPORARILY DISABLED - MESSAGES FEATURE
+    ...(MESSAGES_FEATURE_ENABLED ? [{
       name: 'Messages', icon: (
         <div className="relative">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
@@ -667,7 +685,7 @@ const AdminDashboard = () => {
           )}
         </div>
       )
-    },
+    }] : []),
     {
       name: 'Analytics', icon: (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
@@ -757,7 +775,11 @@ const AdminDashboard = () => {
               return (
                 <button
                   key={item.name}
-                  onClick={() => setActiveTab(item.name)}
+                  onClick={() => {
+                    // TEMPORARILY DISABLED - MESSAGES FEATURE
+                    if (!MESSAGES_FEATURE_ENABLED && item.name === 'Messages') return;
+                    setActiveTab(item.name);
+                  }}
                   className={`w-full min-h-[48px] flex items-center gap-3 px-4 py-3 rounded-2xl text-sm text-left transition-all duration-300 relative ${isActive ? 'bg-white/85 text-brandNavy font-semibold shadow-[0_12px_28px_rgba(15,27,76,0.08)] border border-white/70' : 'text-gray-500 hover:text-brandNavy hover:bg-white/70 hover:shadow-sm'
                     }`}
                 >
@@ -805,7 +827,8 @@ const AdminDashboard = () => {
       case 'Queries':
         return renderQueries();
       case 'Messages':
-        return renderMessages();
+        // TEMPORARILY DISABLED - MESSAGES FEATURE
+        return MESSAGES_FEATURE_ENABLED ? renderMessages() : renderDashboard();
       case 'Analytics':
         return renderAnalytics();
       case 'Departments':
@@ -1370,34 +1393,50 @@ const AdminDashboard = () => {
             path: selectedTicket.attachment_path,
             source: 'Ticket'
           }] : []),
-          ...queryMessages
+          // TEMPORARILY DISABLED - MESSAGES FEATURE
+          ...(MESSAGES_FEATURE_ENABLED ? queryMessages
             .filter(msg => msg.has_attachment && msg.attachment_path)
             .map(msg => ({
               name: msg.attachment_path.split('_').slice(1).join('_') || msg.attachment_path,
               path: msg.attachment_path,
               source: msg.sender_role === 'admin' ? 'Admin reply' : 'User reply'
-            }))
+            })) : [])
         ]
       : [];
 
     const timeline = selectedTicket
-      ? [
-          {
+      ? (selectedTicket.activity && selectedTicket.activity.length > 0
+        ? selectedTicket.activity.map(activity => {
+            const actor =
+              activity.actor_role === 'admin'
+                ? 'Admin Manager'
+                : activity.actor_role === 'user'
+                  ? (selectedTicket.vendor_name || activity.actor_id || 'User')
+                  : (activity.actor_id || 'System');
+            const tone =
+              activity.action_type === 'created'
+                ? 'brandRed'
+                : activity.action_type === 'status_changed' && (activity.to_value === 'Resolved' || activity.to_value === 'Closed')
+                  ? 'green'
+                  : 'brandNavy';
+
+            return {
+              label: activity.action_text,
+              time: activity.created_at,
+              actor,
+              tone,
+              actionType: activity.action_type,
+              fromValue: activity.from_value,
+              toValue: activity.to_value
+            };
+          })
+        : [{
             label: `Ticket created by ${selectedTicket.vendor_name || selectedTicket.raised_by}`,
             time: selectedTicket.created_at,
-            actor: selectedTicket.vendor_name || selectedTicket.raised_by
-          },
-          ...(selectedTicket.assigned_to ? [{
-            label: `Assigned to ${selectedTicket.assigned_to}`,
-            time: selectedTicket.created_at,
-            actor: 'Admin Manager'
-          }] : []),
-          ...queryMessages.map(msg => ({
-            label: msg.message_text,
-            time: msg.created_at,
-            actor: msg.sender_role === 'admin' ? 'Admin Manager' : (selectedTicket.vendor_name || 'User')
-          }))
-        ]
+            actor: selectedTicket.vendor_name || selectedTicket.raised_by,
+            tone: 'brandRed',
+            actionType: 'created'
+          }])
       : [];
 
     const statusPill = (status) => {
@@ -1423,15 +1462,28 @@ const AdminDashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-          <div className="xl:col-span-4 premium-glass rounded-[22px] overflow-hidden">
-            <div className="px-4 py-3 border-b border-white/60">
-              <h2 className="text-xs font-extrabold text-brandDarkNavy font-sora uppercase tracking-wider">Ticket Queue</h2>
+          <div className={`${isQueryQueueCollapsed ? 'xl:col-span-1' : 'xl:col-span-4'} premium-glass rounded-[22px] overflow-hidden transition-all duration-300`}>
+            <div className="px-4 py-3 border-b border-white/60 flex items-center justify-between gap-3">
+              {!isQueryQueueCollapsed && (
+                <h2 className="text-xs font-extrabold text-brandDarkNavy font-sora uppercase tracking-wider">Ticket Queue</h2>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsQueryQueueCollapsed(prev => !prev)}
+                className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-xl border border-brandNavy/10 bg-white/70 text-brandNavy hover:bg-brandNavy hover:text-white transition-all"
+                title={isQueryQueueCollapsed ? 'Expand ticket queue' : 'Minimize ticket queue'}
+                aria-label={isQueryQueueCollapsed ? 'Expand ticket queue' : 'Minimize ticket queue'}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className={`w-4 h-4 transition-transform ${isQueryQueueCollapsed ? 'rotate-180' : ''}`}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                </svg>
+              </button>
             </div>
-            <div className="max-h-[720px] overflow-y-auto divide-y divide-slate-100">
+            <div className={`max-h-[720px] overflow-y-auto divide-y divide-slate-100 ${isQueryQueueCollapsed ? 'px-2 py-2' : ''}`}>
               {loading ? (
-                <div className="p-8 text-center text-xs font-bold text-slate-400">Loading tickets...</div>
+                <div className={`${isQueryQueueCollapsed ? 'p-3' : 'p-8'} text-center text-xs font-bold text-slate-400`}>{isQueryQueueCollapsed ? '...' : 'Loading tickets...'}</div>
               ) : tickets.length === 0 ? (
-                <div className="p-8 text-center text-xs font-bold text-slate-400">No tickets available.</div>
+                <div className={`${isQueryQueueCollapsed ? 'p-3' : 'p-8'} text-center text-xs font-bold text-slate-400`}>{isQueryQueueCollapsed ? '0' : 'No tickets available.'}</div>
               ) : (
                 tickets.map(ticket => {
                   const isSelected = selectedTicket?.ticket_id === ticket.ticket_id;
@@ -1440,8 +1492,16 @@ const AdminDashboard = () => {
                       key={ticket.ticket_id}
                       type="button"
                       onClick={() => openQueryTicket(ticket)}
-                      className={`w-full text-left px-4 py-3 transition-all ${isSelected ? 'bg-white/80 shadow-sm text-brandNavy' : 'hover:bg-white/65 hover:shadow-sm'}`}
+                      className={`w-full text-left transition-all ${isQueryQueueCollapsed ? `my-1 flex h-11 items-center justify-center rounded-xl px-2 ${isSelected ? 'bg-brandNavy text-white shadow-sm' : 'bg-white/65 text-brandNavy hover:bg-white'}` : `px-4 py-3 ${isSelected ? 'bg-white/80 shadow-sm text-brandNavy' : 'hover:bg-white/65 hover:shadow-sm'}`}`}
                     >
+                      {isQueryQueueCollapsed ? (
+                        <span
+                          className="text-[10px] font-extrabold font-sora tracking-wide"
+                          title={`#${ticket.ticket_id} - ${ticket.title}`}
+                        >
+                          #{String(ticket.ticket_id).slice(-3)}
+                        </span>
+                      ) : (
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-xs font-extrabold text-brandNavy font-sora truncate">#{ticket.ticket_id}</p>
@@ -1454,6 +1514,7 @@ const AdminDashboard = () => {
                           {ticket.status}
                         </span>
                       </div>
+                      )}
                     </button>
                   );
                 })
@@ -1461,48 +1522,66 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="xl:col-span-8">
+          <div className={`${isQueryQueueCollapsed ? 'xl:col-span-11' : 'xl:col-span-8'} transition-all duration-300`}>
             {!selectedTicket ? (
               <div className="premium-glass rounded-[22px] p-10 text-center text-sm font-bold text-slate-400">
                 Select a ticket to view details.
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-12 premium-glass rounded-[22px] overflow-hidden">
-                <div className="lg:col-span-8 p-5 lg:p-6 space-y-6 border-b lg:border-b-0 lg:border-r border-white/60">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <h2 className="text-lg font-extrabold text-brandDarkNavy font-sora">Ticket #{selectedTicket.ticket_id}</h2>
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold border ${statusPill(selectedTicket.status)}`}>
-                          {selectedTicket.status || 'Open'}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-4 text-[10px] font-bold text-slate-500">
-                        <span>Created: {getRelativeTime(selectedTicket.created_at)}</span>
-                        <span>Priority: <b className={selectedTicket.priority === 'Critical' || selectedTicket.priority === 'Urgent' || selectedTicket.priority === 'High' ? 'text-brandRed' : 'text-brandNavy'}>{selectedTicket.priority}</b></span>
-                        <span>Category: {selectedTicket.category_name || `Category #${selectedTicket.category_id}`}</span>
+                <div className="lg:col-span-8 p-5 lg:p-6 space-y-5 border-b lg:border-b-0 lg:border-r border-white/60">
+                  <div className="rounded-[20px] border border-brandNavy/10 bg-gradient-to-br from-brandNavy/[0.08] via-white to-brandRed/[0.05] p-5 shadow-sm">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-brandNavy text-white text-[10px] font-extrabold shadow-md shadow-brandNavy/15">
+                            ID
+                          </span>
+                          <h2 className="text-xl lg:text-2xl font-extrabold text-brandDarkNavy font-sora tracking-tight">Ticket #{selectedTicket.ticket_id}</h2>
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold border ${statusPill(selectedTicket.status)}`}>
+                            {selectedTicket.status || 'Open'}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 mt-4 text-[10px] font-bold text-slate-500">
+                          <span className="rounded-full bg-white/75 border border-white px-3 py-1 shadow-sm">Created: {getRelativeTime(selectedTicket.created_at)}</span>
+                          <span className="rounded-full bg-white/75 border border-white px-3 py-1 shadow-sm">Priority: <b className={selectedTicket.priority === 'Critical' || selectedTicket.priority === 'Urgent' || selectedTicket.priority === 'High' ? 'text-brandRed' : 'text-brandNavy'}>{selectedTicket.priority}</b></span>
+                          <span className="rounded-full bg-white/75 border border-white px-3 py-1 shadow-sm">Category: {selectedTicket.category_name || `Category #${selectedTicket.category_id}`}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <section>
-                    <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora mb-3">Description</h3>
-                    <p className="text-xs text-slate-700 leading-relaxed font-semibold whitespace-pre-wrap">{selectedTicket.description}</p>
+                  <section className="rounded-[18px] border border-slate-100 bg-white/70 p-4 shadow-sm">
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-brandRed/10 text-brandRed text-[10px] font-extrabold">D</span>
+                      <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora">Description</h3>
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Issue Summary</span>
+                    </div>
+                    <p className="text-sm text-slate-700 leading-relaxed font-semibold whitespace-pre-wrap">{selectedTicket.description}</p>
                   </section>
 
                   <section className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div>
-                      <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora mb-3">User Details</h3>
-                      <div className="space-y-1.5 text-xs font-semibold text-slate-600">
-                        <p>Name: <span className="text-brandDarkNavy font-extrabold">{selectedTicket.vendor_name || selectedTicket.raised_by}</span></p>
-                        <p>Email: <span>{selectedTicket.raised_by}</span></p>
-                        <p>Phone: <span>Not available</span></p>
+                    <div className="rounded-[18px] border border-brandNavy/10 bg-brandNavy/[0.04] p-4 shadow-sm">
+                      <div className="mb-3 flex items-center gap-2">
+                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-brandNavy/10 text-brandNavy text-[10px] font-extrabold">U</span>
+                        <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora">User Details</h3>
+                      </div>
+                      <div className="space-y-2 text-xs font-semibold text-slate-600">
+                        <p className="flex justify-between gap-3"><span className="text-slate-400">Name</span><span className="text-brandDarkNavy font-extrabold text-right">{selectedTicket.vendor_name || selectedTicket.raised_by}</span></p>
+                        <p className="flex justify-between gap-3"><span className="text-slate-400">Email</span><span className="text-right break-all">{selectedTicket.raised_by}</span></p>
+                        <p className="flex justify-between gap-3"><span className="text-slate-400">Phone</span><span className="text-right">Not available</span></p>
                       </div>
                     </div>
-                    <div>
-                      <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora mb-3">Assigned Team</h3>
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-xs font-extrabold text-slate-700">{selectedTicket.assigned_to || selectedTeam}</p>
+                    <div className="rounded-[18px] border border-brandRed/10 bg-brandRed/[0.035] p-4 shadow-sm">
+                      <div className="mb-3 flex items-center gap-2">
+                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-brandRed/10 text-brandRed text-[10px] font-extrabold">A</span>
+                        <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora">Assigned Team</h3>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/75 border border-white px-3 py-3">
+                        <div>
+                          <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Current owner</p>
+                          <p className="text-sm font-extrabold text-slate-700 mt-1">{selectedTicket.assigned_to || selectedTeam}</p>
+                        </div>
                         <button
                           type="button"
                           onClick={() => handleQueryAgentChange(selectedTicket.assigned_to || AGENTS[0])}
@@ -1515,18 +1594,25 @@ const AdminDashboard = () => {
                   </section>
 
                   <section className="border-t border-slate-100 pt-5">
-                    <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora mb-3">Attachments ({attachments.length})</h3>
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-slate-100 text-brandNavy text-[10px] font-extrabold">F</span>
+                      <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora">Attachments</h3>
+                      <span className="rounded-full bg-brandNavy/10 px-2.5 py-1 text-[9px] font-extrabold text-brandNavy">{attachments.length} files</span>
+                    </div>
                     {attachments.length === 0 ? (
-                      <p className="text-xs font-semibold text-slate-400">No attachments uploaded.</p>
+                      <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-4 text-xs font-semibold text-slate-400">No attachments uploaded.</p>
                     ) : (
                       <div className="space-y-2">
                         {attachments.map((file, index) => (
-                          <div key={`${file.path}-${index}`} className="flex items-center justify-between rounded-2xl border border-white/60 bg-white/60 px-4 py-3 text-xs shadow-sm backdrop-blur-md">
-                            <div>
+                          <div key={`${file.path}-${index}`} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white/80 px-4 py-3 text-xs shadow-sm backdrop-blur-md hover:border-brandNavy/15 hover:shadow-md transition-all">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brandNavy/8 text-brandNavy text-[10px] font-extrabold">DOC</span>
+                              <div className="min-w-0">
                               <p className="font-extrabold text-slate-700">{file.name}</p>
                               <p className="text-[10px] font-semibold text-slate-400">{file.source}</p>
+                              </div>
                             </div>
-                            <button type="button" onClick={() => downloadAttachment(file.path)} className="text-brandNavy font-extrabold hover:underline">
+                            <button type="button" onClick={() => downloadAttachment(file.path)} className="shrink-0 rounded-xl border border-brandNavy/15 bg-white px-3 py-2 text-[10px] text-brandNavy font-extrabold hover:bg-brandNavy hover:text-white transition-all">
                               Download
                             </button>
                           </div>
@@ -1536,45 +1622,84 @@ const AdminDashboard = () => {
                   </section>
 
                   <section className="border-t border-slate-100 pt-5">
-                    <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora mb-4">Activity Timeline</h3>
-                    <div className="space-y-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-brandNavy/10 text-brandNavy text-[10px] font-extrabold">T</span>
+                      <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora">Activity Timeline</h3>
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Latest first</span>
+                    </div>
+                    <div className="relative rounded-[18px] border border-slate-100 bg-slate-50/70 p-4">
+                      <div className="absolute left-[23px] top-7 bottom-7 w-px bg-gradient-to-b from-brandRed/40 via-brandNavy/20 to-slate-200" />
+                      <div className="space-y-4">
                       {timeline.map((item, index) => (
-                        <div key={`${item.time}-${index}`} className="flex gap-3">
-                          <div className={`mt-1 w-2.5 h-2.5 rounded-full shrink-0 ${index === 0 ? 'bg-brandRed' : 'bg-brandNavy'}`} />
-                          <div>
-                            <p className="text-[10px] font-bold text-slate-400">{getRelativeTime(item.time)}</p>
+                        <div key={`${item.label}-${item.time}-${index}`} className="relative flex gap-3">
+                          <div className={`mt-1 w-3 h-3 rounded-full shrink-0 ring-4 ring-white shadow-sm ${
+                            item.tone === 'green'
+                              ? 'bg-green-500'
+                              : item.tone === 'brandRed'
+                                ? 'bg-brandRed'
+                                : 'bg-brandNavy'
+                          }`} />
+                          <div className="rounded-2xl bg-white/80 border border-white px-3 py-2 shadow-sm flex-1">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-[10px] font-bold text-slate-400">{getRelativeTime(item.time)}</p>
+                              <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-slate-400">
+                                {index === 0 ? 'Latest update' : 'History'}
+                              </span>
+                            </div>
                             <p className="text-xs font-extrabold text-brandDarkNavy mt-0.5">{item.actor}</p>
-                            <p className="text-xs font-semibold text-slate-600 mt-1">{item.label}</p>
+                            <p className="text-xs font-semibold text-slate-600 mt-1 leading-relaxed">{item.label}</p>
+                            {(item.fromValue || item.toValue) && (
+                              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">
+                                {item.fromValue && <span className="rounded-full bg-slate-50 px-2 py-0.5">{item.fromValue}</span>}
+                                {item.fromValue && item.toValue && <span>to</span>}
+                                {item.toValue && <span className="rounded-full bg-brandNavy/10 px-2 py-0.5 text-brandNavy">{item.toValue}</span>}
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}
+                      </div>
                     </div>
                   </section>
 
-                  <form onSubmit={handleSendQueryComment} className="border-t border-slate-100 pt-5">
-                    <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora mb-3">Add Internal Note / Comment</h3>
-                    <textarea
-                      value={queryComment}
-                      onChange={e => setQueryComment(e.target.value)}
-                      placeholder="Write your comment..."
-                      className="w-full min-h-[110px] rounded-2xl border border-white/70 bg-white/65 px-4 py-3 text-xs font-semibold text-slate-700 outline-none focus:border-brandNavy resize-none shadow-sm backdrop-blur-md transition-all"
-                    />
-                    <div className="flex justify-end mt-3">
-                      <button
-                        type="submit"
-                        disabled={queryIsSubmitting || !queryComment.trim()}
-                        className="px-6 py-2.5 rounded-xl bg-brandNavy text-white text-[10px] font-extrabold disabled:opacity-50 premium-button"
-                      >
-                        Send Comment
-                      </button>
-                    </div>
-                  </form>
+                  {/* TEMPORARILY DISABLED - MESSAGES FEATURE */}
+                  {MESSAGES_FEATURE_ENABLED && (
+                    <form onSubmit={handleSendQueryComment} className="border-t border-slate-100 pt-5">
+                      <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora mb-3">Add Internal Note / Comment</h3>
+                      <textarea
+                        value={queryComment}
+                        onChange={e => setQueryComment(e.target.value)}
+                        placeholder="Write your comment..."
+                        className="w-full min-h-[110px] rounded-2xl border border-white/70 bg-white/65 px-4 py-3 text-xs font-semibold text-slate-700 outline-none focus:border-brandNavy resize-none shadow-sm backdrop-blur-md transition-all"
+                      />
+                      <div className="flex justify-end mt-3">
+                        <button
+                          type="submit"
+                          disabled={queryIsSubmitting || !queryComment.trim()}
+                          className="px-6 py-2.5 rounded-xl bg-brandNavy text-white text-[10px] font-extrabold disabled:opacity-50 premium-button"
+                        >
+                          Send Comment
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </div>
 
-                <aside className="lg:col-span-4 p-5 space-y-4 bg-white/42 backdrop-blur-md">
+                <aside className="lg:col-span-4 p-5 bg-white/42 backdrop-blur-md">
+                  <div className="sticky top-5 space-y-4 rounded-[22px] border-2 border-brandNavy/10 bg-white/88 p-4 shadow-xl shadow-brandNavy/8 backdrop-blur-xl">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-brandNavy text-white text-[10px] font-extrabold shadow-md shadow-brandNavy/15">C</span>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-brandDarkNavy font-sora">Control Panel</h3>
+                      <p className="text-[10px] font-bold text-slate-400">Manage ticket state</p>
+                    </div>
+                  </div>
                   <div>
-                    <label className="block text-xs font-extrabold text-brandDarkNavy font-sora mb-2">Update Status</label>
-                    <select value={selectedTicket.status || 'Open'} onChange={e => handleQueryStatusChange(e.target.value)} className="w-full rounded-2xl border border-white/70 bg-white/75 px-3 py-3 text-xs font-bold outline-none focus:border-brandNavy shadow-sm">
+                    <label className="mb-2 flex items-center gap-2 text-xs font-extrabold text-brandDarkNavy font-sora">
+                      <span className="rounded-full bg-brandNavy/10 px-2 py-0.5 text-[9px] text-brandNavy">Status</span>
+                      Update Status
+                    </label>
+                    <select value={selectedTicket.status || 'Open'} onChange={e => handleQueryStatusChange(e.target.value)} className="w-full rounded-2xl border-2 border-brandNavy/15 bg-white/90 px-3 py-3 text-xs font-bold outline-none focus:border-brandNavy shadow-sm shadow-brandNavy/5">
                       <option value="Open">Open</option>
                       <option value="In Progress">In Progress</option>
                       <option value="Under Review">Under Review</option>
@@ -1584,8 +1709,11 @@ const AdminDashboard = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-extrabold text-brandDarkNavy font-sora mb-2">Change Priority</label>
-                    <select value={selectedTicket.priority || 'Medium'} onChange={e => handleQueryPriorityChange(e.target.value)} className="w-full rounded-2xl border border-white/70 bg-white/75 px-3 py-3 text-xs font-bold outline-none focus:border-brandNavy shadow-sm">
+                    <label className="mb-2 flex items-center gap-2 text-xs font-extrabold text-brandDarkNavy font-sora">
+                      <span className="rounded-full bg-brandRed/10 px-2 py-0.5 text-[9px] text-brandRed">Priority</span>
+                      Change Priority
+                    </label>
+                    <select value={selectedTicket.priority || 'Medium'} onChange={e => handleQueryPriorityChange(e.target.value)} className="w-full rounded-2xl border-2 border-brandRed/18 bg-white/90 px-3 py-3 text-xs font-bold outline-none focus:border-brandRed shadow-sm shadow-brandRed/5">
                       <option value="Low">Low</option>
                       <option value="Medium">Medium</option>
                       <option value="High">High</option>
@@ -1594,8 +1722,11 @@ const AdminDashboard = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-extrabold text-brandDarkNavy font-sora mb-2">Assign Team</label>
-                    <select value={selectedTicket.assigned_to || 'Unassigned'} onChange={e => handleQueryAgentChange(e.target.value)} className="w-full rounded-2xl border border-white/70 bg-white/75 px-3 py-3 text-xs font-bold outline-none focus:border-brandNavy shadow-sm">
+                    <label className="mb-2 flex items-center gap-2 text-xs font-extrabold text-brandDarkNavy font-sora">
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] text-slate-500">Team</span>
+                      Assign Team
+                    </label>
+                    <select value={selectedTicket.assigned_to || 'Unassigned'} onChange={e => handleQueryAgentChange(e.target.value)} className="w-full rounded-2xl border-2 border-slate-200 bg-white/90 px-3 py-3 text-xs font-bold outline-none focus:border-brandNavy shadow-sm">
                       <option value="Unassigned">Unassigned</option>
                       {AGENTS.map(agent => <option key={agent} value={agent}>{agent}</option>)}
                     </select>
@@ -1606,14 +1737,17 @@ const AdminDashboard = () => {
                   <button type="button" onClick={() => handleQueryStatusChange('Resolved')} className={`w-full rounded-2xl border py-3 text-xs font-extrabold transition-all hover:shadow-sm ${selectedTicket.status === 'Resolved' ? 'border-green-200 bg-green-50 text-green-700' : 'border-brandRed/30 text-brandRed bg-white/70 hover:bg-brandRed/5'}`}>
                     Mark as Resolved
                   </button>
-                  <select onChange={e => e.target.value && handleQueryStatusChange(e.target.value)} defaultValue="" className="w-full rounded-2xl border border-white/70 bg-white/75 px-3 py-3 text-xs font-bold text-brandNavy outline-none focus:border-brandNavy shadow-sm">
+                  <select onChange={e => e.target.value && handleQueryStatusChange(e.target.value)} defaultValue="" className="w-full rounded-2xl border-2 border-brandNavy/12 bg-white/90 px-3 py-3 text-xs font-bold text-brandNavy outline-none focus:border-brandNavy shadow-sm shadow-brandNavy/5">
                     <option value="">More Actions</option>
                     <option value="Needs Clarification">Waiting for User</option>
                     <option value="Closed">Close Ticket</option>
                   </select>
 
-                  <div className="rounded-2xl border border-brandNavy/10 bg-brandNavy/5 p-4 backdrop-blur-md">
-                    <h3 className="text-xs font-extrabold text-brandNavy font-sora mb-3">Status Guide</h3>
+                  <div className="rounded-2xl border-2 border-brandNavy/12 bg-gradient-to-br from-brandNavy/[0.07] to-white p-4 backdrop-blur-md">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <h3 className="text-xs font-extrabold text-brandNavy font-sora">Status Guide</h3>
+                      <span className="rounded-full bg-white/80 px-2 py-1 text-[9px] font-extrabold text-slate-400">Reference</span>
+                    </div>
                     {[
                       ['Open', 'Newly created ticket'],
                       ['In Progress', 'Work is being done'],
@@ -1621,11 +1755,12 @@ const AdminDashboard = () => {
                       ['Resolved', 'Issue resolved by admin'],
                       ['Closed', 'Ticket closed']
                     ].map(([label, desc]) => (
-                      <div key={label} className="mb-2 last:mb-0">
+                      <div key={label} className="mb-2 last:mb-0 rounded-xl bg-white/65 px-3 py-2">
                         <p className="text-[10px] font-extrabold text-brandNavy">{label}</p>
                         <p className="text-[10px] font-semibold text-slate-500">{desc}</p>
                       </div>
                     ))}
+                  </div>
                   </div>
                 </aside>
               </div>
@@ -2789,6 +2924,9 @@ const AdminDashboard = () => {
   }
 
   function renderDetailsDrawer() {
+    // TEMPORARILY DISABLED - MESSAGES FEATURE
+    if (!MESSAGES_FEATURE_ENABLED) return null;
+
     return (
       <AdminTicketDetails
         drawerTicket={drawerTicket}

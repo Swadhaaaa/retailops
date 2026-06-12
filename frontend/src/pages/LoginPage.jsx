@@ -1,11 +1,12 @@
 
-import React, { useState, useContext, useEffect } from 'react';
+import { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { RoleContext } from '../context/RoleContext';
 import { useNavigate } from 'react-router-dom';
 import BlobTransition from '../components/BlobTransition';
 import relianceLogo from '../assets/reliance_logo.png';
 import DashboardShowcase from '../components/DashboardShowcase';
+import api from '../utils/api';
 
 const LoginPage = () => {
   const { login } = useContext(AuthContext);
@@ -41,25 +42,20 @@ const LoginPage = () => {
   const [role, setRole] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetStatus, setResetStatus] = useState({ type: '', message: '' });
+  const [resetLoading, setResetLoading] = useState(false);
   const [loggedUser, setLoggedUser] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [formKey, setFormKey] = useState(0); // For triggering slide-up animations
-  const [introStage, setIntroStage] = useState('done'); // center, pulse, move, done
-
-  // Keep the login page interactive immediately. The old cinematic intro blocked
-  // role selection for 3 seconds, which made the first click feel unresponsive.
-  useEffect(() => {
-    setIntroStage('done');
-  }, []);
-
-  // Reset email/password when role changes
-  useEffect(() => {
-    setEmail('');
-    setPassword('');
-  }, [role]);
+  const [introStage] = useState('done'); // center, pulse, move, done
 
   const handleRoleSelect = (roleId) => {
     setRole(roleId);
+    setEmail('');
+    setPassword('');
   };
 
   const handleContinue = () => {
@@ -70,6 +66,21 @@ const LoginPage = () => {
 
   const handleBack = () => {
     setScreen('role_selection');
+  };
+
+  const handleForgotPassword = () => {
+    setResetEmail(email);
+    setNewPassword('');
+    setConfirmPassword('');
+    setResetStatus({ type: '', message: '' });
+    setScreen('forgot_password');
+  };
+
+  const handleResetBack = () => {
+    setNewPassword('');
+    setConfirmPassword('');
+    setResetStatus({ type: '', message: '' });
+    setScreen('login_form');
   };
 
   const handleLogin = async (e) => {
@@ -85,10 +96,58 @@ const LoginPage = () => {
       // Save user profile for success screen
       setLoggedUser(user);
       setSelectedSubRole(role); // Store selected UI role in lightweight context
-    } catch (error) {
+    } catch {
       setScreen('login_form');
       setLoading(false);
       alert('Invalid Credentials');
+    }
+  };
+
+  const handlePasswordReset = async (e) => {
+    e.preventDefault();
+
+    if (!resetEmail || !newPassword || !confirmPassword) return;
+
+    if (newPassword.length < 6) {
+      setResetStatus({
+        type: 'error',
+        message: 'Password must be at least 6 characters.'
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setResetStatus({
+        type: 'error',
+        message: 'Passwords do not match.'
+      });
+      return;
+    }
+
+    setResetLoading(true);
+    setResetStatus({ type: '', message: '' });
+
+    try {
+      await api.post('/auth/forgot-password', {
+        email: resetEmail,
+        new_password: newPassword
+      });
+
+      setEmail(resetEmail);
+      setPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setResetStatus({
+        type: 'success',
+        message: 'Password reset successfully. You can sign in now.'
+      });
+    } catch (error) {
+      setResetStatus({
+        type: 'error',
+        message: error.response?.data?.error || 'Unable to reset password. Please try again.'
+      });
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -211,12 +270,15 @@ const LoginPage = () => {
         <div className="relative w-full h-full overflow-hidden bg-white">
           <div className="flex items-center justify-center p-6 lg:p-12 h-full relative">
 
+        {/* SUBTLE RIGHT PANEL GRID */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(227,24,55,0.065)_1px,transparent_1px),linear-gradient(to_bottom,rgba(227,24,55,0.055)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
+
         {/* BACKGROUND ACCENT SHAPE */}
         <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-[#F3F5FB]/30 rounded-bl-[100px] pointer-events-none -z-10" />
 
         {/* 1. SCREEN: ROLE SELECTION */}
         {screen === 'role_selection' && (
-          <div className="w-full max-w-[450px]">
+          <div className="relative z-10 w-full max-w-[450px]">
             <div className="transition-all duration-150 transform opacity-100 translate-y-0">
               <h2 className="text-4xl font-extrabold text-brandDarkNavy tracking-tight mb-2 font-sora">
                 Welcome
@@ -230,7 +292,7 @@ const LoginPage = () => {
             <div className="space-y-4 mb-8">
               {roles.map((item) => {
                 const isSelected = role === item.id;
-                let cardStyles = 'border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700';
+                let cardStyles = 'bg-white border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700';
                 
                 if (isSelected) {
                   if (item.id === 'vendor') {
@@ -259,7 +321,7 @@ const LoginPage = () => {
 
                       {/* Description */}
                       <div className="text-left">
-                        <h3 className={`font-bold text-[16px] font-sora ${isSelected ? 'text-white' : 'text-gray-700'}`}>
+                        <h3 className={`font-extrabold text-[16px] font-sora ${isSelected ? 'text-white' : 'text-gray-800'}`}>
                           {item.title}
                         </h3>
                         <p className={`text-xs mt-0.5 line-clamp-1 ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>
@@ -308,7 +370,7 @@ const LoginPage = () => {
 
         {/* 2. SCREEN: LOGIN FORM */}
         {screen === 'login_form' && (
-          <div key={`form-${formKey}`} className="w-full max-w-[450px] animate-slide-up-fade">
+          <div key={`form-${formKey}`} className="relative z-10 w-full max-w-[450px] animate-slide-up-fade">
             {/* Back Button */}
             <button
               onClick={handleBack}
@@ -391,14 +453,110 @@ const LoginPage = () => {
 
             {/* Forgot Password Link */}
             <div className="mt-6 text-center">
-              <a
-                href="#forgot"
-                onClick={(e) => e.preventDefault()}
+              <button
+                type="button"
+                onClick={handleForgotPassword}
                 className="text-xs font-semibold text-brandNavy hover:text-brandDarkNavy transition-colors hover:underline"
               >
                 Forgot your password?
-              </a>
+              </button>
             </div>
+          </div>
+        )}
+
+        {/* 3. SCREEN: FORGOT PASSWORD */}
+        {screen === 'forgot_password' && (
+          <div className="relative z-10 w-full max-w-[450px] animate-slide-up-fade">
+            <button
+              onClick={handleResetBack}
+              className="flex items-center space-x-2 text-sm text-gray-500 hover:text-brandNavy transition-colors mb-6 group"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4 group-hover:-translate-x-1 transition-transform">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+              </svg>
+              <span>Back to sign in</span>
+            </button>
+
+            <h2 className="text-4xl font-extrabold text-brandDarkNavy tracking-tight mb-2 font-sora leading-tight">
+              Reset password
+            </h2>
+            <p className="text-gray-500 text-sm mb-8">
+              Enter your account email and choose a new password.
+            </p>
+
+            <form onSubmit={handlePasswordReset} className="space-y-6">
+              <div>
+                <label className="block text-[10px] font-bold text-brandDarkNavy font-sora tracking-widest uppercase mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="yourname@relianceretail.com"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  className="w-full border border-gray-200 px-4 py-3.5 rounded-2xl outline-none focus:border-brandNavy transition-all bg-gray-50/50 text-[15px]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-brandDarkNavy font-sora tracking-widest uppercase mb-2">
+                  New Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  placeholder="Enter a new password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full border border-gray-200 px-4 py-3.5 rounded-2xl outline-none focus:border-brandNavy transition-all bg-gray-50/50 text-[15px]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-brandDarkNavy font-sora tracking-widest uppercase mb-2">
+                  Confirm Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  placeholder="Confirm the new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full border border-gray-200 px-4 py-3.5 rounded-2xl outline-none focus:border-brandNavy transition-all bg-gray-50/50 text-[15px]"
+                />
+              </div>
+
+              {resetStatus.message && (
+                <div className={`rounded-2xl px-4 py-3 text-sm ${
+                  resetStatus.type === 'success'
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                    : 'bg-red-50 text-red-700 border border-red-100'
+                }`}>
+                  {resetStatus.message}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={!resetEmail || !newPassword || !confirmPassword || resetLoading}
+                className={`w-full py-4 rounded-2xl text-sm font-semibold tracking-wide flex items-center justify-center space-x-2 transition-all duration-300 shadow-lg ${!resetEmail || !newPassword || !confirmPassword || resetLoading
+                    ? 'bg-[#B2C0D6] text-white cursor-not-allowed shadow-none'
+                    : role === 'vendor'
+                      ? 'bg-brandRed hover:bg-[#C2112C] text-white hover:shadow-brandRed/30'
+                      : 'bg-brandNavy hover:bg-brandDarkNavy text-white hover:shadow-brandNavy/30'
+                  }`}
+              >
+                <span>{resetLoading ? 'Resetting...' : 'Reset Password'}</span>
+                {!resetLoading && (
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5A2.25 2.25 0 0 0 19.5 19.5v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                  </svg>
+                )}
+              </button>
+            </form>
           </div>
         )}
           </div>

@@ -78,6 +78,57 @@ def login():
     })
 
 
+@auth_bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+
+    data = request.get_json() or {}
+
+    email = (data.get('email') or '').strip().lower()
+    new_password = data.get('new_password') or ''
+
+    if not email or not new_password:
+        return jsonify({
+            'error': 'Email and new password are required'
+        }), 400
+
+    if len(new_password) < 6:
+        return jsonify({
+            'error': 'Password must be at least 6 characters'
+        }), 400
+
+    conn = get_db()
+
+    user = conn.execute("""
+        SELECT user_id
+        FROM users
+        WHERE lower(email) = ?
+        AND is_active = true
+    """, [email]).fetchone()
+
+    if not user:
+        conn.close()
+
+        return jsonify({
+            'error': 'No active account found for this email'
+        }), 404
+
+    password_hash = bcrypt.generate_password_hash(
+        new_password
+    ).decode('utf-8')
+
+    conn.execute("""
+        UPDATE users
+        SET password_hash = ?
+        WHERE user_id = ?
+    """, [password_hash, user[0]])
+
+    conn.close()
+
+    return jsonify({
+        'message': 'Password reset successfully'
+    })
+
+
 @auth_bp.route('/me', methods=['GET'])
 @jwt_required()
 def me():
