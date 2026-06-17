@@ -1,13 +1,96 @@
-from flask import Blueprint, request, jsonify, send_file
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask import Blueprint, request, jsonify, send_file, g
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 import duckdb
 from datetime import datetime, timedelta
 import os
 from werkzeug.utils import secure_filename
 import uuid
+from functools import wraps
 from nlp.classifier import suggest_category
 
 tickets_bp = Blueprint('tickets', __name__)
+
+def scope_by_department(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        claims = get_jwt()
+        role = claims.get('role')
+        department = claims.get('department')
+
+        g.is_department_scoped = False
+        g.department = None
+        g.dept_filter = ""
+        g.dept_params = []
+
+        if role == 'department':
+            g.is_department_scoped = True
+            g.department = department
+            g.dept_filter = " AND t.business_unit = ? "
+            g.dept_params = [department]
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+def get_backend_assigned_team(category_name):
+    if not category_name:
+        return 'Operations'
+    name = category_name.lower()
+    if any(term in name for term in [
+        'payment', 'billing', 'pricing', 'finance', 'budget',
+        'reconciliation', 'refund', 'return'
+    ]):
+        return 'Finance'
+    if any(term in name for term in [
+        'portal', 'technical', 'database', 'sync', 'it ',
+        'infrastructure', 'security', 'account'
+    ]):
+        return 'IT Support'
+    if any(term in name for term in ['compliance', 'gst', 'contract']):
+        return 'Compliance'
+    if any(term in name for term in ['kyc', 'vendor', 'order']):
+        return 'Supply Chain'
+    if 'logistics' in name or 'delivery' in name:
+        return 'Logistics'
+    if 'inventory' in name or 'stock' in name:
+        return 'Inventory'
+    return 'Operations'
+
+
+def get_current_role():
+    return get_jwt().get('role')
+
+
+def is_staff_role(role):
+    return role in ('super_admin', 'admin', 'department')
+
+
+def ensure_ticket_access(conn, ticket_id):
+    current_user = get_jwt_identity()
+    role = get_current_role()
+
+    if role in ('super_admin', 'admin'):
+        ticket = conn.execute("""
+            SELECT ticket_id
+            FROM tickets
+            WHERE ticket_id = ?
+        """, [ticket_id]).fetchone()
+    elif role == 'department':
+        department = get_jwt().get('department')
+        ticket = conn.execute("""
+            SELECT ticket_id
+            FROM tickets
+            WHERE ticket_id = ?
+            AND business_unit = ?
+        """, [ticket_id, department]).fetchone()
+    else:
+        ticket = conn.execute("""
+            SELECT ticket_id
+            FROM tickets
+            WHERE ticket_id = ?
+            AND raised_by = ?
+        """, [ticket_id, current_user]).fetchone()
+
+    return bool(ticket)
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -214,7 +297,8 @@ def ticket_to_dict(ticket):
         'has_attachment': bool(attachment_path),
         'attachment_download_url': f'/api/tickets/download/{attachment_path}' if attachment_path else None,
         'updated_at': str(ticket[10]) if len(ticket) > 10 and ticket[10] else None,
-        'resolved_at': str(ticket[11]) if len(ticket) > 11 and ticket[11] else None
+        'resolved_at': str(ticket[11]) if len(ticket) > 11 and ticket[11] else None,
+        'business_unit': ticket[12] if len(ticket) > 12 else None
     }
 
 
@@ -236,8 +320,9 @@ def admin_ticket_to_dict(ticket):
         'attachment_download_url': f'/api/tickets/download/{attachment_path}' if attachment_path else None,
         'updated_at': str(ticket[10]) if len(ticket) > 10 and ticket[10] else None,
         'resolved_at': str(ticket[11]) if len(ticket) > 11 and ticket[11] else None,
-        'vendor_name': ticket[12] if len(ticket) > 12 else None,
-        'category_name': ticket[13] if len(ticket) > 13 else None
+        'business_unit': ticket[12] if len(ticket) > 12 else None,
+        'vendor_name': ticket[13] if len(ticket) > 13 else None,
+        'category_name': ticket[14] if len(ticket) > 14 else None
     }
 
 
@@ -266,16 +351,19 @@ def create_ticket():
             conn.close()
             return jsonify({'error': 'Invalid category'}), 400
 
-        category_exists = conn.execute("""
-            SELECT 1
+        category = conn.execute("""
+            SELECT name
             FROM categories
             WHERE category_id = ?
             AND is_active = true
         """, [category_id]).fetchone()
 
-        if not category_exists:
+        if not category:
             conn.close()
             return jsonify({'error': 'Invalid category'}), 400
+
+        category_name = category[0]
+        business_unit = get_backend_assigned_team(category_name)
 
         ticket_id = generate_ticket_id(conn)
         attachment_path = None
@@ -308,9 +396,9 @@ def create_ticket():
         conn.execute("""
            INSERT INTO tickets (
                      ticket_id, title, description, category_id, priority,
-                     status, raised_by, created_at, attachment_path, sla_deadline
+                     status, raised_by, created_at, attachment_path, sla_deadline, business_unit
                      )
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [
             ticket_id,
             title,
@@ -321,7 +409,8 @@ def create_ticket():
             current_user,
             created_at,
             attachment_path,
-            sla_deadline
+            sla_deadline,
+            business_unit
             ])
 
         record_ticket_activity(
@@ -360,7 +449,7 @@ def get_tickets():
         tickets = conn.execute("""
             SELECT ticket_id, title, description, category_id, priority,
                    status, raised_by, assigned_to, created_at, attachment_path,
-                   updated_at, resolved_at
+                   updated_at, resolved_at, business_unit
             FROM tickets
             WHERE raised_by = ?
             ORDER BY created_at DESC
@@ -377,20 +466,28 @@ def get_tickets():
 # GET SINGLE TICKET WITH MESSAGES
 @tickets_bp.route('/<ticket_id>', methods=['GET'])
 @jwt_required()
+@scope_by_department
 def get_single_ticket(ticket_id):
     try:
         conn = get_conn()
+        role = get_current_role()
 
-        ticket = conn.execute("""
+        if not is_staff_role(role) and not ensure_ticket_access(conn, ticket_id):
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        query = f"""
             SELECT t.ticket_id, t.title, t.description, t.category_id, t.priority,
                    t.status, t.raised_by, t.assigned_to, t.created_at, t.attachment_path,
-                   t.updated_at, t.resolved_at,
+                   t.updated_at, t.resolved_at, t.business_unit,
                    u.name AS vendor_name, c.name AS category_name
             FROM tickets t
             LEFT JOIN users u ON t.raised_by = u.user_id OR t.raised_by = u.email
             LEFT JOIN categories c ON t.category_id = c.category_id
-            WHERE t.ticket_id = ?
-        """, [ticket_id]).fetchone()
+            WHERE t.ticket_id = ? {g.dept_filter}
+        """
+
+        ticket = conn.execute(query, [ticket_id] + g.dept_params).fetchone()
 
         if not ticket:
             conn.close()
@@ -417,11 +514,7 @@ def get_ticket_activity_history(ticket_id):
     try:
         conn = get_conn()
 
-        ticket = conn.execute("""
-            SELECT ticket_id FROM tickets WHERE ticket_id = ?
-        """, [ticket_id]).fetchone()
-
-        if not ticket:
+        if not ensure_ticket_access(conn, ticket_id):
             conn.close()
             return jsonify({'error': 'Ticket not found'}), 404
 
@@ -437,20 +530,29 @@ def get_ticket_activity_history(ticket_id):
 # ADMIN GET ALL TICKETS
 @tickets_bp.route('/admin/all', methods=['GET'])
 @jwt_required()
+@scope_by_department
 def admin_get_all_tickets():
     try:
         conn = get_conn()
+        role = get_current_role()
 
-        tickets = conn.execute("""
+        if not is_staff_role(role):
+            conn.close()
+            return jsonify({'error': 'Forbidden'}), 403
+
+        query = f"""
             SELECT t.ticket_id, t.title, t.description, t.category_id, t.priority,
                    t.status, t.raised_by, t.assigned_to, t.created_at, t.attachment_path,
-                   t.updated_at, t.resolved_at,
+                   t.updated_at, t.resolved_at, t.business_unit,
                    u.name AS vendor_name, c.name AS category_name
             FROM tickets t
             LEFT JOIN users u ON t.raised_by = u.user_id OR t.raised_by = u.email
             LEFT JOIN categories c ON t.category_id = c.category_id
+            WHERE 1=1 {g.dept_filter}
             ORDER BY t.created_at DESC
-        """).fetchall()
+        """
+
+        tickets = conn.execute(query, g.dept_params).fetchall()
 
         conn.close()
 
@@ -463,6 +565,7 @@ def admin_get_all_tickets():
 # ASSIGN AGENT
 @tickets_bp.route('/<ticket_id>/assign', methods=['PUT'])
 @jwt_required()
+@scope_by_department
 def assign_agent(ticket_id):
     try:
         data = request.get_json()
@@ -472,6 +575,10 @@ def assign_agent(ticket_id):
             return jsonify({'error': 'Agent is required'}), 400
 
         conn = get_conn()
+
+        if not is_staff_role(get_current_role()) or not ensure_ticket_access(conn, ticket_id):
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
 
         ticket = conn.execute("""
             SELECT assigned_to, status
@@ -534,6 +641,7 @@ def assign_agent(ticket_id):
 # UPDATE TICKET STATUS
 @tickets_bp.route('/<ticket_id>/status', methods=['PUT'])
 @jwt_required()
+@scope_by_department
 def update_ticket_status(ticket_id):
     try:
         data = request.get_json()
@@ -552,6 +660,10 @@ def update_ticket_status(ticket_id):
             return jsonify({'error': 'Invalid status'}), 400
 
         conn = get_conn()
+
+        if not is_staff_role(get_current_role()) or not ensure_ticket_access(conn, ticket_id):
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
 
         ticket = conn.execute("""
             SELECT raised_by, status FROM tickets WHERE ticket_id = ?
@@ -616,6 +728,7 @@ def update_ticket_status(ticket_id):
 # UPDATE TICKET PRIORITY
 @tickets_bp.route('/<ticket_id>/priority', methods=['PUT'])
 @jwt_required()
+@scope_by_department
 def update_ticket_priority(ticket_id):
     try:
         data = request.get_json()
@@ -627,6 +740,10 @@ def update_ticket_priority(ticket_id):
             return jsonify({'error': 'Invalid priority'}), 400
 
         conn = get_conn()
+
+        if not is_staff_role(get_current_role()) or not ensure_ticket_access(conn, ticket_id):
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
 
         ticket = conn.execute("""
             SELECT ticket_id, priority FROM tickets WHERE ticket_id = ?
@@ -902,6 +1019,20 @@ def download_attachment(filename):
         safe_filename = secure_filename(filename)
         file_path = os.path.join(UPLOAD_FOLDER, safe_filename)
 
+        conn = get_conn()
+        ticket = conn.execute("""
+            SELECT ticket_id
+            FROM tickets
+            WHERE attachment_path = ?
+            LIMIT 1
+        """, [safe_filename]).fetchone()
+
+        if not ticket or not ensure_ticket_access(conn, ticket[0]):
+            conn.close()
+            return jsonify({'error': 'File not found'}), 404
+
+        conn.close()
+
         if not os.path.exists(file_path):
             return jsonify({'error': 'File not found'}), 404
 
@@ -941,20 +1072,20 @@ def get_announcements():
 # GET TICKET AND ANNOUNCEMENT STATS
 @tickets_bp.route('/stats', methods=['GET'])
 @jwt_required()
+@scope_by_department
 def get_ticket_stats():
     try:
         current_user = get_jwt_identity()
         conn = get_conn()
-        
-        # Get user's role
-        user = conn.execute("SELECT role FROM users WHERE user_id = ?", [current_user]).fetchone()
-        is_admin = user and user[0] == 'admin'
-        
-        if is_admin:
-            # Admin stats: all tickets
-            tickets = conn.execute("""
-                SELECT status FROM tickets
-            """).fetchall()
+
+        claims = get_jwt()
+        role = claims.get('role')
+
+        is_admin_or_dept = role in ('super_admin', 'admin', 'department')
+
+        if is_admin_or_dept:
+            query = f"SELECT status FROM tickets t WHERE 1=1 {g.dept_filter}"
+            tickets = conn.execute(query, g.dept_params).fetchall()
         else:
             # User stats: only their raised tickets
             tickets = conn.execute("""

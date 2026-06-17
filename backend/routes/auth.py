@@ -62,7 +62,11 @@ def login():
 
     # Generate JWT token
     token = create_access_token(
-        identity=user[0]
+        identity=user[0],
+        additional_claims={
+            'role': user[4],
+            'department': user[5]
+        }
     )
 
     conn.close()
@@ -73,7 +77,8 @@ def login():
             'user_id': user[0],
             'name': user[1],
             'email': user[2],
-            'role': user[4]
+            'role': user[4],
+            'department': user[5]
         }
     })
 

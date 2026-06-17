@@ -32,7 +32,7 @@ ChartJS.register(
   Tooltip
 );
 
-const AGENTS = [
+const DEFAULT_AGENTS = [
   'Rahul Sharma',
   'Swadha Kumari',
   'Amit Patel',
@@ -87,25 +87,25 @@ const INITIAL_ADMIN_DIRECTORY = [
 const MESSAGES_FEATURE_ENABLED = false;
 
 const DEPARTMENT_DIRECTORY = [
-  { name: 'Supply Chain Operations', head: 'Admin Manager', members: 12, accent: 'brandNavy' },
-  { name: 'IT Support', head: 'Swadha Kumari', members: 8, accent: 'cyan' },
-  { name: 'Finance', head: 'Rahul Sharma', members: 10, accent: 'green' },
-  { name: 'Operations', head: 'Amit Patel', members: 15, accent: 'purple' },
-  { name: 'Compliance', head: 'Neha Gupta', members: 6, accent: 'orange' },
-  { name: 'Procurement', head: 'Vikas Singh', members: 9, accent: 'blue' },
-  { name: 'Store Operations', head: 'Emily Davis', members: 11, accent: 'teal' },
-  { name: 'Finance & Reporting', head: 'Sarah Smith', members: 7, accent: 'indigo' },
-  { name: 'Retail Operations', head: 'Robert Lee', members: 13, accent: 'rose' }
+  { name: 'Finance', head: 'Finance Department', members: 10, accent: 'green' },
+  { name: 'IT Support', head: 'IT Support Department', members: 8, accent: 'cyan' },
+  { name: 'Compliance', head: 'Compliance Department', members: 6, accent: 'orange' },
+  { name: 'Supply Chain', head: 'Supply Chain Department', members: 12, accent: 'brandNavy' },
+  { name: 'Logistics', head: 'Logistics Department', members: 9, accent: 'blue' },
+  { name: 'Inventory', head: 'Inventory Department', members: 7, accent: 'indigo' },
+  { name: 'Operations', head: 'Operations Department', members: 15, accent: 'purple' }
 ];
 
 const AdminDashboard = () => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
+  const isDepartmentUser = user?.role === 'department';
 
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState('');
+  const [agents, setAgents] = useState(DEFAULT_AGENTS);
 
   // Messages Specific States
   const [messages, setMessages] = useState([]);
@@ -180,14 +180,12 @@ const AdminDashboard = () => {
   const getAssignedTeam = (categoryName) => {
     if (!categoryName) return 'Operations';
     const name = categoryName.toLowerCase();
-    if (name.includes('kyc') || name.includes('vendor')) return 'Supply Chain Operations';
-    if (name.includes('procurement') || name.includes('purchase')) return 'Procurement';
-    if (name.includes('store')) return 'Store Operations';
-    if (name.includes('reporting') || name.includes('budget') || name.includes('reconciliation')) return 'Finance & Reporting';
-    if (name.includes('payment') || name.includes('billing') || name.includes('finance')) return 'Finance';
-    if (name.includes('portal') || name.includes('technical') || name.includes('database') || name.includes('it ')) return 'IT Support';
-    if (name.includes('compliance') || name.includes('gst')) return 'Compliance';
-    if (name.includes('contract') || name.includes('document')) return 'Operations';
+    if (['payment', 'billing', 'pricing', 'finance', 'budget', 'reconciliation', 'refund', 'return'].some(term => name.includes(term))) return 'Finance';
+    if (['portal', 'technical', 'database', 'sync', 'it ', 'infrastructure', 'security', 'account'].some(term => name.includes(term))) return 'IT Support';
+    if (['compliance', 'gst', 'contract'].some(term => name.includes(term))) return 'Compliance';
+    if (['kyc', 'vendor', 'order'].some(term => name.includes(term))) return 'Supply Chain';
+    if (name.includes('logistics') || name.includes('delivery')) return 'Logistics';
+    if (name.includes('inventory') || name.includes('stock')) return 'Inventory';
     return 'Operations';
   };
 
@@ -348,6 +346,8 @@ const AdminDashboard = () => {
       alert('Failed to assign ticket.');
     }
   };
+
+  const firstAgent = agents[0] || 'Unassigned';
 
   const resetAdminForm = () => {
     setAdminForm({
@@ -581,6 +581,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchTickets();
+    fetchAgents();
     const refreshTickets = () => fetchTickets({ silent: true });
     const refreshOnStorage = (event) => {
       if (event.key === 'tickets:lastChanged') refreshTickets();
@@ -603,6 +604,17 @@ const AdminDashboard = () => {
       document.removeEventListener('visibilitychange', refreshOnVisible);
     };
   }, []);
+
+  const fetchAgents = async () => {
+    try {
+      const response = await api.get('/users/agents');
+      const names = (response.data || []).map(agent => agent.name).filter(Boolean);
+      setAgents(names.length > 0 ? names : DEFAULT_AGENTS);
+    } catch (err) {
+      console.error('Error fetching agents:', err);
+      setAgents(DEFAULT_AGENTS);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -654,6 +666,8 @@ const AdminDashboard = () => {
 
   const userName = user?.name || 'Admin Manager';
   const userEmail = user?.email || 'admin@reliance.com';
+  const consoleLabel = isDepartmentUser ? `${user?.department || 'Department'} Console` : 'Admin Console';
+  const roleLabel = isDepartmentUser ? `${user?.department || 'Department'} Team` : 'Admin / Manager';
 
   // Sidebar Items
   const sidebarItems = [
@@ -693,21 +707,21 @@ const AdminDashboard = () => {
         </svg>
       )
     },
-    {
+    ...(!isDepartmentUser ? [{
       name: 'Departments', icon: (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M8.25 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m4.5-6h1.5m-1.5 3h1.5m-1.5 3h1.5M8.25 21v-3.375c0-.621.504-1.125 1.125-1.125h3.25c.621 0 1.125.504 1.125 1.125V21" />
         </svg>
       )
-    },
-    {
+    }] : []),
+    ...(!isDepartmentUser ? [{
       name: 'Admin Management', icon: (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="w-5 h-5">
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 3.75 6.75 5.7v4.54c0 3.9 2.19 7.47 5.25 9 3.06-1.53 5.25-5.1 5.25-9V5.7L12 3.75Z" />
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 11.25a2.1 2.1 0 1 0 0-4.2 2.1 2.1 0 0 0 0 4.2ZM8.85 15.45c.74-1.24 1.82-1.86 3.15-1.86s2.41.62 3.15 1.86" />
         </svg>
       )
-    },
+    }] : []),
     {
       name: 'Profile', icon: (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
@@ -744,13 +758,13 @@ const AdminDashboard = () => {
       <header className="h-16 premium-glass border-b border-white/50 flex items-center justify-between px-6 shrink-0 z-30 sticky top-0">
         <div className="flex items-center space-x-3">
           <img src={relianceLogo} alt="Reliance Retail Logo" className="h-9 w-auto object-contain" />
-          <span className="text-[10px] text-brandMuted uppercase ml-2 hidden sm:inline-block border-l pl-2 border-gray-200">Admin Console</span>
+          <span className="text-[10px] text-brandMuted uppercase ml-2 hidden sm:inline-block border-l pl-2 border-gray-200">{consoleLabel}</span>
         </div>
 
         {/* User Info & Avatar */}
         <div className="flex items-center space-x-4">
           <div className="px-3 py-1 rounded-full text-xs font-semibold bg-white/70 border border-white/60 text-brandNavy shadow-sm backdrop-blur-md">
-            Admin / Manager
+            {roleLabel}
           </div>
           <div className="flex items-center space-x-2.5">
             <div className="text-right hidden sm:block">
@@ -870,14 +884,12 @@ const AdminDashboard = () => {
     const getAssignedTeam = (categoryName) => {
       if (!categoryName) return 'Operations';
       const name = categoryName.toLowerCase();
-      if (name.includes('kyc') || name.includes('vendor')) return 'Supply Chain Operations';
-      if (name.includes('procurement') || name.includes('purchase')) return 'Procurement';
-      if (name.includes('store')) return 'Store Operations';
-      if (name.includes('reporting') || name.includes('budget') || name.includes('reconciliation')) return 'Finance & Reporting';
-      if (name.includes('payment') || name.includes('billing') || name.includes('finance')) return 'Finance';
-      if (name.includes('portal') || name.includes('technical') || name.includes('database') || name.includes('it ')) return 'IT Support';
-      if (name.includes('compliance') || name.includes('gst')) return 'Compliance';
-      if (name.includes('contract') || name.includes('document')) return 'Operations';
+      if (['payment', 'billing', 'pricing', 'finance', 'budget', 'reconciliation', 'refund', 'return'].some(term => name.includes(term))) return 'Finance';
+      if (['portal', 'technical', 'database', 'sync', 'it ', 'infrastructure', 'security', 'account'].some(term => name.includes(term))) return 'IT Support';
+      if (['compliance', 'gst', 'contract'].some(term => name.includes(term))) return 'Compliance';
+      if (['kyc', 'vendor', 'order'].some(term => name.includes(term))) return 'Supply Chain';
+      if (name.includes('logistics') || name.includes('delivery')) return 'Logistics';
+      if (name.includes('inventory') || name.includes('stock')) return 'Inventory';
       return 'Operations';
     };
 
@@ -1584,7 +1596,7 @@ const AdminDashboard = () => {
                         </div>
                         <button
                           type="button"
-                          onClick={() => handleQueryAgentChange(selectedTicket.assigned_to || AGENTS[0])}
+                          onClick={() => handleQueryAgentChange(selectedTicket.assigned_to || firstAgent)}
                           className="px-4 py-2 rounded-xl border border-brandNavy/20 text-brandNavy text-[10px] font-extrabold hover:bg-brandNavy/5 premium-hover"
                         >
                           Change
@@ -1728,7 +1740,7 @@ const AdminDashboard = () => {
                     </label>
                     <select value={selectedTicket.assigned_to || 'Unassigned'} onChange={e => handleQueryAgentChange(e.target.value)} className="w-full rounded-2xl border-2 border-slate-200 bg-white/90 px-3 py-3 text-xs font-bold outline-none focus:border-brandNavy shadow-sm">
                       <option value="Unassigned">Unassigned</option>
-                      {AGENTS.map(agent => <option key={agent} value={agent}>{agent}</option>)}
+                      {agents.map(agent => <option key={agent} value={agent}>{agent}</option>)}
                     </select>
                   </div>
                   <button type="button" onClick={() => refreshQueryTicket(selectedTicket.ticket_id)} className="w-full rounded-2xl bg-brandNavy text-white py-3 text-xs font-extrabold premium-button">
@@ -2941,7 +2953,7 @@ const AdminDashboard = () => {
         downloadAttachment={downloadAttachment}
         getRelativeTime={getRelativeTime}
         getAssignedTeam={getAssignedTeam}
-        agents={AGENTS}
+        agents={agents}
         quickReplies={QUICK_REPLIES}
       />
     );

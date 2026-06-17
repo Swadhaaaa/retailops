@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
 
-const ProtectedRoute = ({ children, role }) => {
+const ProtectedRoute = ({ children, allowedRoles }) => {
 
   const token = localStorage.getItem('token');
 
@@ -12,10 +12,12 @@ const ProtectedRoute = ({ children, role }) => {
   }
 
   // Role mismatch
-  if (role && user?.role !== role) {
+  if (allowedRoles && !allowedRoles.includes(user?.role)) {
 
-    if (user?.role === 'admin') {
+    if (user?.role === 'super_admin' || user?.role === 'admin') {
       return <Navigate to="/admin" />;
+    } else if (user?.role === 'department') {
+      return <Navigate to="/department" />;
     }
 
     return <Navigate to="/dashboard" />;

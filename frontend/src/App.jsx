@@ -6,6 +6,7 @@ import {
 
 import LoginPage from './pages/LoginPage';
 import AdminDashboard from './pages/AdminDashboard';
+import DepartmentDashboard from './pages/DepartmentDashboard';
 import UserDashboard from './pages/UserDashboard';
 
 import ProtectedRoute from './components/shared/ProtectedRoute';
@@ -26,8 +27,17 @@ function App() {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute role="admin">
+            <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
               <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/department"
+          element={
+            <ProtectedRoute allowedRoles={['department']}>
+              <DepartmentDashboard />
             </ProtectedRoute>
           }
         />
@@ -35,7 +45,7 @@ function App() {
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute role="user">
+            <ProtectedRoute allowedRoles={['user']}>
               <UserDashboard />
             </ProtectedRoute>
           }

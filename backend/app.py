@@ -31,10 +31,18 @@ app.register_blueprint(
     url_prefix='/api/tickets'
 )
 
+from routes.user import user_bp
+
 # Register Categories Blueprint
 app.register_blueprint(
     categories_bp,
     url_prefix='/api/categories'
+)
+
+# Register User Blueprint
+app.register_blueprint(
+    user_bp,
+    url_prefix='/api/users'
 )
 
 @app.route('/')
