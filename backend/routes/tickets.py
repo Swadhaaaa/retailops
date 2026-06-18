@@ -87,6 +87,19 @@ def ensure_ticket_department_columns(conn):
     if 'assigned_department' not in columns:
         conn.execute("ALTER TABLE tickets ADD COLUMN assigned_department VARCHAR")
 
+    workflow_columns = {
+        'resolution_summary': 'TEXT',
+        'root_cause': 'TEXT',
+        'action_taken': 'TEXT',
+        'resolution_remarks': 'TEXT',
+        'resolution_submitted_by': 'VARCHAR',
+        'resolution_submitted_at': 'TIMESTAMP'
+    }
+
+    for column, column_type in workflow_columns.items():
+        if column not in columns:
+            conn.execute(f"ALTER TABLE tickets ADD COLUMN {column} {column_type}")
+
     conn.execute("""
         UPDATE tickets
         SET assigned_department = COALESCE(assigned_department, business_unit)
@@ -141,6 +154,24 @@ def ensure_ticket_activity_table(conn):
     """)
 
 
+def ensure_internal_notes_table(conn):
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS ticket_internal_notes (
+            note_id INTEGER PRIMARY KEY,
+            ticket_id VARCHAR NOT NULL,
+            note_text TEXT NOT NULL,
+            created_by VARCHAR,
+            created_by_name VARCHAR,
+            created_by_role VARCHAR DEFAULT 'department',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    columns = [row[1] for row in conn.execute("PRAGMA table_info('ticket_internal_notes')").fetchall()]
+    if 'created_by_name' not in columns:
+        conn.execute("ALTER TABLE ticket_internal_notes ADD COLUMN created_by_name VARCHAR")
+
+
 def get_actor_role(conn, actor_id):
     if not actor_id:
         return 'system'
@@ -152,6 +183,23 @@ def get_actor_role(conn, actor_id):
     """, [actor_id, actor_id]).fetchone()
 
     return user[0] if user and user[0] else 'admin'
+
+
+def get_actor_name(conn, actor_id):
+    if not actor_id:
+        return 'System'
+
+    user = conn.execute("""
+        SELECT name, email
+        FROM users
+        WHERE user_id = ? OR email = ?
+        LIMIT 1
+    """, [actor_id, actor_id]).fetchone()
+
+    if user:
+        return user[0] or user[1] or actor_id
+
+    return actor_id
 
 
 def record_ticket_activity(
@@ -192,11 +240,13 @@ def record_ticket_activity(
 def get_ticket_activity(conn, ticket_id):
     ensure_ticket_activity_table(conn)
     rows = conn.execute("""
-        SELECT activity_id, ticket_id, action_type, action_text,
-               actor_id, actor_role, from_value, to_value, created_at
-        FROM ticket_activity
+        SELECT a.activity_id, a.ticket_id, a.action_type, a.action_text,
+               a.actor_id, a.actor_role, a.from_value, a.to_value, a.created_at,
+               COALESCE(u.name, a.actor_id, 'System') AS actor_name
+        FROM ticket_activity a
+        LEFT JOIN users u ON a.actor_id = u.user_id OR a.actor_id = u.email
         WHERE ticket_id = ?
-        ORDER BY created_at DESC, activity_id DESC
+        ORDER BY a.created_at DESC, a.activity_id DESC
     """, [ticket_id]).fetchall()
 
     return [
@@ -209,7 +259,32 @@ def get_ticket_activity(conn, ticket_id):
             'actor_role': row[5],
             'from_value': row[6],
             'to_value': row[7],
-            'created_at': str(row[8])
+            'created_at': str(row[8]),
+            'actor_name': row[9]
+        }
+        for row in rows
+    ]
+
+
+def get_internal_notes(conn, ticket_id):
+    ensure_internal_notes_table(conn)
+    rows = conn.execute("""
+        SELECT note_id, ticket_id, note_text, created_by,
+               COALESCE(created_by_name, created_by), created_by_role, created_at
+        FROM ticket_internal_notes
+        WHERE ticket_id = ?
+        ORDER BY created_at DESC, note_id DESC
+    """, [ticket_id]).fetchall()
+
+    return [
+        {
+            'note_id': row[0],
+            'ticket_id': row[1],
+            'note_text': row[2],
+            'created_by': row[3],
+            'created_by_name': row[4],
+            'created_by_role': row[5],
+            'created_at': str(row[6])
         }
         for row in rows
     ]
@@ -296,7 +371,13 @@ def ticket_to_dict(ticket):
         'updated_at': str(ticket[10]) if len(ticket) > 10 and ticket[10] else None,
         'resolved_at': str(ticket[11]) if len(ticket) > 11 and ticket[11] else None,
         'business_unit': ticket[12] if len(ticket) > 12 else None,
-        'assigned_department': ticket[13] if len(ticket) > 13 and ticket[13] else (ticket[12] if len(ticket) > 12 else None)
+        'assigned_department': ticket[13] if len(ticket) > 13 and ticket[13] else (ticket[12] if len(ticket) > 12 else None),
+        'resolution_summary': ticket[14] if len(ticket) > 14 else None,
+        'root_cause': ticket[15] if len(ticket) > 15 else None,
+        'action_taken': ticket[16] if len(ticket) > 16 else None,
+        'resolution_remarks': ticket[17] if len(ticket) > 17 else None,
+        'resolution_submitted_by': ticket[18] if len(ticket) > 18 else None,
+        'resolution_submitted_at': str(ticket[19]) if len(ticket) > 19 and ticket[19] else None
     }
 
 
@@ -320,8 +401,14 @@ def admin_ticket_to_dict(ticket):
         'resolved_at': str(ticket[11]) if len(ticket) > 11 and ticket[11] else None,
         'business_unit': ticket[12] if len(ticket) > 12 else None,
         'assigned_department': ticket[13] if len(ticket) > 13 and ticket[13] else (ticket[12] if len(ticket) > 12 else None),
-        'vendor_name': ticket[14] if len(ticket) > 14 else None,
-        'category_name': ticket[15] if len(ticket) > 15 else None
+        'resolution_summary': ticket[14] if len(ticket) > 14 else None,
+        'root_cause': ticket[15] if len(ticket) > 15 else None,
+        'action_taken': ticket[16] if len(ticket) > 16 else None,
+        'resolution_remarks': ticket[17] if len(ticket) > 17 else None,
+        'resolution_submitted_by': ticket[18] if len(ticket) > 18 else None,
+        'resolution_submitted_at': str(ticket[19]) if len(ticket) > 19 and ticket[19] else None,
+        'vendor_name': ticket[20] if len(ticket) > 20 else None,
+        'category_name': ticket[21] if len(ticket) > 21 else None
     }
 
 
@@ -464,7 +551,9 @@ def get_tickets():
             SELECT ticket_id, title, description, category_id, priority,
                    status, raised_by, assigned_to, created_at, attachment_path,
                    updated_at, resolved_at, business_unit,
-                   COALESCE(assigned_department, business_unit) AS assigned_department
+                   COALESCE(assigned_department, business_unit) AS assigned_department,
+                   resolution_summary, root_cause, action_taken, resolution_remarks,
+                   resolution_submitted_by, resolution_submitted_at
             FROM tickets
             WHERE raised_by = ?
             ORDER BY created_at DESC
@@ -496,6 +585,8 @@ def get_single_ticket(ticket_id):
                    t.status, t.raised_by, t.assigned_to, t.created_at, t.attachment_path,
                    t.updated_at, t.resolved_at, t.business_unit,
                    COALESCE(t.assigned_department, t.business_unit) AS assigned_department,
+                   t.resolution_summary, t.root_cause, t.action_taken, t.resolution_remarks,
+                   t.resolution_submitted_by, t.resolution_submitted_at,
                    u.name AS vendor_name, c.name AS category_name
             FROM tickets t
             LEFT JOIN users u ON t.raised_by = u.user_id OR t.raised_by = u.email
@@ -511,6 +602,8 @@ def get_single_ticket(ticket_id):
 
         ticket_data = admin_ticket_to_dict(ticket)
         ticket_data['activity'] = get_ticket_activity(conn, ticket_id)
+        if is_staff_role(role):
+            ticket_data['internal_notes'] = get_internal_notes(conn, ticket_id)
 
         conn.close()
 
@@ -559,6 +652,8 @@ def admin_get_all_tickets():
                    t.status, t.raised_by, t.assigned_to, t.created_at, t.attachment_path,
                    t.updated_at, t.resolved_at, t.business_unit,
                    COALESCE(t.assigned_department, t.business_unit) AS assigned_department,
+                   t.resolution_summary, t.root_cause, t.action_taken, t.resolution_remarks,
+                   t.resolution_submitted_by, t.resolution_submitted_at,
                    u.name AS vendor_name, c.name AS category_name
             FROM tickets t
             LEFT JOIN users u ON t.raised_by = u.user_id OR t.raised_by = u.email
@@ -688,6 +783,14 @@ def update_ticket_status(ticket_id):
             conn.close()
             return jsonify({'error': 'Ticket not found'}), 404
 
+        if status == 'Resolved':
+            conn.close()
+            return jsonify({'error': 'Use the resolution form to mark a ticket as resolved'}), 400
+
+        if status == 'Closed' and ticket[1] != 'Resolved':
+            conn.close()
+            return jsonify({'error': 'Only resolved tickets can be closed'}), 400
+
         now = datetime.now()
         resolved_at = now if status in ['Resolved', 'Closed'] else None
         previous_status = ticket[1]
@@ -714,6 +817,19 @@ def update_ticket_status(ticket_id):
                 now
             )
 
+            if status == 'Closed':
+                record_ticket_activity(
+                    conn,
+                    ticket_id,
+                    'ticket_closed',
+                    'Ticket closed',
+                    current_user,
+                    None,
+                    previous_status,
+                    'Closed',
+                    now
+                )
+
         # TEMPORARILY DISABLED - MESSAGES FEATURE
         # Notification records are part of the disabled Messages/Notifications surface.
         # notif_id = get_next_id(conn, 'notifications', 'notif_id')
@@ -735,6 +851,320 @@ def update_ticket_status(ticket_id):
         conn.close()
 
         return jsonify({'message': f'Ticket status updated to {status}'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@tickets_bp.route('/departments', methods=['GET'])
+@jwt_required()
+def get_ticket_departments():
+    try:
+        if not is_staff_role(get_current_role()):
+            return jsonify({'error': 'Forbidden'}), 403
+
+        conn = get_conn()
+        rows = conn.execute("""
+            SELECT DISTINCT assigned_department
+            FROM categories
+            WHERE assigned_department IS NOT NULL
+              AND assigned_department != ''
+            ORDER BY assigned_department ASC
+        """).fetchall()
+        conn.close()
+
+        departments = [row[0] for row in rows]
+        if 'Operations' not in departments:
+            departments.append('Operations')
+
+        return jsonify(departments)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@tickets_bp.route('/<ticket_id>/claim', methods=['POST'])
+@jwt_required()
+@scope_by_department
+def claim_ticket(ticket_id):
+    try:
+        conn = get_conn()
+
+        if not is_staff_role(get_current_role()) or not ensure_ticket_access(conn, ticket_id):
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        ticket = conn.execute("""
+            SELECT assigned_to, status, COALESCE(assigned_department, business_unit)
+            FROM tickets
+            WHERE ticket_id = ?
+        """, [ticket_id]).fetchone()
+
+        if not ticket:
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        current_user = get_jwt_identity()
+        owner_name = get_actor_name(conn, current_user)
+        previous_owner = ticket[0]
+        assigned_department = ticket[2]
+        available_owner_values = [None, '', 'Unassigned', assigned_department]
+
+        if previous_owner not in available_owner_values and previous_owner != owner_name:
+            conn.close()
+            return jsonify({'error': f'Ticket is already claimed by {previous_owner}'}), 409
+
+        now = datetime.now()
+        new_status = 'In Progress' if ticket[1] == 'Open' else ticket[1]
+
+        conn.execute("""
+            UPDATE tickets
+            SET assigned_to = ?,
+                status = ?,
+                updated_at = ?
+            WHERE ticket_id = ?
+        """, [owner_name, new_status, now, ticket_id])
+
+        if previous_owner != owner_name:
+            record_ticket_activity(
+                conn,
+                ticket_id,
+                'ticket_claimed',
+                f'Ticket claimed by {owner_name}',
+                current_user,
+                None,
+                previous_owner or 'Unassigned',
+                owner_name,
+                now
+            )
+
+        if ticket[1] != new_status:
+            record_ticket_activity(
+                conn,
+                ticket_id,
+                'status_changed',
+                f'Status changed to {new_status}',
+                current_user,
+                None,
+                ticket[1],
+                new_status,
+                now
+            )
+
+        conn.close()
+
+        return jsonify({'message': 'Ticket claimed successfully', 'owner': owner_name})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@tickets_bp.route('/<ticket_id>/notes', methods=['POST'])
+@jwt_required()
+@scope_by_department
+def add_internal_note(ticket_id):
+    try:
+        data = request.get_json() or {}
+        note_text = (data.get('note_text') or '').strip()
+
+        if not note_text:
+            return jsonify({'error': 'Internal note is required'}), 400
+
+        conn = get_conn()
+
+        if not is_staff_role(get_current_role()) or not ensure_ticket_access(conn, ticket_id):
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        ensure_internal_notes_table(conn)
+        current_user = get_jwt_identity()
+        author_name = get_actor_name(conn, current_user)
+        now = datetime.now()
+        note_id = get_next_id(conn, 'ticket_internal_notes', 'note_id')
+
+        conn.execute("""
+            INSERT INTO ticket_internal_notes (
+                note_id, ticket_id, note_text, created_by,
+                created_by_name, created_by_role, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, [
+            note_id,
+            ticket_id,
+            note_text,
+            current_user,
+            author_name,
+            get_current_role() or 'department',
+            now
+        ])
+
+        record_ticket_activity(
+            conn,
+            ticket_id,
+            'internal_note_added',
+            f'Internal note added by {author_name}',
+            current_user,
+            None,
+            None,
+            None,
+            now
+        )
+
+        conn.close()
+
+        return jsonify({'message': 'Internal note added'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@tickets_bp.route('/<ticket_id>/reassign-department', methods=['POST'])
+@jwt_required()
+@scope_by_department
+def reassign_department(ticket_id):
+    try:
+        data = request.get_json() or {}
+        target_department = (data.get('target_department') or '').strip()
+        reason = (data.get('reason') or '').strip()
+
+        if not target_department or not reason:
+            return jsonify({'error': 'Target department and escalation reason are required'}), 400
+
+        conn = get_conn()
+
+        if not is_staff_role(get_current_role()) or not ensure_ticket_access(conn, ticket_id):
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        ticket = conn.execute("""
+            SELECT COALESCE(assigned_department, business_unit)
+            FROM tickets
+            WHERE ticket_id = ?
+        """, [ticket_id]).fetchone()
+
+        if not ticket:
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        previous_department = ticket[0]
+        now = datetime.now()
+        current_user = get_jwt_identity()
+
+        conn.execute("""
+            UPDATE tickets
+            SET assigned_department = ?,
+                business_unit = ?,
+                assigned_to = ?,
+                status = 'Open',
+                updated_at = ?
+            WHERE ticket_id = ?
+        """, [target_department, target_department, target_department, now, ticket_id])
+
+        record_ticket_activity(
+            conn,
+            ticket_id,
+            'department_reassigned',
+            f'Ticket transferred from {previous_department} to {target_department}. Reason: {reason}',
+            current_user,
+            None,
+            previous_department,
+            target_department,
+            now
+        )
+
+        conn.close()
+
+        return jsonify({'message': 'Ticket reassigned to department'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@tickets_bp.route('/<ticket_id>/resolve', methods=['POST'])
+@jwt_required()
+@scope_by_department
+def submit_resolution(ticket_id):
+    try:
+        data = request.get_json() or {}
+        resolution_summary = (data.get('resolution_summary') or '').strip()
+        root_cause = (data.get('root_cause') or '').strip()
+        action_taken = (data.get('action_taken') or '').strip()
+        resolution_remarks = (data.get('resolution_remarks') or '').strip()
+
+        if not resolution_summary or not root_cause or not action_taken:
+            return jsonify({'error': 'Resolution summary, root cause, and action taken are required'}), 400
+
+        conn = get_conn()
+
+        if not is_staff_role(get_current_role()) or not ensure_ticket_access(conn, ticket_id):
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        ticket = conn.execute("""
+            SELECT status
+            FROM tickets
+            WHERE ticket_id = ?
+        """, [ticket_id]).fetchone()
+
+        if not ticket:
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        current_user = get_jwt_identity()
+        now = datetime.now()
+
+        conn.execute("""
+            UPDATE tickets
+            SET status = 'Resolved',
+                updated_at = ?,
+                resolved_at = ?,
+                resolution_summary = ?,
+                root_cause = ?,
+                action_taken = ?,
+                resolution_remarks = ?,
+                resolution_submitted_by = ?,
+                resolution_submitted_at = ?
+            WHERE ticket_id = ?
+        """, [
+            now,
+            now,
+            resolution_summary,
+            root_cause,
+            action_taken,
+            resolution_remarks,
+            current_user,
+            now,
+            ticket_id
+        ])
+
+        record_ticket_activity(
+            conn,
+            ticket_id,
+            'resolution_submitted',
+            'Resolution submitted',
+            current_user,
+            None,
+            ticket[0],
+            'Resolved',
+            now
+        )
+
+        if ticket[0] != 'Resolved':
+            record_ticket_activity(
+                conn,
+                ticket_id,
+                'status_changed',
+                'Status changed to Resolved',
+                current_user,
+                None,
+                ticket[0],
+                'Resolved',
+                now
+            )
+
+        conn.close()
+
+        return jsonify({'message': 'Resolution submitted'})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500

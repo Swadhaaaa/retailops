@@ -65,7 +65,13 @@ def init_db():
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         resolved_at TIMESTAMP,
         feedback_rating INTEGER,
-        sla_deadline TIMESTAMP
+        sla_deadline TIMESTAMP,
+        resolution_summary TEXT,
+        root_cause TEXT,
+        action_taken TEXT,
+        resolution_remarks TEXT,
+        resolution_submitted_by VARCHAR,
+        resolution_submitted_at TIMESTAMP
     )
     """)
 
@@ -79,6 +85,19 @@ def init_db():
 
     if 'assigned_department' not in ticket_columns:
         conn.execute("ALTER TABLE tickets ADD COLUMN assigned_department VARCHAR")
+
+    workflow_columns = {
+        'resolution_summary': 'TEXT',
+        'root_cause': 'TEXT',
+        'action_taken': 'TEXT',
+        'resolution_remarks': 'TEXT',
+        'resolution_submitted_by': 'VARCHAR',
+        'resolution_submitted_at': 'TIMESTAMP'
+    }
+
+    for column, column_type in workflow_columns.items():
+        if column not in ticket_columns:
+            conn.execute(f"ALTER TABLE tickets ADD COLUMN {column} {column_type}")
 
     conn.execute("""
         UPDATE tickets
@@ -96,6 +115,18 @@ def init_db():
         actor_role VARCHAR DEFAULT 'system',
         from_value VARCHAR,
         to_value VARCHAR,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS ticket_internal_notes (
+        note_id INTEGER PRIMARY KEY,
+        ticket_id VARCHAR NOT NULL,
+        note_text TEXT NOT NULL,
+        created_by VARCHAR,
+        created_by_name VARCHAR,
+        created_by_role VARCHAR DEFAULT 'department',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
