@@ -182,7 +182,7 @@ const LoginPage = () => {
       if (loggedUser.role === 'super_admin' || loggedUser.role === 'admin') {
         navigate('/admin');
       } else if (loggedUser.role === 'department') {
-        navigate('/department');
+        navigate('/department-dashboard');
       } else {
         navigate('/dashboard');
       }

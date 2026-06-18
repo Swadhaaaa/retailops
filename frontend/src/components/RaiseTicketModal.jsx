@@ -5,6 +5,7 @@ const RaiseTicketModal = ({
   isCategoryLocked,
   isVendor,
   isSubmittedSuccessfully,
+  submittedTicket,
   handleCloseModal,
   buttonColor,
   handleSubmitTicket,
@@ -52,6 +53,21 @@ const RaiseTicketModal = ({
             <p className="text-xs text-gray-500 mt-2 font-semibold max-w-xs leading-relaxed">
               Your ticket has been raised. Support coordinators will update you shortly.
             </p>
+            {submittedTicket?.assigned_department && (
+              <div className="mt-5 w-full max-w-xs rounded-xl border border-brandNavy/10 bg-brandNavy/5 px-4 py-3 text-left">
+                <p className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400 font-sora">
+                  Assigned to Department
+                </p>
+                <p className="mt-1 text-sm font-extrabold text-brandDarkNavy font-sora">
+                  {submittedTicket.assigned_department}
+                </p>
+                {submittedTicket.ticket_id && (
+                  <p className="mt-1 text-[10px] font-bold text-gray-500">
+                    Ticket ID: {submittedTicket.ticket_id}
+                  </p>
+                )}
+              </div>
+            )}
             <button
               onClick={handleCloseModal}
               className={`mt-6 px-6 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md ${buttonColor}`}

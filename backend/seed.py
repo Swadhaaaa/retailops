@@ -65,31 +65,34 @@ INSERT INTO users VALUES ('USR-10008', 'Smart Solutions', 'smart@test.com', ?, '
 
 # Insert categories
 categories = [
-    (1, 'Payment Issue', 'Invoice and payment related issues', 'payment'),
-    (2, 'Inventory Issues', 'Stock and inventory problems', 'inventory'),
-    (3, 'Portal Access', 'System and technical support', 'technical'),
-    (4, 'Delivery Issues', 'Shipment and delivery concerns', 'delivery'),
-    (5, 'Contract Query', 'Document and compliance issues', 'documents'),
-    (6, 'Order Discrepancies', 'Mismatched order quantities or items', 'order'),
-    (7, 'User Onboarding', 'Registration and profile setup queries', 'onboarding'),
-    (8, 'Quality Control', 'Product quality and damage complaints', 'quality'),
-    (9, 'Pricing & Billing', 'Pricing disputes and billing inquiries', 'billing'),
-    (10, 'SLA Violations', 'SLA delays and performance escalations', 'sla'),
-    (11, 'Logistics Support', 'Transport, routing, and carrier issues', 'logistics'),
-    (12, 'Database & Sync', 'Data mismatch and sync issues', 'database'),
-    (13, 'Account & Security', 'Security settings and account recovery', 'security'),
-    (14, 'Refunds & Returns', 'Product return requests and refunds', 'returns'),
-    (15, 'GST Compliance', 'Regulatory, policy, and audit support', 'compliance'),
-    (16, 'KYC Verification', 'User onboarding, agreements, and disputes', 'vendor'),
-    (17, 'Store Operations', 'In-store operational queries and escalations', 'operations'),
-    (18, 'HR & Workforce', 'Staff queries, attendance, and HR support', 'hr'),
-    (19, 'IT Infrastructure', 'Network, hardware, and system outages', 'infrastructure'),
-    (20, 'Finance & Reporting', 'Financial reports, budgets, and reconciliation', 'finance')
+    (1, 'Payment Issue', 'Invoice and payment related issues', 'payment', 'Finance'),
+    (2, 'Inventory Issues', 'Stock and inventory problems', 'inventory', 'Inventory'),
+    (3, 'Portal Access', 'System and technical support', 'technical', 'IT Support'),
+    (4, 'Delivery Issues', 'Shipment and delivery concerns', 'delivery', 'Logistics'),
+    (5, 'Contract Query', 'Document and compliance issues', 'documents', 'Compliance'),
+    (6, 'Order Discrepancies', 'Mismatched order quantities or items', 'order', 'Supply Chain'),
+    (7, 'User Onboarding', 'Registration and profile setup queries', 'onboarding', 'Supply Chain'),
+    (8, 'Quality Control', 'Product quality and damage complaints', 'quality', 'Inventory'),
+    (9, 'Pricing & Billing', 'Pricing disputes and billing inquiries', 'billing', 'Finance'),
+    (10, 'SLA Violations', 'SLA delays and performance escalations', 'sla', 'Operations'),
+    (11, 'Logistics Support', 'Transport, routing, and carrier issues', 'logistics', 'Logistics'),
+    (12, 'Database & Sync', 'Data mismatch and sync issues', 'database', 'IT Support'),
+    (13, 'Account & Security', 'Security settings and account recovery', 'security', 'IT Support'),
+    (14, 'Refunds & Returns', 'Product return requests and refunds', 'returns', 'Finance'),
+    (15, 'GST Compliance', 'Regulatory, policy, and audit support', 'compliance', 'Compliance'),
+    (16, 'KYC Verification', 'User onboarding, agreements, and disputes', 'vendor', 'Supply Chain'),
+    (17, 'Store Operations', 'In-store operational queries and escalations', 'operations', 'Operations'),
+    (18, 'HR & Workforce', 'Staff queries, attendance, and HR support', 'hr', 'Operations'),
+    (19, 'IT Infrastructure', 'Network, hardware, and system outages', 'infrastructure', 'IT Support'),
+    (20, 'Finance & Reporting', 'Financial reports, budgets, and reconciliation', 'finance', 'Finance')
 ]
 
 for category in categories:
     conn.execute("""
-    INSERT INTO categories VALUES (?, ?, ?, ?, true)
+    INSERT INTO categories (
+        category_id, name, description, icon, assigned_department, is_active
+    )
+    VALUES (?, ?, ?, ?, ?, true)
     """, category)
 
 # Seed Announcements

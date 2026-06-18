@@ -379,6 +379,7 @@ const UserDashboard = () => {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [selectedTicketView, setSelectedTicketView] = useState('simple');
   const [isSubmittedSuccessfully, setIsSubmittedSuccessfully] = useState(false);
+  const [submittedTicket, setSubmittedTicket] = useState(null);
   const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
   const [isChatSupportOpen, setIsChatSupportOpen] = useState(false);
 
@@ -731,6 +732,7 @@ const UserDashboard = () => {
     setAiSuggestion('');
     setAiLoading(false);
     setIsSubmittedSuccessfully(false);
+    setSubmittedTicket(null);
     setIsModalOpen(true);
   };
 
@@ -746,6 +748,17 @@ const UserDashboard = () => {
     setAttachmentError('');
     setFormCategory(categories[0]?.category_id?.toString() || '1');
     setIsSubmittedSuccessfully(false);
+    setSubmittedTicket(null);
+  };
+
+  const getMatchedAISuggestionCategoryId = () => {
+    if (isCategoryLocked || !aiSuggestion) return null;
+
+    const matchedCategory = categories.find(
+      category => category.name.toLowerCase() === aiSuggestion.toLowerCase()
+    );
+
+    return matchedCategory ? matchedCategory.category_id.toString() : null;
   };
 
   const handleSubmitTicket = async (e) => {
@@ -753,16 +766,19 @@ const UserDashboard = () => {
     if (!formSubject || !formDescription || !formCategory) return;
     setIsSubmitting(true);
     try {
+      const finalCategoryId = getMatchedAISuggestionCategoryId() || formCategory;
+
       const formData = new FormData();
       formData.append('title', formSubject);
       formData.append('description', formDescription);
-      formData.append('category_id', formCategory);
+      formData.append('category_id', finalCategoryId);
       formData.append('priority', formPriority);
       if (attachment) formData.append('attachment', attachment);
 
-      await api.post('/tickets/', formData, {
+      const response = await api.post('/tickets/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+      setSubmittedTicket(response.data);
 
       const refreshEvent = String(Date.now());
       localStorage.setItem('tickets:lastChanged', refreshEvent);
@@ -833,14 +849,10 @@ const UserDashboard = () => {
   };
 
   const handleApplyAISuggestion = () => {
-    if (isCategoryLocked || !aiSuggestion) return;
+    const matchedCategoryId = getMatchedAISuggestionCategoryId();
 
-    const matchedCategory = categories.find(
-      category => category.name.toLowerCase() === aiSuggestion.toLowerCase()
-    );
-
-    if (matchedCategory) {
-      setFormCategory(matchedCategory.category_id.toString());
+    if (matchedCategoryId) {
+      setFormCategory(matchedCategoryId);
     }
   };
 
@@ -1217,7 +1229,7 @@ const UserDashboard = () => {
   const getTicketJourneyStages = (ticket) => {
     if (!ticket) return [];
     const categoryName = categories.find(c => c.category_id === ticket.category_id)?.name || `Category #${ticket.category_id}`;
-    const assignedTeam = ticket.assigned_to || getDepartmentForCategory(categoryName);
+    const assignedTeam = ticket.assigned_department || ticket.business_unit || getDepartmentForCategory(categoryName);
     const journeyStep = getTicketJourneyStep(ticket);
 
     return [
@@ -1502,7 +1514,7 @@ const UserDashboard = () => {
               const catObj = categories.find(c => c.category_id === ticket.category_id);
               const categoryName = catObj ? catObj.name : `Category #${ticket.category_id}`;
               const { currentStep, progressPercent } = getTicketProgress(ticket);
-              const deptName = getDepartmentForCategory(categoryName);
+              const deptName = ticket.assigned_department || ticket.business_unit || getDepartmentForCategory(categoryName);
               const relativeTime = getRelativeTime(ticket.created_at || ticket.updated_at);
               const statusStyles = getTrackStatusBadgeStyles(ticket.status);
               const priorityStyles = getPriorityBadgeStyles(ticket.priority);
@@ -1550,11 +1562,11 @@ const UserDashboard = () => {
                       <p className="text-xs font-bold text-brandDarkNavy mt-1 truncate">{categoryName}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-gray-400 uppercase font-extrabold tracking-wider font-sora">Department</p>
+                      <p className="text-[10px] text-gray-400 uppercase font-extrabold tracking-wider font-sora">Assigned to Department</p>
                       <p className="text-xs font-bold text-brandDarkNavy mt-1 truncate">{deptName}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-gray-400 uppercase font-extrabold tracking-wider font-sora">Assigned To</p>
+                      <p className="text-[10px] text-gray-400 uppercase font-extrabold tracking-wider font-sora">Department Owner</p>
                       <p className="text-xs font-bold text-brandDarkNavy mt-1 truncate">{ticket.assigned_to || 'Retail Operations'}</p>
                     </div>
                   </div>
@@ -2773,6 +2785,7 @@ const UserDashboard = () => {
         isCategoryLocked={isCategoryLocked}
         isVendor={isVendor}
         isSubmittedSuccessfully={isSubmittedSuccessfully}
+        submittedTicket={submittedTicket}
         handleCloseModal={handleCloseModal}
         buttonColor={buttonColor}
         handleSubmitTicket={handleSubmitTicket}
@@ -3005,7 +3018,7 @@ const UserDashboard = () => {
               </div>
             </div>
 
-            <div className={`grid ${selectedTicketView === 'track' ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'} gap-2.5 px-4 py-3 bg-gray-50/30`}>
+            <div className={`grid ${selectedTicketView === 'track' ? 'grid-cols-2 lg:grid-cols-5' : 'grid-cols-1 sm:grid-cols-2'} gap-2.5 px-4 py-3 bg-gray-50/30`}>
               {/* Category */}
               <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
                 <div className="w-7 h-7 rounded-lg bg-brandNavy/5 text-brandNavy flex items-center justify-center flex-shrink-0 border border-brandNavy/10">
@@ -3015,6 +3028,21 @@ const UserDashboard = () => {
                   <p className="text-[9px] uppercase text-gray-400 font-extrabold tracking-wider font-sora leading-none">Category</p>
                   <p className="text-xs font-bold text-brandDarkNavy mt-1 leading-snug break-words" title={categories.find(c => c.category_id === selectedTicket.category_id)?.name}>
                     {categories.find(c => c.category_id === selectedTicket.category_id)?.name || `Category #${selectedTicket.category_id}`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Assigned Department */}
+              <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
+                <div className="w-7 h-7 rounded-lg bg-brandNavy/5 text-brandNavy flex items-center justify-center flex-shrink-0 border border-brandNavy/10">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M8.25 7.5h1.5m-1.5 3h1.5m4.5-3h1.5m-1.5 3h1.5M9 21v-4.5h6V21" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] uppercase text-gray-400 font-extrabold tracking-wider font-sora leading-none">Assigned to Department</p>
+                  <p className="text-xs font-bold text-brandDarkNavy mt-1 leading-snug break-words">
+                    {selectedTicket.assigned_department || selectedTicket.business_unit || getDepartmentForCategory(categories.find(c => c.category_id === selectedTicket.category_id)?.name)}
                   </p>
                 </div>
               </div>

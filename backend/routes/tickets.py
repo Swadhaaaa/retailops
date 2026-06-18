@@ -1,12 +1,12 @@
 from flask import Blueprint, request, jsonify, send_file, g
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
-import duckdb
 from datetime import datetime, timedelta
 import os
 from werkzeug.utils import secure_filename
 import uuid
 from functools import wraps
 from nlp.classifier import suggest_category
+from database import get_db
 
 tickets_bp = Blueprint('tickets', __name__)
 
@@ -25,36 +25,11 @@ def scope_by_department(f):
         if role == 'department':
             g.is_department_scoped = True
             g.department = department
-            g.dept_filter = " AND t.business_unit = ? "
+            g.dept_filter = " AND COALESCE(t.assigned_department, t.business_unit) = ? "
             g.dept_params = [department]
 
         return f(*args, **kwargs)
     return decorated_function
-
-def get_backend_assigned_team(category_name):
-    if not category_name:
-        return 'Operations'
-    name = category_name.lower()
-    if any(term in name for term in [
-        'payment', 'billing', 'pricing', 'finance', 'budget',
-        'reconciliation', 'refund', 'return'
-    ]):
-        return 'Finance'
-    if any(term in name for term in [
-        'portal', 'technical', 'database', 'sync', 'it ',
-        'infrastructure', 'security', 'account'
-    ]):
-        return 'IT Support'
-    if any(term in name for term in ['compliance', 'gst', 'contract']):
-        return 'Compliance'
-    if any(term in name for term in ['kyc', 'vendor', 'order']):
-        return 'Supply Chain'
-    if 'logistics' in name or 'delivery' in name:
-        return 'Logistics'
-    if 'inventory' in name or 'stock' in name:
-        return 'Inventory'
-    return 'Operations'
-
 
 def get_current_role():
     return get_jwt().get('role')
@@ -80,7 +55,7 @@ def ensure_ticket_access(conn, ticket_id):
             SELECT ticket_id
             FROM tickets
             WHERE ticket_id = ?
-            AND business_unit = ?
+            AND COALESCE(assigned_department, business_unit) = ?
         """, [ticket_id, department]).fetchone()
     else:
         ticket = conn.execute("""
@@ -99,8 +74,30 @@ ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'xlsx',
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
+def ensure_ticket_department_columns(conn):
+    category_columns = [row[1] for row in conn.execute("PRAGMA table_info('categories')").fetchall()]
+    columns = [row[1] for row in conn.execute("PRAGMA table_info('tickets')").fetchall()]
+
+    if 'assigned_department' not in category_columns:
+        conn.execute("ALTER TABLE categories ADD COLUMN assigned_department VARCHAR")
+
+    if 'business_unit' not in columns:
+        conn.execute("ALTER TABLE tickets ADD COLUMN business_unit VARCHAR")
+
+    if 'assigned_department' not in columns:
+        conn.execute("ALTER TABLE tickets ADD COLUMN assigned_department VARCHAR")
+
+    conn.execute("""
+        UPDATE tickets
+        SET assigned_department = COALESCE(assigned_department, business_unit)
+        WHERE assigned_department IS NULL
+    """)
+
+
 def get_conn():
-    return duckdb.connect('tickets.db')
+    conn = get_db()
+    ensure_ticket_department_columns(conn)
+    return conn
 
 
 def ensure_ticket_activity_table(conn):
@@ -298,7 +295,8 @@ def ticket_to_dict(ticket):
         'attachment_download_url': f'/api/tickets/download/{attachment_path}' if attachment_path else None,
         'updated_at': str(ticket[10]) if len(ticket) > 10 and ticket[10] else None,
         'resolved_at': str(ticket[11]) if len(ticket) > 11 and ticket[11] else None,
-        'business_unit': ticket[12] if len(ticket) > 12 else None
+        'business_unit': ticket[12] if len(ticket) > 12 else None,
+        'assigned_department': ticket[13] if len(ticket) > 13 and ticket[13] else (ticket[12] if len(ticket) > 12 else None)
     }
 
 
@@ -321,8 +319,9 @@ def admin_ticket_to_dict(ticket):
         'updated_at': str(ticket[10]) if len(ticket) > 10 and ticket[10] else None,
         'resolved_at': str(ticket[11]) if len(ticket) > 11 and ticket[11] else None,
         'business_unit': ticket[12] if len(ticket) > 12 else None,
-        'vendor_name': ticket[13] if len(ticket) > 13 else None,
-        'category_name': ticket[14] if len(ticket) > 14 else None
+        'assigned_department': ticket[13] if len(ticket) > 13 and ticket[13] else (ticket[12] if len(ticket) > 12 else None),
+        'vendor_name': ticket[14] if len(ticket) > 14 else None,
+        'category_name': ticket[15] if len(ticket) > 15 else None
     }
 
 
@@ -352,7 +351,7 @@ def create_ticket():
             return jsonify({'error': 'Invalid category'}), 400
 
         category = conn.execute("""
-            SELECT name
+            SELECT name, assigned_department
             FROM categories
             WHERE category_id = ?
             AND is_active = true
@@ -362,8 +361,7 @@ def create_ticket():
             conn.close()
             return jsonify({'error': 'Invalid category'}), 400
 
-        category_name = category[0]
-        business_unit = get_backend_assigned_team(category_name)
+        assigned_department = category[1] or 'Operations'
 
         ticket_id = generate_ticket_id(conn)
         attachment_path = None
@@ -396,9 +394,10 @@ def create_ticket():
         conn.execute("""
            INSERT INTO tickets (
                      ticket_id, title, description, category_id, priority,
-                     status, raised_by, created_at, attachment_path, sla_deadline, business_unit
+                     status, raised_by, assigned_to, created_at, attachment_path, sla_deadline,
+                     business_unit, assigned_department
                      )
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [
             ticket_id,
             title,
@@ -407,11 +406,25 @@ def create_ticket():
             priority,
             'Open',
             current_user,
+            assigned_department,
             created_at,
             attachment_path,
             sla_deadline,
-            business_unit
+            assigned_department,
+            assigned_department
             ])
+
+        record_ticket_activity(
+            conn,
+            ticket_id,
+            'department_assigned',
+            f'Ticket assigned to {assigned_department} department',
+            'system',
+            'system',
+            None,
+            assigned_department,
+            created_at
+        )
 
         record_ticket_activity(
             conn,
@@ -430,6 +443,7 @@ def create_ticket():
         return jsonify({
             'message': 'Ticket created successfully',
             'ticket_id': ticket_id,
+            'assigned_department': assigned_department,
             'attachment_path': attachment_path,
             'has_attachment': bool(attachment_path)
         }), 201
@@ -449,7 +463,8 @@ def get_tickets():
         tickets = conn.execute("""
             SELECT ticket_id, title, description, category_id, priority,
                    status, raised_by, assigned_to, created_at, attachment_path,
-                   updated_at, resolved_at, business_unit
+                   updated_at, resolved_at, business_unit,
+                   COALESCE(assigned_department, business_unit) AS assigned_department
             FROM tickets
             WHERE raised_by = ?
             ORDER BY created_at DESC
@@ -480,6 +495,7 @@ def get_single_ticket(ticket_id):
             SELECT t.ticket_id, t.title, t.description, t.category_id, t.priority,
                    t.status, t.raised_by, t.assigned_to, t.created_at, t.attachment_path,
                    t.updated_at, t.resolved_at, t.business_unit,
+                   COALESCE(t.assigned_department, t.business_unit) AS assigned_department,
                    u.name AS vendor_name, c.name AS category_name
             FROM tickets t
             LEFT JOIN users u ON t.raised_by = u.user_id OR t.raised_by = u.email
@@ -499,9 +515,7 @@ def get_single_ticket(ticket_id):
         conn.close()
 
         # TEMPORARILY DISABLED - MESSAGES FEATURE
-        # Message thread loading is intentionally disabled. Keep the key so older UI paths remain safe.
         ticket_data['messages'] = []
-
         return jsonify(ticket_data)
 
     except Exception as e:
@@ -544,6 +558,7 @@ def admin_get_all_tickets():
             SELECT t.ticket_id, t.title, t.description, t.category_id, t.priority,
                    t.status, t.raised_by, t.assigned_to, t.created_at, t.attachment_path,
                    t.updated_at, t.resolved_at, t.business_unit,
+                   COALESCE(t.assigned_department, t.business_unit) AS assigned_department,
                    u.name AS vendor_name, c.name AS category_name
             FROM tickets t
             LEFT JOIN users u ON t.raised_by = u.user_id OR t.raised_by = u.email
@@ -861,10 +876,10 @@ def ping_user(ticket_id):
 @tickets_bp.route('/<ticket_id>/message', methods=['POST'])
 @jwt_required()
 def add_message(ticket_id):
-    try:
-        # TEMPORARILY DISABLED - MESSAGES FEATURE
-        return jsonify({'error': 'Messages feature is temporarily disabled'}), 404
+    # TEMPORARILY DISABLED - MESSAGES FEATURE
+    return jsonify({'error': 'Messages feature is temporarily disabled'}), 404
 
+    try:
         current_user = get_jwt_identity()
         
         attachment_path = None
@@ -889,8 +904,12 @@ def add_message(ticket_id):
                     file.save(file_path)
                     attachment_path = unique_filename
         else:
-            data = request.get_json() or {}
-            message_text = data.get('message_text', '').strip()
+            data = request.get_json(silent=True) or {}
+            message_text = (
+                data.get('message_text') or
+                data.get('content') or
+                request.form.get('message_text', '')
+            ).strip()
 
         if not message_text and not attachment_path:
             return jsonify({'error': 'Message cannot be empty'}), 400
@@ -903,15 +922,13 @@ def add_message(ticket_id):
             WHERE ticket_id = ?
         """, [ticket_id]).fetchone()
 
-        if not ticket:
+        if not ticket or not ensure_ticket_access(conn, ticket_id):
             conn.close()
             return jsonify({'error': 'Ticket not found'}), 404
 
         msg_id = get_next_id(conn, 'messages', 'message_id')
 
-        sender_role = 'user'
-        if current_user != ticket[0]:
-            sender_role = 'admin'
+        sender_role = get_current_role() or 'user'
 
         conn.execute("""
             INSERT INTO messages (

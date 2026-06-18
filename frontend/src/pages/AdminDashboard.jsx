@@ -189,6 +189,12 @@ const AdminDashboard = () => {
     return 'Operations';
   };
 
+  const getTicketDepartment = (ticket) => (
+    ticket?.assigned_department ||
+    ticket?.business_unit ||
+    getAssignedTeam(ticket?.category_name)
+  );
+
   const fetchMessagesStats = async () => {
     // TEMPORARILY DISABLED - MESSAGES FEATURE
     if (!MESSAGES_FEATURE_ENABLED) return;
@@ -935,7 +941,7 @@ const AdminDashboard = () => {
     );
 
     const departmentCounts = tickets.reduce((acc, ticket) => {
-      const team = getAssignedTeam(ticket.category_name);
+      const team = getTicketDepartment(ticket);
       acc[team] = (acc[team] || 0) + 1;
       return acc;
     }, {});
@@ -1303,7 +1309,7 @@ const AdminDashboard = () => {
                     <th className="py-3.5 px-6">Ticket ID</th>
                     <th className="py-3.5 px-6">User Name</th>
                     <th className="py-3.5 px-6">Category</th>
-                    <th className="py-3.5 px-6">Assigned Team</th>
+                    <th className="py-3.5 px-6">Assigned Department</th>
                     <th className="py-3.5 px-6">Priority</th>
                     <th className="py-3.5 px-6">Status</th>
                     <th className="py-3.5 px-6">Created</th>
@@ -1313,7 +1319,7 @@ const AdminDashboard = () => {
                   {tickets.map((query) => {
                     const vendorName = query.vendor_name || query.raised_by.split('@')[0];
                     const categoryLabel = query.category_name || `Cat #${query.category_id}`;
-                    const teamLabel = getAssignedTeam(query.category_name);
+                    const teamLabel = getTicketDepartment(query);
 
                     // Dynamic colors for priority pills
                     let priorityStyle = 'bg-slate-50 text-slate-600 border-slate-200';
@@ -1363,7 +1369,7 @@ const AdminDashboard = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-xs font-semibold text-slate-550 font-dmSans">{categoryLabel}</span>
                         </td>
-                        {/* Assigned Team */}
+                        {/* Assigned Department */}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-xs font-semibold text-slate-500 font-dmSans">{teamLabel}</span>
                         </td>
@@ -1397,7 +1403,7 @@ const AdminDashboard = () => {
 
   function renderQueries() {
     const selectedTicket = queryTicket || tickets[0] || null;
-    const selectedTeam = getAssignedTeam(selectedTicket?.category_name || `Category #${selectedTicket?.category_id || ''}`);
+    const selectedTeam = getTicketDepartment(selectedTicket);
     const attachments = selectedTicket
       ? [
           ...(selectedTicket.has_attachment ? [{
@@ -1587,12 +1593,12 @@ const AdminDashboard = () => {
                     <div className="rounded-[18px] border border-brandRed/10 bg-brandRed/[0.035] p-4 shadow-sm">
                       <div className="mb-3 flex items-center gap-2">
                         <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-brandRed/10 text-brandRed text-[10px] font-extrabold">A</span>
-                        <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora">Assigned Team</h3>
+                        <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora">Assigned Department</h3>
                       </div>
                       <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/75 border border-white px-3 py-3">
                         <div>
-                          <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Current owner</p>
-                          <p className="text-sm font-extrabold text-slate-700 mt-1">{selectedTicket.assigned_to || selectedTeam}</p>
+                          <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Department owner</p>
+                          <p className="text-sm font-extrabold text-slate-700 mt-1">{selectedTeam}</p>
                         </div>
                         <button
                           type="button"
@@ -1818,7 +1824,7 @@ const AdminDashboard = () => {
     );
 
     const teamCounts = tickets.reduce((acc, ticket) => {
-      const team = getAssignedTeam(ticket.category_name);
+      const team = getTicketDepartment(ticket);
       acc[team] = (acc[team] || 0) + 1;
       return acc;
     }, {});
@@ -2178,7 +2184,7 @@ const AdminDashboard = () => {
     };
 
     const departmentStats = DEPARTMENT_DIRECTORY.map((department) => {
-      const deptTickets = tickets.filter((ticket) => getAssignedTeam(ticket.category_name) === department.name);
+      const deptTickets = tickets.filter((ticket) => getTicketDepartment(ticket) === department.name);
       const open = deptTickets.filter((ticket) => ticket.status === 'Open').length;
       const inProgress = deptTickets.filter((ticket) => ticket.status === 'In Progress').length;
       const resolved = deptTickets.filter((ticket) => ticket.status === 'Resolved' || ticket.status === 'Closed').length;

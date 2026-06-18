@@ -3,53 +3,74 @@ from flask_bcrypt import Bcrypt
 
 bcrypt = Bcrypt()
 
-def get_department_for_category(category_name):
-    if not category_name:
-        return 'Operations'
-    name = category_name.lower()
-    if any(term in name for term in [
-        'payment', 'billing', 'pricing', 'finance', 'budget',
-        'reconciliation', 'refund', 'return'
-    ]):
-        return 'Finance'
-    if any(term in name for term in [
-        'portal', 'technical', 'database', 'sync', 'it ',
-        'infrastructure', 'security', 'account'
-    ]):
-        return 'IT Support'
-    if any(term in name for term in ['compliance', 'gst', 'contract']):
-        return 'Compliance'
-    if any(term in name for term in ['kyc', 'vendor', 'order']):
-        return 'Supply Chain'
-    if 'logistics' in name or 'delivery' in name:
-        return 'Logistics'
-    if 'inventory' in name or 'stock' in name:
-        return 'Inventory'
-    return 'Operations'
+CATEGORY_DEPARTMENT_MAP = {
+    1: 'Finance',
+    2: 'Inventory',
+    3: 'IT Support',
+    4: 'Logistics',
+    5: 'Compliance',
+    6: 'Supply Chain',
+    7: 'Supply Chain',
+    8: 'Inventory',
+    9: 'Finance',
+    10: 'Operations',
+    11: 'Logistics',
+    12: 'IT Support',
+    13: 'IT Support',
+    14: 'Finance',
+    15: 'Compliance',
+    16: 'Supply Chain',
+    17: 'Operations',
+    18: 'Operations',
+    19: 'IT Support',
+    20: 'Finance'
+}
 
 
 def migrate():
     conn = duckdb.connect('tickets.db')
 
+    category_columns = [row[1] for row in conn.execute("PRAGMA table_info('categories')").fetchall()]
+    if 'assigned_department' not in category_columns:
+        conn.execute("ALTER TABLE categories ADD COLUMN assigned_department VARCHAR")
+
+    columns = [row[1] for row in conn.execute("PRAGMA table_info('tickets')").fetchall()]
+    if 'business_unit' not in columns:
+        conn.execute("ALTER TABLE tickets ADD COLUMN business_unit VARCHAR")
+    if 'assigned_department' not in columns:
+        conn.execute("ALTER TABLE tickets ADD COLUMN assigned_department VARCHAR")
+
     # 1. Migrate admin to super_admin
     conn.execute("UPDATE users SET role = 'super_admin' WHERE role = 'admin'")
 
-    # 2. Backfill business_unit on tickets from their category.
-    categories = conn.execute("""
-        SELECT category_id, name
-        FROM categories
-    """).fetchall()
-
-    for category_id, category_name in categories:
+    # 2. Store category-to-department mapping in the categories table.
+    for category_id, department in CATEGORY_DEPARTMENT_MAP.items():
         conn.execute("""
-            UPDATE tickets
-            SET business_unit = ?
+            UPDATE categories
+            SET assigned_department = ?
             WHERE category_id = ?
-        """, [get_department_for_category(category_name), category_id])
+        """, [department, category_id])
+
+    conn.execute("""
+        UPDATE categories
+        SET assigned_department = 'Operations'
+        WHERE assigned_department IS NULL
+    """)
+
+    # 3. Backfill tickets from their category's stored department mapping.
+    conn.execute("""
+        UPDATE tickets
+        SET business_unit = COALESCE(c.assigned_department, 'Operations'),
+            assigned_department = COALESCE(c.assigned_department, 'Operations'),
+            assigned_to = COALESCE(c.assigned_department, 'Operations')
+        FROM categories c
+        WHERE tickets.category_id = c.category_id
+    """)
 
     conn.execute("UPDATE tickets SET business_unit = 'Operations' WHERE business_unit IS NULL")
+    conn.execute("UPDATE tickets SET assigned_department = COALESCE(assigned_department, business_unit, 'Operations')")
 
-    # 3. Seed department login accounts
+    # 4. Seed department login accounts
     # Generate password hash
     password_hash = bcrypt.generate_password_hash('password123').decode('utf-8')
 

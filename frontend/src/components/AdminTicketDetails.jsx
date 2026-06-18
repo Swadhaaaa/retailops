@@ -18,7 +18,10 @@ const AdminTicketDetails = ({
 }) => {
   if (!drawerTicket) return null;
 
-  const assignedTeam = getAssignedTeam(drawerTicket.category_name || `Cat #${drawerTicket.category_id}`);
+  const assignedDepartment =
+    drawerTicket.assigned_department ||
+    drawerTicket.business_unit ||
+    getAssignedTeam(drawerTicket.category_name || `Cat #${drawerTicket.category_id}`);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -77,8 +80,8 @@ const AdminTicketDetails = ({
               <span className="font-extrabold text-slate-700 font-dmSans">{drawerTicket.category_name || `Category #${drawerTicket.category_id}`}</span>
             </div>
             <div>
-              <span className="text-gray-400 font-bold block uppercase tracking-wider text-[8px] mb-0.5">Assigned Team</span>
-              <span className="font-extrabold text-brandNavy font-dmSans">{assignedTeam}</span>
+              <span className="text-gray-400 font-bold block uppercase tracking-wider text-[8px] mb-0.5">Assigned Department</span>
+              <span className="font-extrabold text-brandNavy font-dmSans">{assignedDepartment}</span>
             </div>
             <div>
               <span className="text-gray-400 font-bold block uppercase tracking-wider text-[8px] mb-0.5">Created Date</span>
