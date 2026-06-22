@@ -16,7 +16,7 @@ CATEGORIES = [
     "User Onboarding",
     "Quality Control",
     "Pricing & Billing",
-    "SLA Violations",
+    "Service Delays",
     "Logistics Support",
     "Database & Sync",
     "Account & Security",

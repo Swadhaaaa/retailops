@@ -42,7 +42,7 @@ const BlobTransition = ({ selectedSubRole, loggedUser, onComplete }) => {
     if (phase === 'success') {
       const timer = setTimeout(() => {
         onComplete();
-      }, 450);
+      }, 2500);
 
       return () => clearTimeout(timer);
     }
@@ -57,10 +57,12 @@ const BlobTransition = ({ selectedSubRole, loggedUser, onComplete }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden">
       <div
-        className={`absolute w-[150vmax] h-[150vmax] rounded-full ${blobColorClass} animate-blob-expand`}
+        className={`absolute w-[150vmax] h-[150vmax] rounded-full ${blobColorClass} ${
+          phase === 'success' ? 'animate-bg-pop-success' : 'animate-blob-expand'
+        }`}
       />
 
-      <div className="relative z-10 flex flex-col items-center justify-center text-white text-center">
+      <div className="relative z-10 flex flex-col items-center justify-center text-white text-center w-full h-full">
         {phase === 'loading' ? (
           <div className="flex flex-col items-center justify-center space-y-6 animate-slide-up-fade">
             <div className="relative flex items-center justify-center w-16 h-16">
@@ -74,40 +76,45 @@ const BlobTransition = ({ selectedSubRole, loggedUser, onComplete }) => {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center animate-slide-up-fade">
-            <div className="w-24 h-24 bg-white/10 border border-white/20 rounded-full flex items-center justify-center shadow-lg mb-8 animate-scale-in">
-              <svg viewBox="0 0 100 100" className="w-10 h-10 text-white">
-                <path
-                  d="M20 50 L42 72 L80 30"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="animate-draw-check"
-                />
-              </svg>
+          <div className="relative flex items-center justify-center w-full h-full">
+            {/* Ripple Rings */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="absolute w-[240px] h-[240px] rounded-full border border-white/20 animate-ripple-1 opacity-0" />
+              <div className="absolute w-[340px] h-[340px] rounded-full border border-white/10 animate-ripple-2 opacity-0" />
+              <div className="absolute w-[440px] h-[440px] rounded-full border border-white/5 animate-ripple-3 opacity-0" />
             </div>
 
-            <h2 className="text-4xl font-extrabold font-sora mb-3">
-              You're in!
-            </h2>
-            <p className="text-white/70 text-sm mb-1.5 font-medium">
-              Successfully authenticated as
-            </p>
-            <p className="text-white font-bold font-sora text-[15px] mb-12">
-              {loggedUser?.email}
-            </p>
+            {/* Particles */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              <div className="absolute w-2 h-2 bg-white rounded-full top-[35%] left-[32%] animate-particle-float-1" />
+              <div className="absolute w-3 h-3 bg-blue-300 rounded-full top-[62%] left-[28%] animate-particle-float-2" />
+              <div className="absolute w-1.5 h-1.5 bg-red-300 rounded-full top-[30%] right-[30%] animate-particle-float-3" />
+              <div className="absolute w-2.5 h-2.5 bg-white rounded-full top-[68%] right-[34%] animate-particle-float-4" />
+            </div>
 
-            <div className="w-64">
-              <p className="text-[11px] text-white/60 font-medium mb-3">
-                Redirecting to dashboard...
-              </p>
-              <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-white rounded-full animate-fill-progress"
-                  style={{ animationDuration: '450ms' }}
-                />
+            {/* Premium center glass bubble */}
+            <div className="relative flex flex-col items-center justify-center w-[280px] h-[280px] rounded-full premium-success-bubble animate-bubble-intro">
+              <div className="w-20 h-20 flex items-center justify-center mb-1">
+                <svg viewBox="0 0 100 100" className="w-14 h-14 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.2)]">
+                  <path
+                    d="M20 50 L42 72 L80 30"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="animate-draw-check-success"
+                  />
+                </svg>
+              </div>
+
+              <div className="flex flex-col items-center text-center px-4">
+                <h2 className="text-lg font-bold font-sora text-white drop-shadow-md animate-type-slide-1 whitespace-nowrap">
+                  Logged in successfully
+                </h2>
+                <p className="text-white/80 text-xs font-semibold tracking-wider uppercase animate-type-slide-2 mt-1">
+                  Welcome back
+                </p>
               </div>
             </div>
           </div>

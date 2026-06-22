@@ -232,7 +232,7 @@ const DashboardShowcase = () => {
               </span>
 
               <span className="text-[8px] text-emerald-400 font-bold block mt-1">
-                Within SLA
+                Fast turnaround
               </span>
             </div>
           </div>
@@ -269,12 +269,12 @@ const DashboardShowcase = () => {
 
           <div className="p-3 rounded-2xl bg-white/5 border border-white/10 showcase-stagger-3">
             <div className="flex justify-between text-[11px] font-semibold text-white/80 mb-2">
-              <span>SLA Compliance Goal</span>
+              <span>Resolution Completion</span>
               <span className="text-brandRed">99.2%</span>
             </div>
 
             <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-brandRed h-full rounded-full animate-shimmer-bar animate-sla-line" style={{ width: '99.2%' }}></div>
+              <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-brandRed h-full rounded-full animate-shimmer-bar animate-progress-line" style={{ width: '99.2%' }}></div>
             </div>
           </div>
         </div>
@@ -385,7 +385,7 @@ const DashboardShowcase = () => {
 
       <div className="absolute -bottom-2 -left-14 glass-panel-heavy rounded-2xl p-3 w-[135px] shadow-xl z-20 animate-soft-float-3 hover:scale-[1.07] hover:shadow-emerald-400/20 hover:border-emerald-400/30 transition-all duration-300 cursor-default">
         <span className="text-[9px] uppercase tracking-wider font-bold text-white/55 block">
-          SLA Target
+          Resolution Rate
         </span>
 
         <div className="mt-1">

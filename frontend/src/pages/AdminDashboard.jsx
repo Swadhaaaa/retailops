@@ -611,7 +611,7 @@ const AdminDashboard = () => {
     };
   }, []);
 
-  const fetchAgents = async () => {
+  async function fetchAgents() {
     try {
       const response = await api.get('/users/agents');
       const names = (response.data || []).map(agent => agent.name).filter(Boolean);
@@ -620,7 +620,7 @@ const AdminDashboard = () => {
       console.error('Error fetching agents:', err);
       setAgents(DEFAULT_AGENTS);
     }
-  };
+  }
 
   const handleLogout = () => {
     logout();
@@ -1198,7 +1198,7 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* ── Status & SLA Row (3 columns) ── */}
+        {/* Status and priority row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Column 1: Ticket Status (Doughnut Chart) */}
           <div className="premium-glass premium-hover rounded-[22px] p-6 flex flex-col justify-between">
@@ -2172,26 +2172,11 @@ const AdminDashboard = () => {
       }
     };
 
-    const getResolutionHours = (ticket) => {
-      const isComplete = ticket.status === 'Resolved' || ticket.status === 'Closed';
-      const startValue = ticket.created_at || ticket.createdAt || ticket.created_on;
-      const endValue = ticket.updated_at || ticket.resolved_at || ticket.closed_at;
-      if (!isComplete || !startValue || !endValue) return null;
-      const start = new Date(startValue);
-      const end = new Date(endValue);
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return null;
-      return (end - start) / 3600000;
-    };
-
     const departmentStats = DEPARTMENT_DIRECTORY.map((department) => {
       const deptTickets = tickets.filter((ticket) => getTicketDepartment(ticket) === department.name);
       const open = deptTickets.filter((ticket) => ticket.status === 'Open').length;
       const inProgress = deptTickets.filter((ticket) => ticket.status === 'In Progress').length;
       const resolved = deptTickets.filter((ticket) => ticket.status === 'Resolved' || ticket.status === 'Closed').length;
-      const resolutionTimes = deptTickets.map(getResolutionHours).filter((hours) => hours !== null);
-      const avgResolution = resolutionTimes.length
-        ? resolutionTimes.reduce((sum, hours) => sum + hours, 0) / resolutionTimes.length
-        : 0;
       const resolutionRate = deptTickets.length ? Math.round((resolved / deptTickets.length) * 100) : 0;
 
       return {
@@ -2200,17 +2185,12 @@ const AdminDashboard = () => {
         open,
         inProgress,
         resolved,
-        avgResolution,
         resolutionRate
       };
     });
 
     const totalMembers = departmentStats.reduce((sum, department) => sum + department.members, 0);
     const totalTickets = departmentStats.reduce((sum, department) => sum + department.total, 0);
-    const allResolutionTimes = tickets.map(getResolutionHours).filter((hours) => hours !== null);
-    const avgResolution = allResolutionTimes.length
-      ? allResolutionTimes.reduce((sum, hours) => sum + hours, 0) / allResolutionTimes.length
-      : 0;
 
     return (
       <div className="space-y-6 text-left">
@@ -2219,7 +2199,7 @@ const AdminDashboard = () => {
           <p className="text-sm text-gray-500 mt-1">Overview of all departments and their ticket performance.</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {[
             {
               label: 'Total Departments',
@@ -2235,11 +2215,6 @@ const AdminDashboard = () => {
               label: 'Total Tickets',
               value: totalTickets,
               iconClass: 'bg-green-50 text-green-700'
-            },
-            {
-              label: 'Avg Resolution',
-              value: avgResolution ? `${avgResolution.toFixed(1)}h` : '0h',
-              iconClass: 'bg-orange-50 text-orange-700'
             }
           ].map((card) => (
             <div key={card.label} className="premium-glass rounded-[18px] p-6 border border-white/60 flex items-center gap-4">
@@ -2282,16 +2257,10 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="bg-white/70 p-6 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div>
                     <div>
                       <p className="text-xs font-bold text-slate-500">Total Tickets</p>
                       <p className="mt-1 text-2xl font-extrabold font-sora text-brandNavy">{department.total}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-500">Avg Resolution</p>
-                      <p className="mt-1 text-2xl font-extrabold font-sora text-brandNavy">
-                        {department.avgResolution ? `${department.avgResolution.toFixed(1)}h` : '0h'}
-                      </p>
                     </div>
                   </div>
 
@@ -2322,7 +2291,7 @@ const AdminDashboard = () => {
             <table className="w-full min-w-[860px] text-left">
               <thead>
                 <tr className="border-b border-slate-200">
-                  {['Department', 'Members', 'Total', 'Open', 'In Progress', 'Resolved', 'Avg Time', 'Rate'].map((heading) => (
+                  {['Department', 'Members', 'Total', 'Open', 'In Progress', 'Resolved', 'Rate'].map((heading) => (
                     <th key={heading} className="px-2 py-3 text-xs font-extrabold text-brandNavy/80">{heading}</th>
                   ))}
                 </tr>
@@ -2341,9 +2310,6 @@ const AdminDashboard = () => {
                       <td className="px-2 py-4 text-sm font-semibold text-blue-600">{department.open}</td>
                       <td className="px-2 py-4 text-sm font-semibold text-orange-600">{department.inProgress}</td>
                       <td className="px-2 py-4 text-sm font-semibold text-green-600">{department.resolved}</td>
-                      <td className="px-2 py-4 text-sm font-extrabold text-brandNavy">
-                        {department.avgResolution ? `${department.avgResolution.toFixed(1)}h` : '0h'}
-                      </td>
                       <td className="px-2 py-4 text-sm font-extrabold text-brandNavy">{department.resolutionRate}%</td>
                     </tr>
                   );

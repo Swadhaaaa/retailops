@@ -1,5 +1,5 @@
 
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { RoleContext } from '../context/RoleContext';
 import { useNavigate } from 'react-router-dom';
@@ -61,6 +61,53 @@ const LoginPage = () => {
   const [, setLoading] = useState(false);
   const [formKey, setFormKey] = useState(0); // For triggering slide-up animations
   const [introStage] = useState('done'); // center, pulse, move, done
+
+  // Highly-optimized cursor parallax using refs (avoids 60 FPS full-component re-renders)
+  const parallaxRef = useRef(null);
+  const mousePosRef = useRef({ x: 0, y: 0 });
+  const smoothPosRef = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      const x = (e.clientX - window.innerWidth / 2) / (window.innerWidth / 2);
+      const y = (e.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
+      mousePosRef.current = { x, y };
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+
+    let animationFrameId;
+    const updatePosition = () => {
+      const dx = mousePosRef.current.x - smoothPosRef.current.x;
+      const dy = mousePosRef.current.y - smoothPosRef.current.y;
+
+      smoothPosRef.current.x += dx * 0.045;
+      smoothPosRef.current.y += dy * 0.045;
+
+      if (parallaxRef.current) {
+        parallaxRef.current.style.transform = `translate(${smoothPosRef.current.x * 20}px, ${smoothPosRef.current.y * 20}px)`;
+        
+        const redBlob = parallaxRef.current.querySelector('.red-blob');
+        if (redBlob) {
+          redBlob.style.transform = `translate(${smoothPosRef.current.x * 12}px, ${smoothPosRef.current.y * 12}px)`;
+        }
+
+        const blueBlob = parallaxRef.current.querySelector('.blue-blob');
+        if (blueBlob) {
+          blueBlob.style.transform = `translate(${smoothPosRef.current.x * -12}px, ${smoothPosRef.current.y * -12}px)`;
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(updatePosition);
+    };
+
+    animationFrameId = requestAnimationFrame(updatePosition);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
 
   const handleRoleSelect = (roleId) => {
     setRole(roleId);
@@ -293,15 +340,46 @@ const LoginPage = () => {
       </div>
 
       {/* ----------------- RIGHT PANEL & TRANSITIONS ----------------- */}
-      <div className="flex-1 relative z-0 overflow-hidden">
-        <div className="relative w-full h-full overflow-hidden bg-white">
-          <div className="flex items-center justify-center p-6 lg:p-12 h-full relative">
+      <div className="flex-1 relative z-0 overflow-hidden bg-white">
+        {/* PARALLAX MOVING GRADIENT LAYER */}
+        <div 
+          ref={parallaxRef}
+          className="absolute inset-0 pointer-events-none overflow-hidden -z-20 bg-white"
+          style={{
+            transform: 'translate(0px, 0px)',
+            willChange: 'transform'
+          }}
+        >
+          {/* Red blob (matching the left side composition of the provided image) */}
+          <div 
+            className="red-blob absolute w-[580px] h-[480px] rounded-full bg-[radial-gradient(ellipse_at_center,rgba(227,24,55,0.38)_0%,rgba(227,24,55,0.12)_50%,rgba(255,255,255,0)_70%)]"
+            style={{
+              top: '12%',
+              left: '-8%',
+              filter: 'blur(75px)',
+              transform: 'translate(0px, 0px)',
+              willChange: 'transform'
+            }}
+          />
+
+          {/* Blue blob (matching the right side composition of the provided image) */}
+          <div 
+            className="blue-blob absolute w-[680px] h-[580px] rounded-full bg-[radial-gradient(ellipse_at_center,rgba(59,130,246,0.34)_0%,rgba(59,130,246,0.10)_50%,rgba(255,255,255,0)_70%)]"
+            style={{
+              bottom: '8%',
+              right: '-12%',
+              filter: 'blur(80px)',
+              transform: 'translate(0px, 0px)',
+              willChange: 'transform'
+            }}
+          />
+        </div>
 
         {/* SUBTLE RIGHT PANEL GRID */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(227,24,55,0.065)_1px,transparent_1px),linear-gradient(to_bottom,rgba(227,24,55,0.055)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(227,24,55,0.065)_1px,transparent_1px),linear-gradient(to_bottom,rgba(227,24,55,0.055)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none -z-10" />
 
-        {/* BACKGROUND ACCENT SHAPE */}
-        <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-[#F3F5FB]/30 rounded-bl-[100px] pointer-events-none -z-10" />
+        <div className="relative w-full h-full overflow-hidden">
+          <div className="flex items-center justify-center p-6 lg:p-12 h-full relative">
 
         {/* 1. SCREEN: ROLE SELECTION */}
         {screen === 'role_selection' && (

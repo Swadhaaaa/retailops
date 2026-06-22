@@ -65,13 +65,21 @@ def init_db():
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         resolved_at TIMESTAMP,
         feedback_rating INTEGER,
-        sla_deadline TIMESTAMP,
         resolution_summary TEXT,
         root_cause TEXT,
         action_taken TEXT,
         resolution_remarks TEXT,
         resolution_submitted_by VARCHAR,
-        resolution_submitted_at TIMESTAMP
+        resolution_submitted_at TIMESTAMP,
+        claimed_by VARCHAR,
+        claimed_at TIMESTAMP,
+        resolved_by VARCHAR,
+        reopened_count INTEGER DEFAULT 0,
+        escalation_count INTEGER DEFAULT 0,
+        documents_verified BOOLEAN DEFAULT false,
+        issue_investigated BOOLEAN DEFAULT false,
+        requester_updated BOOLEAN DEFAULT false,
+        final_confirmation_done BOOLEAN DEFAULT false
     )
     """)
 
@@ -92,7 +100,16 @@ def init_db():
         'action_taken': 'TEXT',
         'resolution_remarks': 'TEXT',
         'resolution_submitted_by': 'VARCHAR',
-        'resolution_submitted_at': 'TIMESTAMP'
+        'resolution_submitted_at': 'TIMESTAMP',
+        'claimed_by': 'VARCHAR',
+        'claimed_at': 'TIMESTAMP',
+        'resolved_by': 'VARCHAR',
+        'reopened_count': 'INTEGER DEFAULT 0',
+        'escalation_count': 'INTEGER DEFAULT 0',
+        'documents_verified': 'BOOLEAN DEFAULT false',
+        'issue_investigated': 'BOOLEAN DEFAULT false',
+        'requester_updated': 'BOOLEAN DEFAULT false',
+        'final_confirmation_done': 'BOOLEAN DEFAULT false'
     }
 
     for column, column_type in workflow_columns.items():
@@ -127,6 +144,19 @@ def init_db():
         created_by VARCHAR,
         created_by_name VARCHAR,
         created_by_role VARCHAR DEFAULT 'department',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS ticket_escalations (
+        escalation_id INTEGER PRIMARY KEY,
+        ticket_id VARCHAR NOT NULL,
+        from_department VARCHAR,
+        to_department VARCHAR NOT NULL,
+        reason TEXT NOT NULL,
+        escalated_by VARCHAR,
+        escalated_by_name VARCHAR,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)

@@ -74,7 +74,7 @@ categories = [
     (7, 'User Onboarding', 'Registration and profile setup queries', 'onboarding', 'Supply Chain'),
     (8, 'Quality Control', 'Product quality and damage complaints', 'quality', 'Inventory'),
     (9, 'Pricing & Billing', 'Pricing disputes and billing inquiries', 'billing', 'Finance'),
-    (10, 'SLA Violations', 'SLA delays and performance escalations', 'sla', 'Operations'),
+    (10, 'Service Delays', 'Service delays and performance escalations', 'operations', 'Operations'),
     (11, 'Logistics Support', 'Transport, routing, and carrier issues', 'logistics', 'Logistics'),
     (12, 'Database & Sync', 'Data mismatch and sync issues', 'database', 'IT Support'),
     (13, 'Account & Security', 'Security settings and account recovery', 'security', 'IT Support'),
@@ -100,7 +100,7 @@ conn.execute("DELETE FROM announcements")
 announcements = [
     (1, 'System Maintenance', 'Scheduled on 10 Jun 2026, 02:00 AM', 'maintenance', '2026-06-10 02:00:00'),
     (2, 'New User Guidelines', 'Effective from 01 Jun 2026', 'guidelines', '2026-06-01 00:00:00'),
-    (3, 'SLA Policy Updates', 'Effective from 15 May 2026', 'sla', '2026-05-15 00:00:00')
+    (3, 'Support Policy Updates', 'Effective from 15 May 2026', 'operations', '2026-05-15 00:00:00')
 ]
 for ann in announcements:
     conn.execute("""

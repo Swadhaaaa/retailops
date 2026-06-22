@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, send_file, g
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
-from datetime import datetime, timedelta
+from datetime import datetime
 import os
 from werkzeug.utils import secure_filename
 import uuid
@@ -93,7 +93,16 @@ def ensure_ticket_department_columns(conn):
         'action_taken': 'TEXT',
         'resolution_remarks': 'TEXT',
         'resolution_submitted_by': 'VARCHAR',
-        'resolution_submitted_at': 'TIMESTAMP'
+        'resolution_submitted_at': 'TIMESTAMP',
+        'claimed_by': 'VARCHAR',
+        'claimed_at': 'TIMESTAMP',
+        'resolved_by': 'VARCHAR',
+        'reopened_count': 'INTEGER DEFAULT 0',
+        'escalation_count': 'INTEGER DEFAULT 0',
+        'documents_verified': 'BOOLEAN DEFAULT false',
+        'issue_investigated': 'BOOLEAN DEFAULT false',
+        'requester_updated': 'BOOLEAN DEFAULT false',
+        'final_confirmation_done': 'BOOLEAN DEFAULT false'
     }
 
     for column, column_type in workflow_columns.items():
@@ -170,6 +179,21 @@ def ensure_internal_notes_table(conn):
     columns = [row[1] for row in conn.execute("PRAGMA table_info('ticket_internal_notes')").fetchall()]
     if 'created_by_name' not in columns:
         conn.execute("ALTER TABLE ticket_internal_notes ADD COLUMN created_by_name VARCHAR")
+
+
+def ensure_ticket_escalations_table(conn):
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS ticket_escalations (
+            escalation_id INTEGER PRIMARY KEY,
+            ticket_id VARCHAR NOT NULL,
+            from_department VARCHAR,
+            to_department VARCHAR NOT NULL,
+            reason TEXT NOT NULL,
+            escalated_by VARCHAR,
+            escalated_by_name VARCHAR,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
 
 
 def get_actor_role(conn, actor_id):
@@ -290,6 +314,31 @@ def get_internal_notes(conn, ticket_id):
     ]
 
 
+def get_ticket_escalations(conn, ticket_id):
+    ensure_ticket_escalations_table(conn)
+    rows = conn.execute("""
+        SELECT escalation_id, ticket_id, from_department, to_department,
+               reason, escalated_by, escalated_by_name, created_at
+        FROM ticket_escalations
+        WHERE ticket_id = ?
+        ORDER BY created_at DESC, escalation_id DESC
+    """, [ticket_id]).fetchall()
+
+    return [
+        {
+            'escalation_id': row[0],
+            'ticket_id': row[1],
+            'from_department': row[2],
+            'to_department': row[3],
+            'reason': row[4],
+            'escalated_by': row[5],
+            'escalated_by_name': row[6],
+            'created_at': str(row[7])
+        }
+        for row in rows
+    ]
+
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -320,18 +369,6 @@ def get_next_id(conn, table_name, id_column):
         f"SELECT COALESCE(MAX({id_column}), 0) + 1 FROM {table_name}"
     ).fetchone()
     return row[0]
-
-def calculate_sla_deadline(priority):
-    priority = priority.lower()
-
-    if priority == 'low':
-        return datetime.now() + timedelta(hours=72)
-    elif priority == 'medium':
-        return datetime.now() + timedelta(hours=48)
-    elif priority == 'high':
-        return datetime.now() + timedelta(hours=24)
-
-    return datetime.now() + timedelta(hours=48)
 
 # AI CATEGORY SUGGESTION
 @tickets_bp.route('/nlp/suggest', methods=['POST'])
@@ -377,7 +414,18 @@ def ticket_to_dict(ticket):
         'action_taken': ticket[16] if len(ticket) > 16 else None,
         'resolution_remarks': ticket[17] if len(ticket) > 17 else None,
         'resolution_submitted_by': ticket[18] if len(ticket) > 18 else None,
-        'resolution_submitted_at': str(ticket[19]) if len(ticket) > 19 and ticket[19] else None
+        'resolution_submitted_at': str(ticket[19]) if len(ticket) > 19 and ticket[19] else None,
+        'claimed_by': ticket[20] if len(ticket) > 20 else None,
+        'claimed_at': str(ticket[21]) if len(ticket) > 21 and ticket[21] else None,
+        'resolved_by': ticket[22] if len(ticket) > 22 else None,
+        'reopened_count': ticket[23] if len(ticket) > 23 and ticket[23] else 0,
+        'escalation_count': ticket[24] if len(ticket) > 24 and ticket[24] else 0,
+        'resolution_checklist': {
+            'documents_verified': bool(ticket[25]) if len(ticket) > 25 else False,
+            'issue_investigated': bool(ticket[26]) if len(ticket) > 26 else False,
+            'requester_updated': bool(ticket[27]) if len(ticket) > 27 else False,
+            'final_confirmation_done': bool(ticket[28]) if len(ticket) > 28 else False
+        }
     }
 
 
@@ -408,7 +456,18 @@ def admin_ticket_to_dict(ticket):
         'resolution_submitted_by': ticket[18] if len(ticket) > 18 else None,
         'resolution_submitted_at': str(ticket[19]) if len(ticket) > 19 and ticket[19] else None,
         'vendor_name': ticket[20] if len(ticket) > 20 else None,
-        'category_name': ticket[21] if len(ticket) > 21 else None
+        'category_name': ticket[21] if len(ticket) > 21 else None,
+        'claimed_by': ticket[22] if len(ticket) > 22 else None,
+        'claimed_at': str(ticket[23]) if len(ticket) > 23 and ticket[23] else None,
+        'resolved_by': ticket[24] if len(ticket) > 24 else None,
+        'reopened_count': ticket[25] if len(ticket) > 25 and ticket[25] else 0,
+        'escalation_count': ticket[26] if len(ticket) > 26 and ticket[26] else 0,
+        'resolution_checklist': {
+            'documents_verified': bool(ticket[27]) if len(ticket) > 27 else False,
+            'issue_investigated': bool(ticket[28]) if len(ticket) > 28 else False,
+            'requester_updated': bool(ticket[29]) if len(ticket) > 29 else False,
+            'final_confirmation_done': bool(ticket[30]) if len(ticket) > 30 else False
+        }
     }
 
 
@@ -424,9 +483,6 @@ def create_ticket():
         description = request.form.get('description', '').strip()
         category_id_raw = request.form.get('category_id')
         priority = request.form.get('priority') or 'Medium'
-        sla_deadline = calculate_sla_deadline(priority)
-        
-
         if not title or not description or not category_id_raw:
             conn.close()
             return jsonify({'error': 'Title, description and category are required'}), 400
@@ -481,10 +537,10 @@ def create_ticket():
         conn.execute("""
            INSERT INTO tickets (
                      ticket_id, title, description, category_id, priority,
-                     status, raised_by, assigned_to, created_at, attachment_path, sla_deadline,
+                     status, raised_by, assigned_to, created_at, attachment_path,
                      business_unit, assigned_department
                      )
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [
             ticket_id,
             title,
@@ -496,7 +552,6 @@ def create_ticket():
             assigned_department,
             created_at,
             attachment_path,
-            sla_deadline,
             assigned_department,
             assigned_department
             ])
@@ -553,7 +608,10 @@ def get_tickets():
                    updated_at, resolved_at, business_unit,
                    COALESCE(assigned_department, business_unit) AS assigned_department,
                    resolution_summary, root_cause, action_taken, resolution_remarks,
-                   resolution_submitted_by, resolution_submitted_at
+                   resolution_submitted_by, resolution_submitted_at,
+                   claimed_by, claimed_at, resolved_by, reopened_count,
+                   escalation_count, documents_verified,
+                   issue_investigated, requester_updated, final_confirmation_done
             FROM tickets
             WHERE raised_by = ?
             ORDER BY created_at DESC
@@ -587,7 +645,10 @@ def get_single_ticket(ticket_id):
                    COALESCE(t.assigned_department, t.business_unit) AS assigned_department,
                    t.resolution_summary, t.root_cause, t.action_taken, t.resolution_remarks,
                    t.resolution_submitted_by, t.resolution_submitted_at,
-                   u.name AS vendor_name, c.name AS category_name
+                   u.name AS vendor_name, c.name AS category_name,
+                   t.claimed_by, t.claimed_at, t.resolved_by, t.reopened_count,
+                   t.escalation_count, t.documents_verified,
+                   t.issue_investigated, t.requester_updated, t.final_confirmation_done
             FROM tickets t
             LEFT JOIN users u ON t.raised_by = u.user_id OR t.raised_by = u.email
             LEFT JOIN categories c ON t.category_id = c.category_id
@@ -604,6 +665,7 @@ def get_single_ticket(ticket_id):
         ticket_data['activity'] = get_ticket_activity(conn, ticket_id)
         if is_staff_role(role):
             ticket_data['internal_notes'] = get_internal_notes(conn, ticket_id)
+            ticket_data['escalations'] = get_ticket_escalations(conn, ticket_id)
 
         conn.close()
 
@@ -654,7 +716,10 @@ def admin_get_all_tickets():
                    COALESCE(t.assigned_department, t.business_unit) AS assigned_department,
                    t.resolution_summary, t.root_cause, t.action_taken, t.resolution_remarks,
                    t.resolution_submitted_by, t.resolution_submitted_at,
-                   u.name AS vendor_name, c.name AS category_name
+                   u.name AS vendor_name, c.name AS category_name,
+                   t.claimed_by, t.claimed_at, t.resolved_by, t.reopened_count,
+                   t.escalation_count, t.documents_verified,
+                   t.issue_investigated, t.requester_updated, t.final_confirmation_done
             FROM tickets t
             LEFT JOIN users u ON t.raised_by = u.user_id OR t.raised_by = u.email
             LEFT JOIN categories c ON t.category_id = c.category_id
@@ -703,14 +768,24 @@ def assign_agent(ticket_id):
         previous_agent = ticket[0]
         previous_status = ticket[1]
         now = datetime.now()
+        agent_user = conn.execute("""
+            SELECT user_id
+            FROM users
+            WHERE role = 'department'
+              AND (name = ? OR email = ? OR user_id = ?)
+            LIMIT 1
+        """, [agent, agent, agent]).fetchone()
+        claimed_by = agent_user[0] if agent_user else None
 
         conn.execute("""
             UPDATE tickets
             SET assigned_to = ?,
+                claimed_by = ?,
+                claimed_at = ?,
                 status = 'In Progress',
                 updated_at = ?
             WHERE ticket_id = ?
-        """, [agent, now, ticket_id])
+        """, [agent, claimed_by, now if claimed_by else None, now, ticket_id])
 
         current_user = get_jwt_identity()
 
@@ -856,6 +931,39 @@ def update_ticket_status(ticket_id):
         return jsonify({'error': str(e)}), 500
 
 
+@tickets_bp.route('/department/assigned', methods=['GET'])
+@jwt_required()
+@scope_by_department
+def get_department_assigned_tickets():
+    try:
+        if get_current_role() != 'department' or not g.department:
+            return jsonify({'error': 'Department access required'}), 403
+
+        conn = get_conn()
+        tickets = conn.execute(f"""
+            SELECT t.ticket_id, t.title, t.description, t.category_id, t.priority,
+                   t.status, t.raised_by, t.assigned_to, t.created_at, t.attachment_path,
+                   t.updated_at, t.resolved_at, t.business_unit,
+                   COALESCE(t.assigned_department, t.business_unit) AS assigned_department,
+                   t.resolution_summary, t.root_cause, t.action_taken, t.resolution_remarks,
+                   t.resolution_submitted_by, t.resolution_submitted_at,
+                   u.name AS vendor_name, c.name AS category_name,
+                   t.claimed_by, t.claimed_at, t.resolved_by, t.reopened_count,
+                   t.escalation_count, t.documents_verified,
+                   t.issue_investigated, t.requester_updated, t.final_confirmation_done
+            FROM tickets t
+            LEFT JOIN users u ON t.raised_by = u.user_id OR t.raised_by = u.email
+            LEFT JOIN categories c ON t.category_id = c.category_id
+            WHERE 1=1 {g.dept_filter}
+            ORDER BY t.created_at DESC
+        """, g.dept_params).fetchall()
+        conn.close()
+        return jsonify([admin_ticket_to_dict(ticket) for ticket in tickets])
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @tickets_bp.route('/departments', methods=['GET'])
 @jwt_required()
 def get_ticket_departments():
@@ -895,7 +1003,7 @@ def claim_ticket(ticket_id):
             return jsonify({'error': 'Ticket not found'}), 404
 
         ticket = conn.execute("""
-            SELECT assigned_to, status, COALESCE(assigned_department, business_unit)
+            SELECT assigned_to, status, COALESCE(assigned_department, business_unit), claimed_by
             FROM tickets
             WHERE ticket_id = ?
         """, [ticket_id]).fetchone()
@@ -910,9 +1018,13 @@ def claim_ticket(ticket_id):
         assigned_department = ticket[2]
         available_owner_values = [None, '', 'Unassigned', assigned_department]
 
-        if previous_owner not in available_owner_values and previous_owner != owner_name:
+        if ticket[3] and ticket[3] != current_user:
             conn.close()
             return jsonify({'error': f'Ticket is already claimed by {previous_owner}'}), 409
+
+        if previous_owner not in available_owner_values and previous_owner != owner_name:
+            conn.close()
+            return jsonify({'error': f'Ticket is already assigned to {previous_owner}'}), 409
 
         now = datetime.now()
         new_status = 'In Progress' if ticket[1] == 'Open' else ticket[1]
@@ -920,10 +1032,12 @@ def claim_ticket(ticket_id):
         conn.execute("""
             UPDATE tickets
             SET assigned_to = ?,
+                claimed_by = ?,
+                claimed_at = ?,
                 status = ?,
                 updated_at = ?
             WHERE ticket_id = ?
-        """, [owner_name, new_status, now, ticket_id])
+        """, [owner_name, current_user, now, new_status, now, ticket_id])
 
         if previous_owner != owner_name:
             record_ticket_activity(
@@ -954,6 +1068,65 @@ def claim_ticket(ticket_id):
         conn.close()
 
         return jsonify({'message': 'Ticket claimed successfully', 'owner': owner_name})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@tickets_bp.route('/<ticket_id>/release', methods=['POST'])
+@jwt_required()
+@scope_by_department
+def release_ticket(ticket_id):
+    try:
+        conn = get_conn()
+        role = get_current_role()
+
+        if not is_staff_role(role) or not ensure_ticket_access(conn, ticket_id):
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        ticket = conn.execute("""
+            SELECT assigned_to, claimed_by, COALESCE(assigned_department, business_unit), status
+            FROM tickets
+            WHERE ticket_id = ?
+        """, [ticket_id]).fetchone()
+
+        if not ticket:
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        current_user = get_jwt_identity()
+        if role == 'department' and ticket[1] and ticket[1] != current_user:
+            conn.close()
+            return jsonify({'error': 'Only the current owner can release this ticket'}), 403
+
+        if not ticket[1]:
+            conn.close()
+            return jsonify({'error': 'Ticket is not currently claimed'}), 409
+
+        now = datetime.now()
+        released_owner = ticket[0]
+        new_status = 'Open' if ticket[3] == 'In Progress' else ticket[3]
+        conn.execute("""
+            UPDATE tickets
+            SET assigned_to = ?, claimed_by = NULL, claimed_at = NULL,
+                status = ?, updated_at = ?
+            WHERE ticket_id = ?
+        """, [ticket[2], new_status, now, ticket_id])
+
+        record_ticket_activity(
+            conn, ticket_id, 'ticket_released',
+            f'Ticket released by {get_actor_name(conn, current_user)}',
+            current_user, role, released_owner, 'Unclaimed', now
+        )
+        if new_status != ticket[3]:
+            record_ticket_activity(
+                conn, ticket_id, 'status_changed', 'Status changed to Open',
+                current_user, role, ticket[3], 'Open', now
+            )
+
+        conn.close()
+        return jsonify({'message': 'Ticket released successfully'})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -1018,6 +1191,24 @@ def add_internal_note(ticket_id):
         return jsonify({'error': str(e)}), 500
 
 
+@tickets_bp.route('/<ticket_id>/notes', methods=['GET'])
+@jwt_required()
+@scope_by_department
+def fetch_internal_notes(ticket_id):
+    try:
+        conn = get_conn()
+        if not is_staff_role(get_current_role()) or not ensure_ticket_access(conn, ticket_id):
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        notes = get_internal_notes(conn, ticket_id)
+        conn.close()
+        return jsonify(notes)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @tickets_bp.route('/<ticket_id>/reassign-department', methods=['POST'])
 @jwt_required()
 @scope_by_department
@@ -1047,18 +1238,52 @@ def reassign_department(ticket_id):
             return jsonify({'error': 'Ticket not found'}), 404
 
         previous_department = ticket[0]
+        if target_department == previous_department:
+            conn.close()
+            return jsonify({'error': 'Target department must be different'}), 400
+
+        valid_department = conn.execute("""
+            SELECT 1
+            FROM categories
+            WHERE assigned_department = ?
+            UNION ALL
+            SELECT 1
+            FROM users
+            WHERE role = 'department' AND department = ?
+            LIMIT 1
+        """, [target_department, target_department]).fetchone()
+        if not valid_department:
+            conn.close()
+            return jsonify({'error': 'Invalid target department'}), 400
+
         now = datetime.now()
         current_user = get_jwt_identity()
+        escalated_by_name = get_actor_name(conn, current_user)
 
         conn.execute("""
             UPDATE tickets
             SET assigned_department = ?,
                 business_unit = ?,
                 assigned_to = ?,
+                claimed_by = NULL,
+                claimed_at = NULL,
+                escalation_count = COALESCE(escalation_count, 0) + 1,
                 status = 'Open',
                 updated_at = ?
             WHERE ticket_id = ?
         """, [target_department, target_department, target_department, now, ticket_id])
+
+        ensure_ticket_escalations_table(conn)
+        escalation_id = get_next_id(conn, 'ticket_escalations', 'escalation_id')
+        conn.execute("""
+            INSERT INTO ticket_escalations (
+                escalation_id, ticket_id, from_department, to_department,
+                reason, escalated_by, escalated_by_name, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, [
+            escalation_id, ticket_id, previous_department, target_department,
+            reason, current_user, escalated_by_name, now
+        ])
 
         record_ticket_activity(
             conn,
@@ -1090,9 +1315,19 @@ def submit_resolution(ticket_id):
         root_cause = (data.get('root_cause') or '').strip()
         action_taken = (data.get('action_taken') or '').strip()
         resolution_remarks = (data.get('resolution_remarks') or '').strip()
+        checklist = data.get('checklist') or {}
+        checklist_fields = [
+            'documents_verified',
+            'issue_investigated',
+            'requester_updated',
+            'final_confirmation_done'
+        ]
 
         if not resolution_summary or not root_cause or not action_taken:
             return jsonify({'error': 'Resolution summary, root cause, and action taken are required'}), 400
+
+        if not all(checklist.get(field) is True for field in checklist_fields):
+            return jsonify({'error': 'Complete every resolution checklist item'}), 400
 
         conn = get_conn()
 
@@ -1123,7 +1358,12 @@ def submit_resolution(ticket_id):
                 action_taken = ?,
                 resolution_remarks = ?,
                 resolution_submitted_by = ?,
-                resolution_submitted_at = ?
+                resolution_submitted_at = ?,
+                resolved_by = ?,
+                documents_verified = ?,
+                issue_investigated = ?,
+                requester_updated = ?,
+                final_confirmation_done = ?
             WHERE ticket_id = ?
         """, [
             now,
@@ -1134,6 +1374,11 @@ def submit_resolution(ticket_id):
             resolution_remarks,
             current_user,
             now,
+            current_user,
+            checklist['documents_verified'],
+            checklist['issue_investigated'],
+            checklist['requester_updated'],
+            checklist['final_confirmation_done'],
             ticket_id
         ])
 
@@ -1165,6 +1410,48 @@ def submit_resolution(ticket_id):
         conn.close()
 
         return jsonify({'message': 'Resolution submitted'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@tickets_bp.route('/<ticket_id>/reopen', methods=['POST'])
+@jwt_required()
+@scope_by_department
+def reopen_ticket(ticket_id):
+    try:
+        data = request.get_json() or {}
+        reason = (data.get('reason') or '').strip()
+        if not reason:
+            return jsonify({'error': 'Reopen reason is required'}), 400
+
+        conn = get_conn()
+        if not is_staff_role(get_current_role()) or not ensure_ticket_access(conn, ticket_id):
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        ticket = conn.execute("SELECT status FROM tickets WHERE ticket_id = ?", [ticket_id]).fetchone()
+        if not ticket:
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+        if ticket[0] not in ('Resolved', 'Closed'):
+            conn.close()
+            return jsonify({'error': 'Only resolved or closed tickets can be reopened'}), 409
+
+        current_user = get_jwt_identity()
+        now = datetime.now()
+        conn.execute("""
+            UPDATE tickets
+            SET status = 'In Progress', resolved_at = NULL, resolved_by = NULL,
+                reopened_count = COALESCE(reopened_count, 0) + 1, updated_at = ?
+            WHERE ticket_id = ?
+        """, [now, ticket_id])
+        record_ticket_activity(
+            conn, ticket_id, 'ticket_reopened', f'Ticket reopened. Reason: {reason}',
+            current_user, get_current_role(), ticket[0], 'In Progress', now
+        )
+        conn.close()
+        return jsonify({'message': 'Ticket reopened successfully'})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500

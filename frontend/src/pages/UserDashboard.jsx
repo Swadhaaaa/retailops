@@ -215,7 +215,7 @@ const staticCategories = [
   { category_id: 7, name: 'User Onboarding', description: 'Registration and profile setup queries' },
   { category_id: 8, name: 'Quality Control', description: 'Product quality and damage complaints' },
   { category_id: 9, name: 'Pricing & Billing', description: 'Pricing disputes and billing inquiries' },
-  { category_id: 10, name: 'SLA Violations', description: 'SLA delays and performance escalations' },
+  { category_id: 10, name: 'Service Delays', description: 'Service delays and performance escalations' },
   { category_id: 11, name: 'Logistics Support', description: 'Transport, routing, and carrier issues' },
   { category_id: 12, name: 'Database & Sync', description: 'Data mismatch and sync issues' },
   { category_id: 13, name: 'Account & Security', description: 'Security settings and account recovery' },
@@ -535,14 +535,6 @@ const UserDashboard = () => {
           <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H3.75A2.25 2.25 0 0 0 1.5 4.5v15a2.25 2.25 0 0 0 2.25 2.25h12a2.25 2.25 0 0 0 2.25-2.25v-3.75z" />
-            </svg>
-          </div>
-        );
-      case 'sla':
-        return (
-          <div className="w-8 h-8 rounded-full bg-yellow-50 text-yellow-600 flex items-center justify-center shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
             </svg>
           </div>
         );

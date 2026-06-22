@@ -286,17 +286,212 @@
   transform-origin: 50% 50%;
   stroke-dasharray: 48;
   stroke-dashoffset: 48;
+}
+.dot-bounce-delay-5 {
+  animation: dot-bounce 0.8s ease-in-out infinite;
+  animation-delay: 0.4s;
+}
+
+@keyframes dot-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
+
+/* ==============================================
+   QMS Premium Dashboard Showcase Animations
+   ============================================== */
+
+@keyframes soft-float-1 {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(1deg); }
+}
+
+@keyframes soft-float-2 {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-6px) translateX(4px) rotate(-1deg); }
+}
+
+@keyframes soft-float-3 {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-14px) translateX(-4px) rotate(0.5deg); }
+}
+
+@keyframes bubble-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.85; box-shadow: 0 0 0 0 rgba(227, 24, 55, 0.4); }
+  50% { transform: scale(1.08); opacity: 1; box-shadow: 0 0 12px 4px rgba(227, 24, 55, 0.2); }
+}
+
+@keyframes bubble-pulse-blue {
+  0%, 100% { transform: scale(1); opacity: 0.85; box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+  50% { transform: scale(1.08); opacity: 1; box-shadow: 0 0 12px 4px rgba(59, 130, 246, 0.2); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(1.15); }
+}
+
+.animate-soft-float-1 {
+  animation: soft-float-1 7s ease-in-out infinite;
+}
+
+.animate-soft-float-2 {
+  animation: soft-float-2 6s ease-in-out infinite;
+}
+
+.animate-soft-float-3 {
+  animation: soft-float-3 8s ease-in-out infinite;
+}
+
+.animate-bubble-pulse {
+  animation: bubble-pulse 4s ease-in-out infinite;
+}
+
+.animate-bubble-pulse-blue {
+  animation: bubble-pulse-blue 5s ease-in-out infinite;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 10s ease-in-out infinite;
+}
+
+/* Blur backdrop & glass utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-heavy {
+  background: rgba(15, 27, 76, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* ==============================
+   Staggered entry animations
+   for dashboard showcase content
+   ============================== */
+@keyframes showcase-stagger-in {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.showcase-stagger-1 {
+  animation: showcase-stagger-in 0.6s ease-out 0.1s both;
+}
+
+.showcase-stagger-2 {
+  animation: showcase-stagger-in 0.6s ease-out 0.25s both;
+}
+
+.showcase-stagger-3 {
+  animation: showcase-stagger-in 0.6s ease-out 0.4s both;
+}
+
+/* Shimmer effect for progress bars */
+@keyframes shimmer-bar {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer-bar {
+  background-size: 200% 100%;
+  animation: shimmer-bar 3s linear infinite;
+}
+
+/* Progress line grow animation */
+@keyframes progress-line-grow {
+  0% { width: 0%; }
+  100% { width: 62%; }
+}
+
+.animate-progress-line {
+  animation: progress-line-grow 1.5s ease-out 0.3s both;
+}
+
+/* Floating card hover glow */
+.glass-panel-heavy:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(227, 24, 55, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* ==============================================
+   Animated Checkmark Success Screen Styles
+   ============================================== */
+@keyframes checkmark-stroke {
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes checkmark-scale {
+  0%, 100% {
+    transform: none;
+  }
+  50% {
+    transform: scale3d(1.1, 1.1, 1);
+  }
+}
+
+@keyframes checkmark-fill {
+  100% {
+    box-shadow: inset 0px 0px 0px 40px #10b981;
+  }
+}
+
+.checkmark-circle {
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  stroke-width: 2;
+  stroke-miterlimit: 10;
+  stroke: #10b981;
+  fill: none;
+  animation: checkmark-stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.checkmark {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: block;
+  stroke-width: 2.5;
+  stroke: #fff;
+  stroke-miterlimit: 10;
+  margin: 20px auto;
+  box-shadow: inset 0px 0px 0px #10b981;
+  animation: checkmark-fill .4s ease-in-out .4s forwards, checkmark-scale .3s ease-in-out .9s forwards;
+}
+
+.checkmark-check {
+  transform-origin: 50% 50%;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
   animation: checkmark-stroke 0.35s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
 }
 
-/* SLA and Estimated Progress Bar Growth animations */
-@keyframes width-grow-sla {
+/* Progress bar growth animations */
+@keyframes width-grow-progress {
   0% { width: 0%; }
   100% { width: 99.2%; }
 }
 
-.animate-sla-line {
-  animation: width-grow-sla 1.5s ease-out 0.3s both;
+.animate-progress-line {
+  animation: width-grow-progress 1.5s ease-out 0.3s both;
 }
 
 @keyframes width-grow-est {
@@ -308,4 +503,211 @@
   animation: width-grow-est 1.5s ease-out 0.3s both;
 }
 
+/* ==============================================
+   Premium Enhanced Success Animation Styles
+   ============================================== */
 
+/* Glass bubble styling with dual red + blue glow */
+.premium-success-bubble {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    0 12px 40px 0 rgba(15, 27, 76, 0.3),
+    inset 0 0 32px 0 rgba(255, 255, 255, 0.25),
+    0 0 50px 10px rgba(227, 24, 55, 0.5),
+    0 0 60px 20px rgba(59, 130, 246, 0.4);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Bubble Intro: pop/bounce, then infinite wobble/glow, then shrink upward at 2.1s */
+@keyframes bubble-intro-keyframes {
+  0% {
+    transform: scale(0) rotate(-10deg);
+    opacity: 0;
+  }
+  15% {
+    transform: scale(1.18) rotate(6deg);
+    opacity: 1;
+  }
+  24% {
+    transform: scale(0.92) rotate(-4deg);
+  }
+  32% {
+    transform: scale(1.04) rotate(2deg);
+  }
+  40% {
+    transform: scale(0.98) rotate(-1deg);
+  }
+  48%, 84% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  /* Wobble & Glow pulse baked into intro timeline */
+  53% {
+    transform: scale(1.03) rotate(1deg) translateY(-3px);
+    box-shadow: 
+      0 12px 40px 0 rgba(15, 27, 76, 0.35),
+      inset 0 0 32px 0 rgba(255, 255, 255, 0.35),
+      0 0 60px 18px rgba(227, 24, 55, 0.6),
+      0 0 70px 28px rgba(59, 130, 246, 0.5);
+  }
+  63% {
+    transform: scale(0.97) rotate(-1.5deg) translateY(3px);
+    box-shadow: 
+      0 12px 40px 0 rgba(15, 27, 76, 0.25),
+      inset 0 0 32px 0 rgba(255, 255, 255, 0.15),
+      0 0 40px 8px rgba(227, 24, 55, 0.4),
+      0 0 50px 15px rgba(59, 130, 246, 0.3);
+  }
+  73% {
+    transform: scale(1.02) rotate(0.8deg) translateY(-1px);
+  }
+  80% {
+    transform: scale(0.99) rotate(-0.5deg) translateY(1px);
+  }
+  84% {
+    transform: scale(1) rotate(0deg) translateY(0);
+    opacity: 1;
+  }
+  /* Shrink upward / fade out at the end */
+  100% {
+    transform: scale(0.1) translateY(-140px);
+    opacity: 0;
+  }
+}
+
+.animate-bubble-intro {
+  animation: bubble-intro-keyframes 2.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+
+/* Checkmark drawing animation */
+@keyframes draw-check-success-key {
+  0% {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+  }
+  100% {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-draw-check-success {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: draw-check-success-key 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.4s forwards;
+}
+
+/* Text slide & fade animations */
+@keyframes type-slide-1-key {
+  0% {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-type-slide-1 {
+  opacity: 0;
+  animation: type-slide-1-key 0.5s cubic-bezier(0.25, 1, 0.5, 1) 0.8s forwards;
+}
+
+.animate-type-slide-2 {
+  opacity: 0;
+  animation: type-slide-1-key 0.5s cubic-bezier(0.25, 1, 0.5, 1) 1.0s forwards;
+}
+
+/* Ripple Rings */
+@keyframes ripple-key {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.6;
+  }
+  80% {
+    opacity: 0.1;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.animate-ripple-1 {
+  animation: ripple-key 2.2s cubic-bezier(0.1, 0.8, 0.3, 1) 0.2s forwards;
+}
+
+.animate-ripple-2 {
+  animation: ripple-key 2.2s cubic-bezier(0.1, 0.8, 0.3, 1) 0.4s forwards;
+}
+
+.animate-ripple-3 {
+  animation: ripple-key 2.2s cubic-bezier(0.1, 0.8, 0.3, 1) 0.6s forwards;
+}
+
+/* Floating particles */
+@keyframes float-p-1 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0; }
+  10% { opacity: 0.7; }
+  80% { opacity: 0.7; }
+  100% { transform: translate(-40px, -70px) scale(0.5); opacity: 0; }
+}
+@keyframes float-p-2 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0; }
+  10% { opacity: 0.6; }
+  80% { opacity: 0.6; }
+  100% { transform: translate(50px, -80px) scale(0.4); opacity: 0; }
+}
+@keyframes float-p-3 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0; }
+  10% { opacity: 0.8; }
+  80% { opacity: 0.8; }
+  100% { transform: translate(-30px, -60px) scale(0.3); opacity: 0; }
+}
+@keyframes float-p-4 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0; }
+  10% { opacity: 0.5; }
+  80% { opacity: 0.5; }
+  100% { transform: translate(40px, -75px) scale(0.5); opacity: 0; }
+}
+
+.animate-particle-float-1 {
+  animation: float-p-1 2.3s ease-out 0.2s forwards;
+}
+.animate-particle-float-2 {
+  animation: float-p-2 2.3s ease-out 0.3s forwards;
+}
+.animate-particle-float-3 {
+  animation: float-p-3 2.3s ease-out 0.4s forwards;
+}
+.animate-particle-float-4 {
+  animation: float-p-4 2.3s ease-out 0.5s forwards;
+}
+
+/* Pop/bounce effect for the overlay background */
+@keyframes bg-pop-success-key {
+  0% {
+    transform: scale(1);
+  }
+  20% {
+    transform: scale(1.05);
+  }
+  40% {
+    transform: scale(0.98);
+  }
+  60% {
+    transform: scale(1.015);
+  }
+  80%, 100% {
+    transform: scale(1);
+  }
+}
+.animate-bg-pop-success {
+  animation: bg-pop-success-key 1s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}

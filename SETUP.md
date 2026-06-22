@@ -116,7 +116,6 @@ If the key is missing or the request fails, the classifier catches the error and
 Useful inspection scripts:
 - `python check_data.py`
 - `python check_users.py`
-- `python check_sla.py`
 - `python view_users.py`
 - `python view_tickets.py`
 - `python view_notifications.py`
