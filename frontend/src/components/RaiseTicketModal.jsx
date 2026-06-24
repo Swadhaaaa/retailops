@@ -15,8 +15,6 @@ const RaiseTicketModal = ({
   setFormSubject,
   categories,
   setFormCategory,
-  formPriority,
-  setFormPriority,
   formDescription,
   setFormDescription,
   getAISuggestion,
@@ -31,12 +29,42 @@ const RaiseTicketModal = ({
   attachmentError,
   isSubmitting
 }) => {
+  const [validationErrors, setValidationErrors] = React.useState([]);
+
+  React.useEffect(() => {
+    if (!isOpen || isSubmittedSuccessfully) {
+      setValidationErrors([]);
+    }
+  }, [isOpen, isSubmittedSuccessfully]);
+
   if (!isOpen) return null;
 
+  const clearValidation = () => {
+    if (validationErrors.length) setValidationErrors([]);
+  };
+
+  const handleValidatedSubmit = (event) => {
+    event.preventDefault();
+
+    const missing = [];
+    if (!formSubject.trim()) missing.push('Subject / Title is required.');
+    if (!formCategory) missing.push('Category is required.');
+    if (!formDescription.trim()) missing.push('Description details are required.');
+    if (!attachment) missing.push('No attachment selected. Please attach supporting details.');
+
+    if (missing.length) {
+      setValidationErrors(missing);
+      return;
+    }
+
+    setValidationErrors([]);
+    handleSubmitTicket(event);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
       <div className="absolute inset-0 bg-brandNavy/30 backdrop-blur-sm" onClick={handleCloseModal} />
-      <div className={`relative bg-white w-full ${isCategoryLocked ? 'max-w-xl' : 'max-w-md'} rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-10 animate-scale-in transition-all duration-300`}>
+      <div className="relative z-10 w-full max-w-4xl overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-2xl animate-scale-in transition-all duration-300">
         <div className={`h-2 w-full ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
         
         {isSubmittedSuccessfully ? (
@@ -70,66 +98,73 @@ const RaiseTicketModal = ({
             )}
             <button
               onClick={handleCloseModal}
-              className={`mt-6 px-6 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-md ${buttonColor}`}
+              aria-label="Close window"
+              className={`mt-6 inline-flex h-10 w-10 items-center justify-center rounded-full text-white transition-all shadow-md ${buttonColor}`}
             >
-              Close Window
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.4" stroke="currentColor" className="h-4 w-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
         ) : (
-          <div className="p-5 sm:p-6">
-            <div className="flex items-start justify-between mb-4">
+          <div className="max-h-[86vh] overflow-y-auto p-6 sm:p-8">
+            <div className="mb-6 flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-extrabold text-brandDarkNavy font-sora">Raise New Query</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Submit a ticket to operations</p>
+                <h3 className="text-2xl font-extrabold text-brandDarkNavy font-sora">Raise New Query</h3>
+                <p className="mt-1 text-sm font-semibold text-gray-500">Submit a ticket to operations</p>
               </div>
-              <button onClick={handleCloseModal} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors flex-shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
+              <button onClick={handleCloseModal} className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="h-5 w-5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            <form onSubmit={handleSubmitTicket} className="space-y-3.5">
-              <div>
-                <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Subject / Title</label>
-                <input type="text" required placeholder={getCategoryPlaceholders(formCategory).subject}
-                  value={formSubject} onChange={e => setFormSubject(e.target.value)}
-                  className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-sm bg-gray-50/50" />
-              </div>
+            <form onSubmit={handleValidatedSubmit} noValidate className="space-y-5">
+              {validationErrors.length > 0 && (
+                <div className="rounded-xl border border-brandRed/20 bg-red-50 px-4 py-3">
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-brandRed font-sora">
+                    Please complete missing details
+                  </p>
+                  <ul className="mt-2 space-y-1 text-xs font-bold text-brandRed">
+                    {validationErrors.map((error) => (
+                      <li key={error}>{error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-5 lg:grid-cols-2">
+                <div>
+                <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Subject / Title</label>
+                <input type="text" placeholder={getCategoryPlaceholders(formCategory).subject}
+                  value={formSubject} onChange={e => { clearValidation(); setFormSubject(e.target.value); }}
+                  className={`w-full rounded-xl border bg-gray-50/50 px-4 py-3.5 text-sm outline-none transition-all focus:ring-1 focus:ring-brandNavy/20 ${validationErrors.some(error => error.includes('Subject')) ? 'border-brandRed focus:border-brandRed' : 'border-gray-200 focus:border-brandNavy'}`} />
+                </div>
+
                 <div>
                   <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">
                     Category
                   </label>
-                  <select value={formCategory} onChange={e => setFormCategory(e.target.value)} disabled={isCategoryLocked}
-                    className={`w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none transition-all text-xs bg-gray-50/50 cursor-pointer font-medium text-gray-700 ${isCategoryLocked ? 'bg-gray-150/70 border-gray-200/50 text-gray-400 cursor-not-allowed' : 'focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20'}`}>
+                  <select value={formCategory} onChange={e => { clearValidation(); setFormCategory(e.target.value); }} disabled={isCategoryLocked}
+                    className={`w-full rounded-xl border bg-gray-50/50 px-4 py-3.5 text-sm font-medium text-gray-700 outline-none transition-all cursor-pointer ${validationErrors.some(error => error.includes('Category')) ? 'border-brandRed focus:border-brandRed' : 'border-gray-200'} ${isCategoryLocked ? 'bg-gray-150/70 border-gray-200/50 text-gray-400 cursor-not-allowed' : 'focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20'}`}>
                     {categories.map(cat => <option key={cat.category_id} value={cat.category_id}>{cat.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Priority</label>
-                  <select value={formPriority} onChange={e => setFormPriority(e.target.value)}
-                    className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-xs bg-gray-50/50 cursor-pointer font-medium text-gray-700">
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                    <option value="Urgent">Urgent</option>
                   </select>
                 </div>
               </div>
 
               <div>
                 <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Description</label>
-                <textarea required rows={isCategoryLocked ? 4 : 2} placeholder={getCategoryPlaceholders(formCategory).description}
+                <textarea rows={5} placeholder={getCategoryPlaceholders(formCategory).description}
                   value={formDescription} onChange={e => {
+                    clearValidation();
                     const value = e.target.value;
                     setFormDescription(value);
                     if (!isCategoryLocked) {
                       getAISuggestion(value);
                     }
                   }}
-                  className="w-full border border-gray-200 px-3 py-2.5 rounded-lg outline-none focus:border-brandNavy focus:ring-1 focus:ring-brandNavy/20 transition-all text-sm bg-gray-50/50 resize-none font-medium text-gray-700" />
+                  className={`w-full resize-none rounded-xl border bg-gray-50/50 px-4 py-3.5 text-sm font-medium text-gray-700 outline-none transition-all focus:ring-1 focus:ring-brandNavy/20 ${validationErrors.some(error => error.includes('Description')) ? 'border-brandRed focus:border-brandRed' : 'border-gray-200 focus:border-brandNavy'}`} />
                 {!isCategoryLocked && aiLoading && (
                   <p className="mt-1.5 text-[10px] font-bold text-brandNavy">
                     Analyzing ticket...
@@ -156,25 +191,25 @@ const RaiseTicketModal = ({
                 <div
                   onDragOver={handleDragOver} onDrop={handleDrop}
                   onClick={() => document.getElementById('dashboard-file-upload').click()}
-                  className="border-2 border-dashed border-gray-200 rounded-xl p-3 text-center cursor-pointer hover:bg-gray-50/50 hover:border-brandNavy/30 transition-all flex flex-col items-center justify-center min-h-[90px]"
+                  className={`flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-5 text-center transition-all hover:border-brandNavy/30 hover:bg-gray-50/50 ${validationErrors.some(error => error.includes('attachment')) ? 'border-brandRed bg-red-50/30' : 'border-gray-200'}`}
                 >
-                  <input id="dashboard-file-upload" type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.xlsx" onChange={handleFileChange} />
+                  <input id="dashboard-file-upload" type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.xlsx" onChange={(event) => { clearValidation(); handleFileChange(event); }} />
                   {!attachment ? (
                     <>
-                      <div className="w-9 h-9 rounded-lg bg-brandNavy/10 text-brandNavy flex items-center justify-center mb-2">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-brandNavy/10 text-brandNavy">
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
                         </svg>
                       </div>
-                      <p className="text-xs font-bold text-brandDarkNavy font-sora">Click to upload or drag</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5 font-medium">PDF, JPG, PNG, XLSX (25MB max)</p>
+                      <p className="text-sm font-bold text-brandDarkNavy font-sora">Click to upload or drag</p>
+                      <p className="mt-1 text-xs font-medium text-gray-400">PDF, JPG, PNG, XLSX (25MB max)</p>
                     </>
                   ) : (
                     <div className="flex flex-col items-center">
                       <svg className="w-7 h-7 text-brandRed mb-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                       </svg>
-                      <p className="text-xs font-bold text-brandDarkNavy truncate max-w-[160px] font-sora">{attachment.name}</p>
+                      <p className="max-w-sm truncate text-sm font-bold text-brandDarkNavy font-sora">{attachment.name}</p>
                       <p className="text-[9px] text-gray-400 mt-0.5 font-bold">{(attachment.size / (1024 * 1024)).toFixed(2)} MB</p>
                       <button type="button" onClick={e => { e.stopPropagation(); setAttachment(null); }}
                         className="mt-1.5 text-[9px] font-extrabold text-brandRed hover:underline uppercase tracking-wider">
@@ -184,15 +219,18 @@ const RaiseTicketModal = ({
                   )}
                 </div>
                 {attachmentError && <p className="text-xs text-brandRed font-bold mt-1">{attachmentError}</p>}
+                {validationErrors.some(error => error.includes('attachment')) && (
+                  <p className="mt-1 text-xs font-bold text-brandRed">No attachment selected.</p>
+                )}
               </div>
 
-              <div className="pt-1 flex items-center justify-end gap-2">
+              <div className="flex items-center justify-end gap-3 pt-2">
                 <button type="button" onClick={handleCloseModal}
-                  className="px-4 py-2 rounded-lg text-xs font-bold text-gray-600 hover:text-gray-800 hover:bg-gray-100 border border-gray-200 transition-colors">
+                  className="rounded-xl border border-gray-200 px-6 py-3 text-xs font-bold text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-800">
                   Cancel
                 </button>
-                <button type="submit" disabled={isSubmitting || !formSubject || !formDescription}
-                  className={`px-5 py-2 rounded-lg text-xs font-bold text-white shadow-sm transition-all duration-300 flex items-center gap-1.5 ${buttonColor} ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                <button type="submit" disabled={isSubmitting}
+                  className={`flex items-center gap-2 rounded-xl px-8 py-3 text-xs font-bold text-white shadow-md transition-all duration-300 ${buttonColor} ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}>
                   {isSubmitting ? (
                     <><div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" /><span>Submitting...</span></>
                   ) : (

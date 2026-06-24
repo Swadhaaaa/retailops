@@ -60,7 +60,7 @@ const DashboardShowcase = () => {
               </div>
 
               <span className="px-2 py-1 rounded text-[8px] font-semibold uppercase bg-red-500/20 text-red-300 border border-red-500/30 group-hover:bg-red-500/30 transition-all">
-                Critical
+                Open
               </span>
             </div>
 
@@ -149,8 +149,8 @@ const DashboardShowcase = () => {
 
                   <span
                     className={`text-[9px] mt-1 ${status === 'active'
-                        ? 'text-blue-300 font-bold'
-                        : 'text-white/60'
+                      ? 'text-blue-300 font-bold'
+                      : 'text-white/60'
                       }`}
                   >
                     {label}
@@ -167,7 +167,7 @@ const DashboardShowcase = () => {
             </div>
 
             <p className="text-sm font-semibold text-white">
-              Swadha (Lead Ops)
+              Sahil Singh (Lead Ops)
             </p>
 
             <p className="text-[12px] text-white/70 mt-1">
@@ -302,8 +302,8 @@ const DashboardShowcase = () => {
             <div
               key={dash.id}
               className={`transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${isActive
-                  ? `relative z-10 ${contentVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-3 scale-[0.98]'}`
-                  : 'opacity-0 translate-y-4 scale-[0.96] absolute inset-0 pointer-events-none'
+                ? `relative z-10 ${contentVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-3 scale-[0.98]'}`
+                : 'opacity-0 translate-y-4 scale-[0.96] absolute inset-0 pointer-events-none'
                 }`}
             >
               <div className="flex justify-end items-center mb-2 relative z-10">
@@ -313,8 +313,8 @@ const DashboardShowcase = () => {
                       key={i}
                       onClick={() => handleTabClick(i)}
                       className={`transition-all duration-500 rounded-full ${i === activeTab
-                          ? 'bg-brandRed w-6 h-2'
-                          : 'bg-white/20 w-2 h-2'
+                        ? 'bg-brandRed w-6 h-2'
+                        : 'bg-white/20 w-2 h-2'
                         }`}
                     />
                   ))}
@@ -359,7 +359,7 @@ const DashboardShowcase = () => {
         </div>
 
         <p className="text-[9px] text-brandMuted mt-1">
-          2 High priority
+          2 waiting updates
         </p>
       </div>
 

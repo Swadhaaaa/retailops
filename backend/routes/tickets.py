@@ -625,6 +625,228 @@ def get_tickets():
         return jsonify({'error': str(e)}), 500
 
 
+@tickets_bp.route('/<ticket_id>/user-edit', methods=['PUT'])
+@jwt_required()
+def edit_user_ticket(ticket_id):
+    try:
+        current_user = get_jwt_identity()
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        category_id_raw = request.form.get('category_id')
+
+        if not title or not description or not category_id_raw:
+            return jsonify({'error': 'Title, description and category are required'}), 400
+
+        try:
+            category_id = int(category_id_raw)
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Invalid category'}), 400
+
+        conn = get_conn()
+        ticket = conn.execute("""
+            SELECT raised_by, status, title, attachment_path
+            FROM tickets
+            WHERE ticket_id = ?
+        """, [ticket_id]).fetchone()
+
+        if not ticket:
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        if ticket[0] != current_user:
+            conn.close()
+            return jsonify({'error': 'You can edit only your own ticket'}), 403
+
+        if ticket[1] != 'Open':
+            conn.close()
+            return jsonify({'error': 'Ticket can be edited only while it is open'}), 400
+
+        category = conn.execute("""
+            SELECT assigned_department
+            FROM categories
+            WHERE category_id = ?
+              AND is_active = true
+        """, [category_id]).fetchone()
+
+        if not category:
+            conn.close()
+            return jsonify({'error': 'Invalid category'}), 400
+
+        assigned_department = category[0] or 'Operations'
+        attachment_path = ticket[3]
+
+        if 'attachment' in request.files:
+            file = request.files['attachment']
+            if file and file.filename:
+                if not allowed_file(file.filename):
+                    conn.close()
+                    return jsonify({'error': 'File type not allowed'}), 400
+
+                file.seek(0, os.SEEK_END)
+                file_size = file.tell()
+                file.seek(0)
+
+                if file_size > MAX_FILE_SIZE:
+                    conn.close()
+                    return jsonify({'error': 'File size must be under 10 MB'}), 400
+
+                filename = secure_filename(file.filename)
+                unique_filename = f"{uuid.uuid4()}_{filename}"
+                file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+                file.save(file_path)
+                attachment_path = unique_filename
+
+        now = datetime.now()
+        conn.execute("""
+            UPDATE tickets
+            SET title = ?,
+                description = ?,
+                category_id = ?,
+                business_unit = ?,
+                assigned_department = ?,
+                assigned_to = ?,
+                attachment_path = ?,
+                updated_at = ?
+            WHERE ticket_id = ?
+        """, [
+            title, description, category_id, assigned_department,
+            assigned_department, assigned_department, attachment_path, now, ticket_id
+        ])
+
+        record_ticket_activity(
+            conn, ticket_id, 'user_edited', 'Ticket details edited by user',
+            current_user, 'user', ticket[2], title, now
+        )
+
+        conn.close()
+        return jsonify({'message': 'Ticket updated successfully'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@tickets_bp.route('/<ticket_id>/withdraw', methods=['POST'])
+@jwt_required()
+def withdraw_user_ticket(ticket_id):
+    try:
+        current_user = get_jwt_identity()
+        data = request.get_json(silent=True) or {}
+        reason = (data.get('reason') or '').strip()
+
+        conn = get_conn()
+        ticket = conn.execute("""
+            SELECT raised_by, status
+            FROM tickets
+            WHERE ticket_id = ?
+        """, [ticket_id]).fetchone()
+
+        if not ticket:
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        if ticket[0] != current_user:
+            conn.close()
+            return jsonify({'error': 'You can withdraw only your own ticket'}), 403
+
+        if ticket[1] != 'Open':
+            conn.close()
+            return jsonify({'error': 'Ticket can be withdrawn only while it is open'}), 400
+
+        now = datetime.now()
+        conn.execute("""
+            UPDATE tickets
+            SET status = 'Withdrawn',
+                updated_at = ?
+            WHERE ticket_id = ?
+        """, [now, ticket_id])
+
+        record_ticket_activity(
+            conn, ticket_id, 'user_withdrawn',
+            f"Ticket withdrawn by user{f': {reason}' if reason else ''}",
+            current_user, 'user', ticket[1], 'Withdrawn', now
+        )
+
+        conn.close()
+        return jsonify({'message': 'Ticket withdrawn successfully'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@tickets_bp.route('/<ticket_id>/clarification', methods=['POST'])
+@jwt_required()
+def submit_user_clarification(ticket_id):
+    try:
+        current_user = get_jwt_identity()
+        clarification = request.form.get('clarification', '').strip()
+
+        if not clarification:
+            return jsonify({'error': 'Clarification details are required'}), 400
+
+        conn = get_conn()
+        ticket = conn.execute("""
+            SELECT raised_by, status, attachment_path
+            FROM tickets
+            WHERE ticket_id = ?
+        """, [ticket_id]).fetchone()
+
+        if not ticket:
+            conn.close()
+            return jsonify({'error': 'Ticket not found'}), 404
+
+        if ticket[0] != current_user:
+            conn.close()
+            return jsonify({'error': 'You can clarify only your own ticket'}), 403
+
+        if ticket[1] != 'Needs Clarification':
+            conn.close()
+            return jsonify({'error': 'Clarification is allowed only when requested'}), 400
+
+        attachment_path = ticket[2]
+        if 'attachment' in request.files:
+            file = request.files['attachment']
+            if file and file.filename:
+                if not allowed_file(file.filename):
+                    conn.close()
+                    return jsonify({'error': 'File type not allowed'}), 400
+
+                file.seek(0, os.SEEK_END)
+                file_size = file.tell()
+                file.seek(0)
+
+                if file_size > MAX_FILE_SIZE:
+                    conn.close()
+                    return jsonify({'error': 'File size must be under 10 MB'}), 400
+
+                filename = secure_filename(file.filename)
+                unique_filename = f"{uuid.uuid4()}_{filename}"
+                file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+                file.save(file_path)
+                attachment_path = unique_filename
+
+        now = datetime.now()
+        conn.execute("""
+            UPDATE tickets
+            SET description = description || '\n\nUser clarification: ' || ?,
+                attachment_path = ?,
+                status = 'In Progress',
+                updated_at = ?
+            WHERE ticket_id = ?
+        """, [clarification, attachment_path, now, ticket_id])
+
+        record_ticket_activity(
+            conn, ticket_id, 'user_clarification',
+            f'User submitted clarification: {clarification}',
+            current_user, 'user', 'Needs Clarification', 'In Progress', now
+        )
+
+        conn.close()
+        return jsonify({'message': 'Clarification submitted successfully'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 # GET SINGLE TICKET WITH MESSAGES
 @tickets_bp.route('/<ticket_id>', methods=['GET'])
 @jwt_required()
@@ -768,13 +990,29 @@ def assign_agent(ticket_id):
         previous_agent = ticket[0]
         previous_status = ticket[1]
         now = datetime.now()
-        agent_user = conn.execute("""
+        role = get_current_role()
+        if role == 'department' and g.department:
+            agent_user = conn.execute("""
+            SELECT user_id, name
+            FROM users
+            WHERE role = 'department'
+              AND department = ?
+              AND (name = ? OR email = ? OR user_id = ?)
+            LIMIT 1
+        """, [g.department, agent, agent, agent]).fetchone()
+        else:
+            agent_user = conn.execute("""
             SELECT user_id
             FROM users
             WHERE role = 'department'
               AND (name = ? OR email = ? OR user_id = ?)
             LIMIT 1
         """, [agent, agent, agent]).fetchone()
+
+        if role == 'department' and not agent_user:
+            conn.close()
+            return jsonify({'error': 'Agent must be a user in your department'}), 400
+
         claimed_by = agent_user[0] if agent_user else None
 
         conn.execute("""
@@ -831,6 +1069,7 @@ def update_ticket_status(ticket_id):
     try:
         data = request.get_json()
         status = data.get('status')
+        clarification_note = (data.get('clarification_note') or '').strip()
 
         valid_statuses = [
             'Open',
@@ -878,8 +1117,9 @@ def update_ticket_status(ticket_id):
             WHERE ticket_id = ?
         """, [status, now, resolved_at, ticket_id])
 
+        current_user = get_jwt_identity()
+
         if previous_status != status:
-            current_user = get_jwt_identity()
             record_ticket_activity(
                 conn,
                 ticket_id,
@@ -904,6 +1144,19 @@ def update_ticket_status(ticket_id):
                     'Closed',
                     now
                 )
+
+        if status == 'Needs Clarification' and clarification_note:
+            record_ticket_activity(
+                conn,
+                ticket_id,
+                'clarification_requested',
+                f'Clarification requested: {clarification_note}',
+                current_user,
+                None,
+                None,
+                'Needs Clarification',
+                now
+            )
 
         # TEMPORARILY DISABLED - MESSAGES FEATURE
         # Notification records are part of the disabled Messages/Notifications surface.

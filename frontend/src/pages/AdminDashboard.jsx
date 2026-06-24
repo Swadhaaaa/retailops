@@ -1,7 +1,8 @@
 import React, { useContext, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Bar, Doughnut, Line, PolarArea } from 'react-chartjs-2';
+import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import {
   BarElement,
   CategoryScale,
@@ -11,7 +12,6 @@ import {
   LinearScale,
   LineElement,
   PointElement,
-  RadialLinearScale,
   Tooltip,
   ArcElement
 } from 'chart.js';
@@ -28,7 +28,6 @@ ChartJS.register(
   LinearScale,
   LineElement,
   PointElement,
-  RadialLinearScale,
   Tooltip
 );
 
@@ -135,6 +134,8 @@ const AdminDashboard = () => {
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
   const [isAdminFormOpen, setIsAdminFormOpen] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState(null);
+  const [selectedDepartmentName, setSelectedDepartmentName] = useState('');
+  const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState('All');
   const [adminForm, setAdminForm] = useState({
     name: '',
     email: '',
@@ -324,19 +325,6 @@ const AdminDashboard = () => {
     } catch (err) {
       console.error('Error updating query status:', err);
       alert('Failed to update status.');
-    }
-  };
-
-  const handleQueryPriorityChange = async (priority) => {
-    if (!queryTicket) return;
-    try {
-      await api.put(`/tickets/${queryTicket.ticket_id}/priority`, { priority });
-      await fetchTickets({ silent: true });
-      await refreshQueryTicket(queryTicket.ticket_id);
-      notifyTicketsChanged();
-    } catch (err) {
-      console.error('Error updating query priority:', err);
-      alert('Failed to update priority.');
     }
   };
 
@@ -745,8 +733,6 @@ const AdminDashboard = () => {
         return 'bg-brandNavy/10 text-brandNavy border-brandNavy/20';
       case 'Resolved':
         return 'bg-green-50 text-green-700 border-green-200';
-      case 'Urgent':
-        return 'bg-brandRed/10 text-brandRed border-brandRed/20';
       default:
         return 'bg-gray-100 text-gray-700 border-gray-200';
     }
@@ -1087,17 +1073,6 @@ const AdminDashboard = () => {
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         )
-      },
-      {
-        label: 'Avg Resolution Time',
-        value: formatHours(avgResolutionHours),
-        trend: resolvedCount ? 'Based on resolved ticket age' : 'Waiting for resolved tickets',
-        bgIcon: 'bg-brandRed/10 text-brandRed',
-        icon: (
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        )
       }
     ];
 
@@ -1110,12 +1085,8 @@ const AdminDashboard = () => {
               Good Morning, Admin!
             </h1>
             <p className="text-xs text-slate-400 mt-2 font-medium font-dmSans">
-              z
+              Here's the overview of all tickets!
             </p>
-          </div>
-          <div className="flex items-center space-x-2 premium-glass-soft rounded-2xl px-4 py-2 premium-hover">
-            <div className="w-2 h-2 rounded-full bg-brandRed animate-pulse" />
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-sora">Live Monitoring</span>
           </div>
         </div>
 
@@ -1139,7 +1110,7 @@ const AdminDashboard = () => {
         )}
 
         {/* ── 4 Premium Stat Cards ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           {statCards.map((card, i) => (
             <div key={i} className="premium-glass premium-hover rounded-[22px] p-5 relative group overflow-hidden">
               <div className={`absolute inset-x-0 bottom-0 h-1 ${i % 2 === 0 ? 'bg-brandNavy/70' : 'bg-brandRed/70'} opacity-80`} />
@@ -1165,7 +1136,7 @@ const AdminDashboard = () => {
         {/* ── Charts Row (2 columns) ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Vertical Bar Chart - Tickets by Department */}
-          <div className="premium-glass premium-hover rounded-[22px] p-6">
+          <div className="premium-glass premium-hover rounded-[22px] border border-brandRed/25 p-6">
             <div className="mb-6">
               <h2 className="text-sm font-extrabold text-slate-800 font-sora">Tickets by Department</h2>
               <p className="text-[10px] text-slate-400 mt-0.5 font-dmSans font-medium">Distribution across key operational segments</p>
@@ -1181,7 +1152,7 @@ const AdminDashboard = () => {
             </div>
           </div>
           {/* Curved Line Chart - Monthly Ticket Trends */}
-          <div className="premium-glass premium-hover rounded-[22px] p-6">
+          <div className="premium-glass premium-hover rounded-[22px] border border-brandNavy/25 p-6">
             <div className="mb-6">
               <h2 className="text-sm font-extrabold text-slate-800 font-sora">Monthly Ticket Trends</h2>
               <p className="text-[10px] text-slate-400 mt-0.5 font-dmSans font-medium">6-month ticket submission rates</p>
@@ -1198,10 +1169,10 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Status and priority row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Status row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Column 1: Ticket Status (Doughnut Chart) */}
-          <div className="premium-glass premium-hover rounded-[22px] p-6 flex flex-col justify-between">
+          <div className="premium-glass premium-hover rounded-[22px] border border-brandRed/25 p-6 flex flex-col justify-between">
             <h2 className="text-sm font-extrabold text-slate-800 font-sora mb-4">Ticket Status</h2>
             <div className="flex items-center justify-between gap-5 flex-1 py-1">
               <div className="relative w-32 h-32 shrink-0">
@@ -1237,28 +1208,8 @@ const AdminDashboard = () => {
               </div>
             </div>
           </div>
-          {/* Column 2: Resolution Summary */}
-          <div className="premium-glass premium-hover rounded-[22px] p-6 flex flex-col justify-between">
-            <h2 className="text-sm font-extrabold text-slate-800 font-sora mb-4">Resolution Summary</h2>
-            <div className="space-y-3 flex-1 flex flex-col justify-center">
-              {[
-                { label: 'Average Resolution Time', value: formatHours(avgResolutionHours) },
-                { label: 'Resolved Tickets', value: resolvedCount },
-                { label: 'Open Queue', value: openCount + progressCount }
-              ].map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between rounded-2xl border border-white/60 bg-white/60 px-4 py-3 shadow-sm backdrop-blur-md">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 font-dmSans">{item.label}</span>
-                  <span className="text-sm font-extrabold text-brandNavy font-sora">{item.value}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 px-4 py-2.5 bg-brandNavy/5 border border-brandNavy/10 rounded-2xl text-[10px] text-brandNavy font-bold font-dmSans backdrop-blur-md">
-              Resolution time is calculated from available ticket creation timestamps returned by the existing admin endpoint.
-            </div>
-          </div>
-
-          {/* Column 3: Queue Snapshot */}
-          <div className="premium-glass premium-hover rounded-[22px] p-6 flex flex-col">
+          {/* Column 2: Queue Snapshot */}
+          <div className="premium-glass premium-hover rounded-[22px] border border-brandNavy/25 p-6 flex flex-col">
             <h2 className="text-sm font-extrabold text-slate-800 font-sora mb-4">Queue Snapshot</h2>
             <div className="space-y-2.5 flex-1 flex flex-col justify-center">
               {[
@@ -1267,7 +1218,7 @@ const AdminDashboard = () => {
                 { label: 'Closed Tickets', value: closedCount },
                 { label: 'Unassigned Tickets', value: tickets.filter(t => !t.assigned_to || t.assigned_to === 'Unassigned').length }
               ].map((stat, i) => (
-                <div key={i} className="flex items-center justify-between px-4 py-2.5 rounded-2xl border border-white/60 bg-white/70 text-brandNavy shadow-sm backdrop-blur-md">
+                <div key={i} className={`flex items-center justify-between px-4 py-2.5 rounded-2xl border bg-white/70 text-brandNavy shadow-sm backdrop-blur-md ${i % 2 === 0 ? 'border-brandRed/25' : 'border-brandNavy/25'}`}>
                   <div className="flex items-center space-x-2.5">
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${i % 2 === 0 ? 'bg-brandRed' : 'bg-brandNavy'}`} />
                     <span className="text-[10px] font-bold uppercase tracking-wider font-dmSans">{stat.label}</span>
@@ -1280,18 +1231,18 @@ const AdminDashboard = () => {
         </div>
 
         {/* ── Recent Tickets Table ── */}
-        <div className="premium-glass rounded-[22px] overflow-hidden">
-          <div className="px-6 py-5 border-b border-white/60 flex items-center justify-between flex-wrap gap-3">
+        <div className="min-w-0 overflow-hidden rounded-[20px] border border-brandRed/25 bg-white shadow-[0_12px_35px_rgba(15,27,76,0.055)]">
+          <div className="border-b border-slate-100 p-4 flex items-center justify-between flex-wrap gap-3">
             <div>
-              <h2 className="text-sm font-extrabold text-slate-800 font-sora">Recent Tickets</h2>
-              <p className="text-[10px] text-slate-400 mt-0.5 font-dmSans font-medium">Click on any Ticket ID to review activity and respond in the slide-over details panel.</p>
+              <p className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-brandRed">Live Admin Queue</p>
+              <h2 className="mt-1 font-sora text-base font-extrabold text-brandDarkNavy">Recent Tickets</h2>
             </div>
-            <span className="text-[10px] font-bold text-brandNavy bg-brandNavy/10 border border-brandNavy/20 px-3 py-1 rounded-full font-sora">
+            <span className="rounded-full border border-brandNavy/20 bg-brandNavy/10 px-3 py-1 text-[10px] font-extrabold text-brandNavy font-sora">
               {tickets.length} Active Queries
             </span>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="max-h-[620px] overflow-auto">
             {loading ? (
               <div className="py-12 flex flex-col items-center justify-center text-slate-400">
                 <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-brandNavy mb-3" />
@@ -1303,91 +1254,79 @@ const AdminDashboard = () => {
                 <p className="text-xs text-slate-400 mt-1 font-dmSans">Seeded tickets will appear here once seeded.</p>
               </div>
             ) : (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-white/55 text-[9px] text-slate-400 font-extrabold font-sora tracking-widest border-b border-white/70 uppercase backdrop-blur-md">
-                    <th className="py-3.5 px-6">Ticket ID</th>
-                    <th className="py-3.5 px-6">User Name</th>
-                    <th className="py-3.5 px-6">Category</th>
-                    <th className="py-3.5 px-6">Assigned Department</th>
-                    <th className="py-3.5 px-6">Priority</th>
-                    <th className="py-3.5 px-6">Status</th>
-                    <th className="py-3.5 px-6">Created</th>
+              <table className="w-full min-w-[1050px] text-left">
+                <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
+                  <tr className="border-b border-slate-200 text-[9px] uppercase tracking-[0.14em] text-slate-400">
+                    <th className="px-5 py-3">Ticket</th>
+                    <th className="px-4 py-3">User Name</th>
+                    <th className="px-4 py-3">Category</th>
+                    <th className="px-4 py-3 text-center">Assigned Department</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Created</th>
+                    <th className="px-4 py-3 text-center">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/70">
+                <tbody className="divide-y divide-slate-100">
                   {tickets.map((query) => {
                     const vendorName = query.vendor_name || query.raised_by.split('@')[0];
                     const categoryLabel = query.category_name || `Cat #${query.category_id}`;
                     const teamLabel = getTicketDepartment(query);
 
-                    // Dynamic colors for priority pills
-                    let priorityStyle = 'bg-slate-50 text-slate-600 border-slate-200';
-                    const prio = query.priority || 'Medium';
-                    if (prio === 'Critical' || prio === 'Urgent') {
-                      priorityStyle = 'bg-brandRed/10 text-brandRed border-brandRed/20';
-                    } else if (prio === 'High') {
-                      priorityStyle = 'bg-brandRed/10 text-brandRed border-brandRed/20';
-                    } else if (prio === 'Medium') {
-                      priorityStyle = 'bg-brandNavy/10 text-brandNavy border-brandNavy/20';
-                    } else if (prio === 'Low') {
-                      priorityStyle = 'bg-brandNavy/10 text-brandNavy border-brandNavy/20';
-                    }
-
                     // Dynamic status styling
-                    let statusStyle = 'bg-slate-50 text-slate-600 border-slate-200';
+                    let statusStyle = 'border-slate-200 bg-slate-50 text-slate-700';
                     const stat = query.status || 'Open';
                     if (stat === 'Open') {
-                      statusStyle = 'bg-brandNavy/10 text-brandNavy border-brandNavy/20';
+                      statusStyle = 'border-slate-200 bg-slate-50 text-brandNavy';
                     } else if (stat === 'In Progress') {
-                      statusStyle = 'bg-brandRed/10 text-brandRed border-brandRed/20';
+                      statusStyle = 'border-blue-200 bg-blue-50 text-blue-700';
+                    } else if (stat === 'Under Review') {
+                      statusStyle = 'border-amber-200 bg-amber-50 text-amber-700';
+                    } else if (stat === 'Needs Clarification') {
+                      statusStyle = 'border-amber-200 bg-amber-50 text-amber-700';
                     } else if (stat === 'Resolved') {
-                      statusStyle = 'bg-green-50 text-green-700 border-green-200';
+                      statusStyle = 'border-emerald-200 bg-emerald-50 text-emerald-700';
                     } else if (stat === 'Closed') {
-                      statusStyle = 'bg-slate-150 bg-slate-100 text-slate-600 border-slate-250';
+                      statusStyle = 'border-slate-200 bg-slate-100 text-slate-600';
                     }
 
                     return (
                       <tr 
                         key={query.ticket_id} 
-                        className="premium-table-row group"
+                        className="group transition-colors duration-200 hover:bg-blue-50/45"
                       >
-                        {/* ID Clickable Link */}
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-5 py-3.5">
                           <button
                             onClick={() => handleOpenDrawer(query)}
-                            className="text-xs font-extrabold text-brandNavy hover:text-brandNavy font-sora hover:underline"
+                            className="font-sora text-[11px] font-extrabold text-brandNavy hover:underline"
                           >
-                            {query.ticket_id}
+                            #{query.ticket_id}
                           </button>
+                          <p className="mt-0.5 max-w-[240px] truncate text-xs font-bold text-slate-700">{query.title || query.description || 'Ticket details'}</p>
                         </td>
-                        {/* User Name */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-xs font-bold text-slate-700 font-dmSans">{vendorName}</span>
+                        <td className="px-4 py-3.5 text-[11px] font-semibold text-slate-600">
+                          {vendorName}
                         </td>
-                        {/* Category */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-xs font-semibold text-slate-550 font-dmSans">{categoryLabel}</span>
+                        <td className="px-4 py-3.5 text-[11px] font-semibold text-slate-600">
+                          {categoryLabel}
                         </td>
-                        {/* Assigned Department */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-xs font-semibold text-slate-500 font-dmSans">{teamLabel}</span>
+                        <td className="px-4 py-3.5 text-center text-[11px] font-semibold text-slate-600">
+                          {teamLabel}
                         </td>
-                        {/* Priority Badge */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border font-sora ${priorityStyle}`}>
-                            {prio === 'Urgent' ? 'Critical' : prio}
-                          </span>
-                        </td>
-                        {/* Status Badge */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border font-sora ${statusStyle}`}>
+                        <td className="px-4 py-3.5">
+                          <span className={`inline-flex min-w-[82px] justify-center rounded-full border px-2.5 py-1 text-[9px] font-extrabold ${statusStyle}`}>
                             {stat}
                           </span>
                         </td>
-                        {/* Relative Creation Date */}
-                        <td className="px-6 py-4 whitespace-nowrap text-xs font-semibold text-slate-400 font-dmSans">
+                        <td className="whitespace-nowrap px-4 py-3.5 text-[10px] font-bold text-slate-500">
                           {getRelativeTime(query.created_at)}
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
+                          <button
+                            onClick={() => handleOpenDrawer(query)}
+                            className="min-w-[112px] rounded-lg border border-brandNavy bg-brandNavy px-3 py-1.5 text-[9px] font-extrabold text-white shadow-sm transition-all duration-200 hover:-translate-y-px hover:border-brandRed hover:bg-brandRed hover:shadow-md"
+                          >
+                            Process / View
+                          </button>
                         </td>
                       </tr>
                     );
@@ -1562,7 +1501,6 @@ const AdminDashboard = () => {
                         </div>
                         <div className="flex flex-wrap items-center gap-2 mt-4 text-[10px] font-bold text-slate-500">
                           <span className="rounded-full bg-white/75 border border-white px-3 py-1 shadow-sm">Created: {getRelativeTime(selectedTicket.created_at)}</span>
-                          <span className="rounded-full bg-white/75 border border-white px-3 py-1 shadow-sm">Priority: <b className={selectedTicket.priority === 'Critical' || selectedTicket.priority === 'Urgent' || selectedTicket.priority === 'High' ? 'text-brandRed' : 'text-brandNavy'}>{selectedTicket.priority}</b></span>
                           <span className="rounded-full bg-white/75 border border-white px-3 py-1 shadow-sm">Category: {selectedTicket.category_name || `Category #${selectedTicket.category_id}`}</span>
                         </div>
                       </div>
@@ -1639,38 +1577,38 @@ const AdminDashboard = () => {
                     )}
                   </section>
 
-                  <section className="border-t border-slate-100 pt-5">
-                    <div className="mb-4 flex items-center gap-2">
-                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-brandNavy/10 text-brandNavy text-[10px] font-extrabold">T</span>
+                  <section className="border-t border-slate-100 pt-3">
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-brandNavy/10 text-brandNavy text-[9px] font-extrabold">T</span>
                       <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora">Activity Timeline</h3>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Latest first</span>
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-slate-500">Latest first</span>
                     </div>
-                    <div className="relative rounded-[18px] border border-slate-100 bg-slate-50/70 p-4">
-                      <div className="absolute left-[23px] top-7 bottom-7 w-px bg-gradient-to-b from-brandRed/40 via-brandNavy/20 to-slate-200" />
-                      <div className="space-y-4">
+                    <div className="relative rounded-xl border border-slate-100 bg-slate-50/70 p-2">
+                      <div className="absolute left-[15px] top-4 bottom-4 w-px bg-gradient-to-b from-brandRed/35 via-brandNavy/15 to-slate-200" />
+                      <div className="space-y-1.5">
                       {timeline.map((item, index) => (
-                        <div key={`${item.label}-${item.time}-${index}`} className="relative flex gap-3">
-                          <div className={`mt-1 w-3 h-3 rounded-full shrink-0 ring-4 ring-white shadow-sm ${
+                        <div key={`${item.label}-${item.time}-${index}`} className="relative flex gap-2">
+                          <div className={`mt-2 h-2.5 w-2.5 rounded-full shrink-0 ring-[3px] ring-white shadow-sm ${
                             item.tone === 'green'
                               ? 'bg-green-500'
                               : item.tone === 'brandRed'
                                 ? 'bg-brandRed'
                                 : 'bg-brandNavy'
                           }`} />
-                          <div className="rounded-2xl bg-white/80 border border-white px-3 py-2 shadow-sm flex-1">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <p className="text-[10px] font-bold text-slate-400">{getRelativeTime(item.time)}</p>
-                              <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-slate-400">
-                                {index === 0 ? 'Latest update' : 'History'}
+                          <div className="flex-1 rounded-xl border border-white bg-white/85 px-2.5 py-1.5 shadow-sm">
+                            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                              <p className="text-[9px] font-bold text-slate-400">{getRelativeTime(item.time)}</p>
+                              <span className="text-[9px] font-extrabold text-brandDarkNavy">{item.actor}</span>
+                              <p className="min-w-[180px] flex-1 truncate text-[11px] font-semibold text-slate-600">{item.label}</p>
+                              <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[7px] font-extrabold uppercase tracking-wider text-slate-400">
+                                {index === 0 ? 'Latest' : 'History'}
                               </span>
                             </div>
-                            <p className="text-xs font-extrabold text-brandDarkNavy mt-0.5">{item.actor}</p>
-                            <p className="text-xs font-semibold text-slate-600 mt-1 leading-relaxed">{item.label}</p>
                             {(item.fromValue || item.toValue) && (
-                              <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">
-                                {item.fromValue && <span className="rounded-full bg-slate-50 px-2 py-0.5">{item.fromValue}</span>}
+                              <div className="mt-1 flex flex-wrap items-center gap-1 text-[8px] font-extrabold uppercase tracking-wider text-slate-400">
+                                {item.fromValue && <span className="rounded-full bg-slate-50 px-1.5 py-0.5">{item.fromValue}</span>}
                                 {item.fromValue && item.toValue && <span>to</span>}
-                                {item.toValue && <span className="rounded-full bg-brandNavy/10 px-2 py-0.5 text-brandNavy">{item.toValue}</span>}
+                                {item.toValue && <span className="rounded-full bg-brandNavy/10 px-1.5 py-0.5 text-brandNavy">{item.toValue}</span>}
                               </div>
                             )}
                           </div>
@@ -1728,19 +1666,6 @@ const AdminDashboard = () => {
                   </div>
                   <div>
                     <label className="mb-2 flex items-center gap-2 text-xs font-extrabold text-brandDarkNavy font-sora">
-                      <span className="rounded-full bg-brandRed/10 px-2 py-0.5 text-[9px] text-brandRed">Priority</span>
-                      Change Priority
-                    </label>
-                    <select value={selectedTicket.priority || 'Medium'} onChange={e => handleQueryPriorityChange(e.target.value)} className="w-full rounded-2xl border-2 border-brandRed/18 bg-white/90 px-3 py-3 text-xs font-bold outline-none focus:border-brandRed shadow-sm shadow-brandRed/5">
-                      <option value="Low">Low</option>
-                      <option value="Medium">Medium</option>
-                      <option value="High">High</option>
-                      <option value="Critical">Critical</option>
-                      <option value="Urgent">Urgent</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-2 flex items-center gap-2 text-xs font-extrabold text-brandDarkNavy font-sora">
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] text-slate-500">Team</span>
                       Assign Team
                     </label>
@@ -1758,7 +1683,7 @@ const AdminDashboard = () => {
                   <select onChange={e => e.target.value && handleQueryStatusChange(e.target.value)} defaultValue="" className="w-full rounded-2xl border-2 border-brandNavy/12 bg-white/90 px-3 py-3 text-xs font-bold text-brandNavy outline-none focus:border-brandNavy shadow-sm shadow-brandNavy/5">
                     <option value="">More Actions</option>
                     <option value="Needs Clarification">Waiting for User</option>
-                    <option value="Closed">Close Ticket</option>
+                    <option value="Closed">Complete Ticket</option>
                   </select>
 
                   <div className="rounded-2xl border-2 border-brandNavy/12 bg-gradient-to-br from-brandNavy/[0.07] to-white p-4 backdrop-blur-md">
@@ -1802,7 +1727,6 @@ const AdminDashboard = () => {
     const progressCount = tickets.filter(t => t.status === 'In Progress' || t.status === 'Under Review').length;
     const waitingCount = tickets.filter(t => t.status === 'Needs Clarification').length;
     const resolvedCount = tickets.filter(t => isResolvedStatus(t.status)).length;
-    const urgentCount = tickets.filter(t => t.priority === 'Urgent' || t.priority === 'Critical' || t.priority === 'High').length;
     const unassignedCount = tickets.filter(t => !t.assigned_to || t.assigned_to === 'Unassigned').length;
     const completionRate = totalCount ? Math.round((resolvedCount / totalCount) * 100) : 0;
 
@@ -1834,15 +1758,10 @@ const AdminDashboard = () => {
     const teamLabels = teamData.length ? teamData.map(([team]) => team) : ['No tickets'];
     const teamValues = teamData.length ? teamData.map(([, count]) => count) : [0];
 
-    const priorityOrder = ['Low', 'Medium', 'High', 'Critical', 'Urgent'];
-    const priorityValues = priorityOrder.map(priority => tickets.filter(t => t.priority === priority).length);
-
     const chartBlue = '#0F1B4C';
     const chartRed = '#E31837';
     const chartAmber = '#F59E0B';
     const chartGreen = '#10B981';
-    const chartMuted = '#CBD5E1';
-    const priorityColors = [chartMuted, chartBlue, chartAmber, chartRed, '#B91C1C'];
 
     const chartOptions = {
       responsive: true,
@@ -1892,31 +1811,6 @@ const AdminDashboard = () => {
       }
     };
 
-    const polarOptions = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: 'rgba(15, 27, 76, 0.92)',
-          titleColor: '#ffffff',
-          bodyColor: '#ffffff',
-          padding: 12,
-          cornerRadius: 12,
-          displayColors: false
-        }
-      },
-      scales: {
-        r: {
-          beginAtZero: true,
-          ticks: { display: false, precision: 0 },
-          grid: { color: 'rgba(148, 163, 184, 0.2)' },
-          angleLines: { color: 'rgba(148, 163, 184, 0.18)' },
-          pointLabels: { color: '#64748B', font: { size: 10, weight: '700' } }
-        }
-      }
-    };
-
     const trendChartData = {
       labels: monthLabels,
       datasets: [{
@@ -1958,21 +1852,10 @@ const AdminDashboard = () => {
       }]
     };
 
-    const priorityChartData = {
-      labels: priorityOrder,
-      datasets: [{
-        label: 'Tickets',
-        data: priorityValues,
-        backgroundColor: priorityColors.map(color => `${color}CC`),
-        borderColor: '#ffffff',
-        borderWidth: 2
-      }]
-    };
-
     const analyticsCards = [
       { label: 'Total Tickets', value: totalCount, sub: 'All admin-visible tickets', color: 'text-brandNavy' },
       { label: 'Completion Rate', value: `${completionRate}%`, sub: `${resolvedCount} resolved or closed`, color: 'text-green-600' },
-      { label: 'Priority Queue', value: urgentCount, sub: 'High, critical, or urgent', color: 'text-brandRed' },
+      { label: 'Waiting for User', value: waitingCount, sub: 'Needs clarification', color: 'text-brandRed' },
       { label: 'Unassigned', value: unassignedCount, sub: 'Needs ownership', color: 'text-amber-600' }
     ];
 
@@ -2056,29 +1939,20 @@ const AdminDashboard = () => {
               </div>
 
               <div className="premium-glass premium-hover rounded-[22px] p-6 xl:col-span-2">
-                <h2 className="text-sm font-extrabold text-slate-800 font-sora">Priority Mix</h2>
-                <p className="text-[10px] text-slate-400 mt-0.5 font-dmSans font-medium">Polar view of workload urgency</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-center mt-5">
-                  <div className="h-64">
-                    {totalCount ? (
-                      <PolarArea data={priorityChartData} options={polarOptions} />
-                    ) : (
-                      <div className="h-full flex items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs font-bold text-slate-400">
-                        No priority data available
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-2.5">
-                    {priorityOrder.map((priority, index) => (
-                      <div key={priority} className="flex items-center justify-between rounded-2xl border border-white/60 bg-white/70 px-4 py-2.5 shadow-sm backdrop-blur-md">
-                        <div className="flex items-center gap-2.5">
-                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: priorityColors[index] }} />
-                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 font-sora">{priority}</span>
-                        </div>
-                        <span className="text-sm font-extrabold text-brandNavy font-sora">{priorityValues[index]}</span>
-                      </div>
-                    ))}
-                  </div>
+                <h2 className="text-sm font-extrabold text-slate-800 font-sora">Status Overview</h2>
+                <p className="text-[10px] text-slate-400 mt-0.5 font-dmSans font-medium">Current workload grouped by state</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
+                  {[
+                    ['Open', openCount, 'bg-brandRed/10 text-brandRed border-brandRed/20'],
+                    ['In Progress / Review', progressCount, 'bg-amber-50 text-amber-700 border-amber-200'],
+                    ['Waiting for User', waitingCount, 'bg-brandNavy/10 text-brandNavy border-brandNavy/20'],
+                    ['Resolved / Closed', resolvedCount, 'bg-green-50 text-green-700 border-green-200']
+                  ].map(([label, value, style]) => (
+                    <div key={label} className={`rounded-2xl border px-4 py-5 ${style}`}>
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider font-sora">{label}</p>
+                      <p className="text-2xl font-extrabold mt-2 font-sora">{value}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -2191,6 +2065,26 @@ const AdminDashboard = () => {
 
     const totalMembers = departmentStats.reduce((sum, department) => sum + department.members, 0);
     const totalTickets = departmentStats.reduce((sum, department) => sum + department.total, 0);
+    const selectedDepartment = departmentStats.find((department) => department.name === selectedDepartmentName);
+    const selectedDepartmentTickets = selectedDepartment
+      ? tickets.filter((ticket) => getTicketDepartment(ticket) === selectedDepartment.name)
+      : [];
+    const selectedDepartmentFilteredTickets = selectedDepartmentTickets.filter((ticket) => {
+      if (selectedDepartmentFilter === 'Open') return ticket.status === 'Open';
+      if (selectedDepartmentFilter === 'In Progress') return ticket.status === 'In Progress';
+      if (selectedDepartmentFilter === 'Resolved') return ticket.status === 'Resolved' || ticket.status === 'Closed';
+      return true;
+    });
+    const selectedDepartmentRecentTickets = selectedDepartmentFilteredTickets.slice(0, 4);
+    const formatDepartmentTicketDate = (dateStr) => {
+      if (!dateStr) return 'No date';
+      const date = new Date(dateStr);
+      return Number.isNaN(date.getTime()) ? 'No date' : date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+    };
+    const openDepartmentOverview = (departmentName, filter = 'All') => {
+      setSelectedDepartmentName(departmentName);
+      setSelectedDepartmentFilter(filter);
+    };
 
     return (
       <div className="space-y-6 text-left">
@@ -2231,11 +2125,105 @@ const AdminDashboard = () => {
           ))}
         </div>
 
+        {selectedDepartment && createPortal((
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-brandDarkNavy/45 p-4 backdrop-blur-sm">
+            <button
+              type="button"
+              className="absolute inset-0"
+              aria-label="Close department overview"
+              onClick={() => {
+                setSelectedDepartmentName('');
+                setSelectedDepartmentFilter('All');
+              }}
+            />
+            <div className="relative w-full max-w-4xl overflow-hidden rounded-[22px] border border-white/70 bg-white shadow-[0_28px_90px_rgba(15,27,76,0.28)]">
+              <div className="h-1.5 bg-gradient-to-r from-brandNavy via-blue-600 to-brandRed" />
+              <div className="p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-brandRed">Department Overview</p>
+                    <h3 className="mt-1 font-sora text-2xl font-extrabold text-brandNavy">{selectedDepartment.name}</h3>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">Head: {selectedDepartment.head} | Showing {selectedDepartmentFilter === 'All' ? 'all tickets' : selectedDepartmentFilter}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedDepartmentName('');
+                      setSelectedDepartmentFilter('All');
+                    }}
+                    aria-label="Close department overview"
+                    className="flex h-9 w-9 items-center justify-center self-start rounded-full border border-slate-200 bg-white text-slate-400 transition hover:border-brandRed/30 hover:text-brandRed"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.4" stroke="currentColor" className="h-4 w-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
+                  {[
+                    ['Members', selectedDepartment.members],
+                    ['Total Tickets', selectedDepartment.total],
+                    ['Open', selectedDepartment.open],
+                    ['In Progress', selectedDepartment.inProgress],
+                    ['Resolved', selectedDepartment.resolved]
+                  ].map(([label, value], index) => (
+                    <div key={label} className={`rounded-2xl border px-4 py-3 ${index % 2 === 0 ? 'border-brandNavy/25 bg-brandNavy/[0.03]' : 'border-brandRed/25 bg-brandRed/[0.03]'}`}>
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">{label}</p>
+                      <p className="mt-1 font-sora text-xl font-extrabold text-brandNavy">{value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-5 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+                  <div className="rounded-2xl border border-brandNavy/25 bg-white px-4 py-3">
+                    <div className="flex justify-between text-xs font-bold text-slate-500">
+                      <span>Resolution Rate</span>
+                      <span className="text-brandNavy">{selectedDepartment.resolutionRate}%</span>
+                    </div>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
+                      <div className="h-full rounded-full bg-brandNavy" style={{ width: `${selectedDepartment.resolutionRate}%` }} />
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-brandRed/25 bg-white px-4 py-3">
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">{selectedDepartmentFilter === 'All' ? 'Recent Tickets' : `${selectedDepartmentFilter} Tickets`}</p>
+                    <div className="mt-2 max-h-64 space-y-2 overflow-y-auto">
+                      {selectedDepartmentRecentTickets.length ? selectedDepartmentRecentTickets.map((ticket, index) => (
+                        <div key={ticket.ticket_id} className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${index % 2 === 0 ? 'border-brandNavy/20 bg-brandNavy/[0.03]' : 'border-brandRed/20 bg-brandRed/[0.03]'}`}>
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-extrabold text-brandNavy">#{ticket.ticket_id || 'N/A'} - {ticket.title || 'Untitled ticket'}</p>
+                            <p className="mt-0.5 text-[10px] font-semibold text-slate-400">{ticket.vendor_name || ticket.raised_by || 'Requester'} | {formatDepartmentTicketDate(ticket.created_at)}</p>
+                          </div>
+                          <span className="shrink-0 rounded-full border border-brandNavy/10 bg-brandNavy/5 px-2.5 py-1 text-[9px] font-extrabold text-brandNavy">{ticket.status || 'Open'}</span>
+                        </div>
+                      )) : (
+                        <p className="rounded-xl bg-slate-50 px-3 py-3 text-xs font-bold text-slate-400">No tickets found for this department yet.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ), document.body)}
+
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
           {departmentStats.map((department) => {
             const styles = accentStyles[department.accent] || accentStyles.brandNavy;
             return (
-              <div key={department.name} className={`premium-glass rounded-[20px] border overflow-hidden bg-gradient-to-br ${styles.card}`}>
+              <div
+                role="button"
+                tabIndex={0}
+                key={department.name}
+                onClick={() => openDepartmentOverview(department.name)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openDepartmentOverview(department.name);
+                  }
+                }}
+                className={`premium-glass cursor-pointer rounded-[20px] border overflow-hidden bg-gradient-to-br text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-brandNavy/25 ${styles.card} ${selectedDepartmentName === department.name ? 'ring-2 ring-brandNavy/25 shadow-xl' : ''}`}
+              >
                 <div className="p-6 border-b border-white/70">
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -2259,15 +2247,39 @@ const AdminDashboard = () => {
                 <div className="bg-white/70 p-6 space-y-4">
                   <div>
                     <div>
-                      <p className="text-xs font-bold text-slate-500">Total Tickets</p>
-                      <p className="mt-1 text-2xl font-extrabold font-sora text-brandNavy">{department.total}</p>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openDepartmentOverview(department.name, 'All');
+                        }}
+                        className="rounded-xl text-left transition hover:bg-brandNavy/5 focus:outline-none focus:ring-2 focus:ring-brandNavy/15"
+                      >
+                        <p className="text-xs font-bold text-slate-500">Total Tickets</p>
+                        <p className="mt-1 text-2xl font-extrabold font-sora text-brandNavy">{department.total}</p>
+                      </button>
                     </div>
                   </div>
 
                   <div className="space-y-2 text-sm font-semibold">
-                    <div className="flex justify-between"><span className="text-slate-600">Open</span><span className="text-blue-600">{department.open}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-600">In Progress</span><span className="text-orange-600">{department.inProgress}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-600">Resolved</span><span className="text-green-600">{department.resolved}</span></div>
+                    {[
+                      ['Open', department.open, 'text-blue-600'],
+                      ['In Progress', department.inProgress, 'text-orange-600'],
+                      ['Resolved', department.resolved, 'text-green-600']
+                    ].map(([label, value, colorClass]) => (
+                      <button
+                        type="button"
+                        key={label}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openDepartmentOverview(department.name, label);
+                        }}
+                        className="flex w-full justify-between rounded-xl px-2 py-1 text-left transition hover:bg-white/70 focus:outline-none focus:ring-2 focus:ring-brandNavy/15"
+                      >
+                        <span className="text-slate-600">{label}</span>
+                        <span className={colorClass}>{value}</span>
+                      </button>
+                    ))}
                   </div>
 
                   <div>
@@ -2478,11 +2490,11 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {isAdminFormOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {isAdminFormOpen && createPortal((
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-brandDarkNavy/45 p-4 backdrop-blur-sm">
             <button
               type="button"
-              className="absolute inset-0 bg-brandNavy/35 backdrop-blur-sm"
+              className="absolute inset-0"
               onClick={closeAdminForm}
               aria-label="Close admin form"
             />
@@ -2586,7 +2598,7 @@ const AdminDashboard = () => {
               </div>
             </form>
           </div>
-        )}
+        ), document.body)}
       </div>
     );
   }
@@ -2889,10 +2901,6 @@ const AdminDashboard = () => {
                   <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
                     <span className="text-gray-400 shrink-0">Category</span>
                     <span className="text-brandDarkNavy text-right leading-snug">Category #{activeMessageTicket.category_id}</span>
-                  </div>
-                  <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3">
-                    <span className="text-gray-400 shrink-0">Priority</span>
-                    <span className="text-brandDarkNavy text-right leading-snug">{activeMessageTicket.priority}</span>
                   </div>
                   <div className="flex items-start justify-between gap-4">
                     <span className="text-gray-400 shrink-0">Assigned Agent</span>

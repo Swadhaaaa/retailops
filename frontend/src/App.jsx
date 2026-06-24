@@ -8,7 +8,6 @@ import {
 import LoginPage from './pages/LoginPage';
 import AdminDashboard from './pages/AdminDashboard';
 import DepartmentDashboard from './pages/DepartmentDashboard';
-import DepartmentAnalytics from './pages/DepartmentAnalytics';
 import UserDashboard from './pages/UserDashboard';
 
 import ProtectedRoute from './components/shared/ProtectedRoute';
@@ -51,11 +50,7 @@ function App() {
 
         <Route
           path="/department-analytics"
-          element={
-            <ProtectedRoute allowedRoles={['department']}>
-              <DepartmentAnalytics />
-            </ProtectedRoute>
-          }
+          element={<Navigate to="/department-dashboard" replace />}
         />
 
         <Route

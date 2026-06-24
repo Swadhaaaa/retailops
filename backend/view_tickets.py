@@ -14,7 +14,7 @@ SELECT
     status,
     attachment_path
 FROM tickets
-ORDER BY created_at DESC
+ORDER BY created_at DESC 
 """).fetchdf())
 
 conn.close()

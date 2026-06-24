@@ -2,7 +2,7 @@ import React, { useContext, useState, useEffect, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { RoleContext } from '../context/RoleContext';
 import { useNavigate } from 'react-router-dom';
-import { Bar, Doughnut, Line, PolarArea } from 'react-chartjs-2';
+import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import {
   ArcElement,
   BarElement,
@@ -13,7 +13,6 @@ import {
   LinearScale,
   LineElement,
   PointElement,
-  RadialLinearScale,
   Tooltip
 } from 'chart.js';
 import api from '../utils/api';
@@ -30,7 +29,6 @@ ChartJS.register(
   LinearScale,
   LineElement,
   PointElement,
-  RadialLinearScale,
   Tooltip
 );
 
@@ -378,6 +376,12 @@ const UserDashboard = () => {
   const [isCategoryLocked, setIsCategoryLocked] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [selectedTicketView, setSelectedTicketView] = useState('simple');
+  const [isEditingTicket, setIsEditingTicket] = useState(false);
+  const [editTicketForm, setEditTicketForm] = useState({ title: '', description: '', category_id: '1' });
+  const [editTicketAttachment, setEditTicketAttachment] = useState(null);
+  const [clarificationText, setClarificationText] = useState('');
+  const [clarificationAttachment, setClarificationAttachment] = useState(null);
+  const [ticketActionLoading, setTicketActionLoading] = useState('');
   const [isSubmittedSuccessfully, setIsSubmittedSuccessfully] = useState(false);
   const [submittedTicket, setSubmittedTicket] = useState(null);
   const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
@@ -415,11 +419,35 @@ const UserDashboard = () => {
   const openTicketDetails = (ticket, view = 'simple') => {
     setSelectedTicketView(view);
     setSelectedTicket(ticket);
+    setIsEditingTicket(false);
+    setEditTicketForm({
+      title: ticket.title || '',
+      description: ticket.description || '',
+      category_id: String(ticket.category_id || categories[0]?.category_id || '1')
+    });
+    setEditTicketAttachment(null);
+    setClarificationText('');
+    setClarificationAttachment(null);
+    api.get(`/tickets/${ticket.ticket_id}`)
+      .then((response) => setSelectedTicket(response.data))
+      .catch((err) => console.error('Unable to load full ticket details:', err));
   };
 
   const closeTicketDetails = () => {
     setSelectedTicket(null);
     setSelectedTicketView('simple');
+    setIsEditingTicket(false);
+    setEditTicketAttachment(null);
+    setClarificationText('');
+    setClarificationAttachment(null);
+    setTicketActionLoading('');
+  };
+
+  const getLatestClarificationRequest = (ticket) => {
+    const request = [...(ticket?.activity || [])]
+      .reverse()
+      .find((item) => item.action_type === 'clarification_requested');
+    return request?.action_text?.replace(/^Clarification requested:\s*/i, '') || '';
   };
 
   const fetchAnnouncementsAndStats = async () => {
@@ -551,7 +579,6 @@ const UserDashboard = () => {
 
   const [formSubject, setFormSubject] = useState('');
   const [formCategory, setFormCategory] = useState('1');
-  const [formPriority, setFormPriority] = useState('Medium');
   const [formDescription, setFormDescription] = useState('');
   const [aiSuggestion, setAiSuggestion] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
@@ -562,7 +589,6 @@ const UserDashboard = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [priorityFilter, setPriorityFilter] = useState('All');
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [smsAlerts, setSmsAlerts] = useState(true);
 
@@ -589,12 +615,12 @@ const UserDashboard = () => {
 
   const exportTicketsCSV = () => {
     if (tickets.length === 0) { alert('No tickets to export.'); return; }
-    const headers = ['Ticket ID', 'Title', 'Description', 'Category ID', 'Priority', 'Status', 'Created At'];
+    const headers = ['Ticket ID', 'Title', 'Description', 'Category ID', 'Status', 'Created At'];
     const rows = tickets.map(t => [
       t.ticket_id,
       `"${t.title.replace(/"/g, '""')}"`,
       `"${(t.description || '').replace(/"/g, '""')}"`,
-      t.category_id, t.priority, t.status, t.created_at || 'Today'
+      t.category_id, t.status, t.created_at || 'Today'
     ]);
     const csv = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const a = document.createElement('a');
@@ -716,7 +742,6 @@ const UserDashboard = () => {
   const openContactSupport = () => {
     setIsCategoryLocked(false);
     setFormCategory(categories[0]?.category_id?.toString() || '1');
-    setFormPriority('Medium');
     setFormSubject('Contact support request');
     setFormDescription('');
     setAttachment(null);
@@ -735,7 +760,6 @@ const UserDashboard = () => {
     setFormDescription('');
     setAiSuggestion('');
     setAiLoading(false);
-    setFormPriority('Medium');
     setAttachment(null);
     setAttachmentError('');
     setFormCategory(categories[0]?.category_id?.toString() || '1');
@@ -764,7 +788,6 @@ const UserDashboard = () => {
       formData.append('title', formSubject);
       formData.append('description', formDescription);
       formData.append('category_id', finalCategoryId);
-      formData.append('priority', formPriority);
       if (attachment) formData.append('attachment', attachment);
 
       const response = await api.post('/tickets/', formData, {
@@ -788,6 +811,79 @@ const UserDashboard = () => {
       alert('Failed to submit the query. Please try again.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const refreshSelectedTicket = async (ticketId = selectedTicket?.ticket_id) => {
+    if (!ticketId) return;
+    const response = await api.get(`/tickets/${ticketId}`);
+    setSelectedTicket(response.data);
+  };
+
+  const handleEditTicketSubmit = async (event) => {
+    event.preventDefault();
+    if (!selectedTicket || !editTicketForm.title.trim() || !editTicketForm.description.trim()) return;
+
+    setTicketActionLoading('edit');
+    try {
+      const formData = new FormData();
+      formData.append('title', editTicketForm.title.trim());
+      formData.append('description', editTicketForm.description.trim());
+      formData.append('category_id', editTicketForm.category_id);
+      if (editTicketAttachment) formData.append('attachment', editTicketAttachment);
+
+      await api.put(`/tickets/${selectedTicket.ticket_id}/user-edit`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      await fetchDashboardData({ silent: true });
+      await refreshSelectedTicket(selectedTicket.ticket_id);
+      setIsEditingTicket(false);
+      setEditTicketAttachment(null);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Unable to update ticket.');
+    } finally {
+      setTicketActionLoading('');
+    }
+  };
+
+  const handleWithdrawTicket = async () => {
+    if (!selectedTicket) return;
+    const confirmed = window.confirm('Withdraw this ticket? This is allowed only before work starts.');
+    if (!confirmed) return;
+
+    setTicketActionLoading('withdraw');
+    try {
+      await api.post(`/tickets/${selectedTicket.ticket_id}/withdraw`, {});
+      await fetchDashboardData({ silent: true });
+      await refreshSelectedTicket(selectedTicket.ticket_id);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Unable to withdraw ticket.');
+    } finally {
+      setTicketActionLoading('');
+    }
+  };
+
+  const handleClarificationSubmit = async (event) => {
+    event.preventDefault();
+    if (!selectedTicket || !clarificationText.trim()) return;
+
+    setTicketActionLoading('clarification');
+    try {
+      const formData = new FormData();
+      formData.append('clarification', clarificationText.trim());
+      if (clarificationAttachment) formData.append('attachment', clarificationAttachment);
+
+      await api.post(`/tickets/${selectedTicket.ticket_id}/clarification`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      await fetchDashboardData({ silent: true });
+      await refreshSelectedTicket(selectedTicket.ticket_id);
+      setClarificationText('');
+      setClarificationAttachment(null);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Unable to submit clarification.');
+    } finally {
+      setTicketActionLoading('');
     }
   };
 
@@ -942,10 +1038,6 @@ const UserDashboard = () => {
               <h1 className="text-2xl lg:text-3xl font-extrabold text-brandDarkNavy font-sora">
                 Good Morning, {userName}! 
               </h1>
-              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brandNavy/8 border border-brandNavy/20 text-[9px] font-bold text-brandNavy ml-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-brandNavy live-dot inline-block" />
-                LIVE
-              </span>
             </div>
             <p className="text-xs text-gray-500 mt-1 font-semibold font-dmSans">
               Raise a query, track existing requests, or check recent updates.
@@ -975,19 +1067,21 @@ const UserDashboard = () => {
         </div>
 
         {/* ── 3 Action Cards ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {[
             {
               label: 'Raise a Query', desc: 'Select a category and raise a new query',
               bg: 'bg-brandRed', shadow: 'shadow-brandRed/20', glowHover: 'hover:shadow-[0_14px_28px_rgba(227,24,55,.18)]',
-              borderHover: 'hover:border-brandRed/30',
+              border: 'border-brandRed/30',
+              borderHover: 'hover:border-brandRed/50',
               onClick: () => { setIsCategoryLocked(false); setIsModalOpen(true); },
               icon: <span className="text-xl font-bold text-white icon-scale">+</span>
             },
             {
               label: 'View My Queries', desc: 'Track and view all your queries',
               bg: 'bg-brandNavy', shadow: 'shadow-brandNavy/20', glowHover: 'hover:shadow-[0_14px_28px_rgba(15,27,76,.18)]',
-              borderHover: 'hover:border-brandNavy/30',
+              border: 'border-brandNavy/30',
+              borderHover: 'hover:border-brandNavy/50',
               onClick: () => switchTab('My Queries'),
               icon: (
                 <svg className="w-5 h-5 text-white icon-scale" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -999,7 +1093,8 @@ const UserDashboard = () => {
             ...(MESSAGES_FEATURE_ENABLED ? [{
               label: 'Messages', desc: 'Check replies and notifications',
               bg: 'bg-brandGold', shadow: 'shadow-brandGold/20', glowHover: 'hover:shadow-[0_14px_28px_rgba(245,166,35,.18)]',
-              borderHover: 'hover:border-brandGold/30',
+              border: 'border-brandGold/30',
+              borderHover: 'hover:border-brandGold/50',
               onClick: () => switchTab('Messages'),
               icon: (
                 <svg className="w-5 h-5 text-white icon-scale" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -1011,7 +1106,7 @@ const UserDashboard = () => {
             <div
               key={card.label}
               onClick={card.onClick}
-              className={`action-card bg-white border border-gray-100/80 rounded-3xl p-5 cursor-pointer flex items-center space-x-4 ${card.glowHover} ${card.borderHover}`}
+              className={`action-card bg-white border ${card.border} rounded-3xl p-5 cursor-pointer flex items-center space-x-4 ${card.glowHover} ${card.borderHover}`}
             >
               <div className={`w-12 h-12 rounded-full ${card.bg} flex items-center justify-center shadow-md ${card.shadow} shrink-0`}>
                 {card.icon}
@@ -1078,8 +1173,7 @@ const UserDashboard = () => {
         ticket.ticket_id.toString().includes(searchQuery) ||
         (ticket.description && ticket.description.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchesStatus = statusFilter === 'All' || ticket.status === statusFilter;
-      const matchesPriority = priorityFilter === 'All' || ticket.priority === priorityFilter;
-      return matchesSearch && matchesStatus && matchesPriority;
+      return matchesSearch && matchesStatus;
     });
 
     return (
@@ -1100,23 +1194,15 @@ const UserDashboard = () => {
         <div className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
           <input type="text" placeholder="Search tickets..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
             className="px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none w-full lg:max-w-sm" />
-          <div className="flex gap-3">
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-              className="px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none">
-              <option value="All">All Status</option>
-              <option value="Open">Open</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Resolved">Resolved</option>
-            </select>
-            <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)}
-              className="px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none">
-              <option value="All">All Priority</option>
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
-              <option value="Urgent">Urgent</option>
-            </select>
-          </div>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+            className="px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none">
+            <option value="All">All Status</option>
+            <option value="Open">Open</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Needs Clarification">Needs Clarification</option>
+            <option value="Resolved">Resolved</option>
+            <option value="Withdrawn">Withdrawn</option>
+          </select>
         </div>
 
         {loading ? (
@@ -1126,43 +1212,49 @@ const UserDashboard = () => {
             <p className="text-gray-500 font-bold">No matching tickets found</p>
           </div>
         ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredTickets.map((query) => {
+          <div className="space-y-3">
+              {filteredTickets.map((query, index) => {
                 const catObj = categories.find(c => c.category_id === query.category_id);
                 const categoryName = catObj ? catObj.name : `Category #${query.category_id}`;
+                const createdDate = formatTicketDate(query.created_at || query.updated_at).split(',')[0];
+                const outlineStyle = index % 2 === 0
+                  ? 'border-brandNavy/25 hover:border-brandNavy/45'
+                  : 'border-brandRed/25 hover:border-brandRed/45';
+
                 return (
-                  <div
+                  <button
                     key={query.ticket_id}
+                    type="button"
                     onClick={() => openTicketDetails(query, 'simple')}
-                    className="ticket-card group bg-white rounded-2xl border border-gray-100 p-5 shadow-sm cursor-pointer"
+                    className={`group grid w-full grid-cols-1 gap-4 rounded-2xl border bg-white px-6 py-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:bg-blue-50/35 hover:shadow-md lg:grid-cols-[190px_minmax(0,1fr)_170px_110px] lg:items-center ${outlineStyle}`}
                   >
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <p className="text-[10px] uppercase text-gray-400 font-bold">Ticket ID</p>
-                        <h3 className="text-lg font-extrabold text-brandDarkNavy mt-1">#{query.ticket_id}</h3>
-                      </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wide text-gray-400 font-bold">Ticket ID</p>
+                      <p className="mt-1 truncate text-base font-extrabold text-brandDarkNavy">#{query.ticket_id}</p>
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-extrabold text-brandDarkNavy">
+                        {query.title}
+                        <span className="font-semibold text-gray-500"> - {query.description || 'No description'}</span>
+                      </p>
+                      <p className="mt-1 truncate text-xs font-semibold text-gray-400">{categoryName}</p>
+                    </div>
+
+                    <div className="flex items-center lg:justify-center">
                       <span className={`px-3 py-1 rounded-xl text-[10px] font-bold border ${getStatusBadgeStyles(query.status)}`}>
                         {query.status}
                       </span>
                     </div>
-                    <h2 className="text-[16px] font-extrabold text-brandDarkNavy leading-snug line-clamp-2">{query.title}</h2>
-                    <p className="text-sm text-gray-500 mt-3 line-clamp-3 leading-relaxed min-h-[70px]">{query.description || 'No description'}</p>
-                    <div className="mt-5 flex items-center justify-between">
-                      <div>
-                        <p className="text-[10px] uppercase text-gray-400 font-bold">Category</p>
-                        <p className="text-sm font-bold text-brandDarkNavy mt-1">{categoryName}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[10px] uppercase text-gray-400 font-bold">Priority</p>
-                        <p className="text-sm font-bold text-brandDarkNavy mt-1">{query.priority}</p>
-                      </div>
+
+                    <div className="flex items-center justify-between gap-3 lg:block lg:text-right">
+                      <p className="text-[10px] uppercase tracking-wide text-gray-400 font-bold lg:hidden">Created</p>
+                      <p className="whitespace-nowrap text-xs font-bold text-brandDarkNavy">{createdDate}</p>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
-            </div>
-          </>
+          </div>
         )}
       </div>
     );
@@ -1391,21 +1483,10 @@ const UserDashboard = () => {
       case 'Resolved':
       case 'Closed':
         return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'Withdrawn':
+        return 'bg-slate-100 text-slate-600 border-slate-200';
       default:
         return 'bg-brandRed/10 text-brandRed border-brandRed/20';
-    }
-  };
-
-  const getPriorityBadgeStyles = (priority) => {
-    switch (priority) {
-      case 'Urgent':
-        return 'bg-red-50 text-red-600 border-red-200';
-      case 'High':
-        return 'bg-orange-50 text-orange-600 border-orange-200';
-      case 'Medium':
-        return 'bg-blue-50 text-blue-600 border-blue-200';
-      default:
-        return 'bg-gray-50 text-gray-600 border-gray-200';
     }
   };
 
@@ -1416,8 +1497,7 @@ const UserDashboard = () => {
         ticket.ticket_id.toString().includes(searchQuery) ||
         (ticket.description && ticket.description.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchesStatus = statusFilter === 'All' || ticket.status === statusFilter;
-      const matchesPriority = priorityFilter === 'All' || ticket.priority === priorityFilter;
-      return matchesSearch && matchesStatus && matchesPriority;
+      return matchesSearch && matchesStatus;
     });
 
     return (
@@ -1428,12 +1508,6 @@ const UserDashboard = () => {
             <h1 className="text-3xl font-extrabold text-brandDarkNavy font-sora animate-scale-in">Track Status</h1>
             <p className="text-sm text-gray-500 mt-1">Live tracking and progress timeline for all your query tickets.</p>
           </div>
-          <button
-            onClick={() => { setIsCategoryLocked(false); setIsModalOpen(true); }}
-            className={`px-5 py-3 rounded-2xl text-xs font-bold text-white shadow-md transition-all flex items-center space-x-2 ${buttonColor}`}
-          >
-            <span>Create Ticket</span>
-          </button>
         </div>
 
         {/* Ticket Progress Flow Panel */}
@@ -1442,7 +1516,7 @@ const UserDashboard = () => {
           
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4 relative px-2">
             {/* Horizontal Line background for larger screens */}
-            <div className="hidden md:block absolute left-8 right-8 top-1/2 -translate-y-1/2 h-0.5 bg-gray-100 -z-10" />
+            <div className="hidden md:block absolute left-8 right-8 top-1/2 -translate-y-1/2 h-1 bg-slate-200 -z-10" />
 
             {[
               { num: 1, label: 'Open', color: 'bg-brandRed ring-brandRed/10 text-brandRed', line: 'bg-gradient-to-r from-brandRed to-brandRed' },
@@ -1462,7 +1536,7 @@ const UserDashboard = () => {
                 
                 {/* Line connector for larger screens */}
                 {idx < 4 && (
-                  <div className={`hidden md:block flex-1 h-0.5 ${step.line}`} />
+                  <div className={`hidden md:block flex-1 h-1 rounded-full shadow-sm ${step.line}`} />
                 )}
               </React.Fragment>
             ))}
@@ -1473,24 +1547,16 @@ const UserDashboard = () => {
         <div className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between animate-slide-up-fade">
           <input type="text" placeholder="Search tickets..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
             className="px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none w-full lg:max-w-sm focus:border-brandNavy/30" />
-          <div className="flex gap-3">
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-              className="px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:border-brandNavy/30 bg-white">
-              <option value="All">All Status</option>
-              <option value="Open">Open</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Resolved">Resolved</option>
-              <option value="Closed">Closed</option>
-            </select>
-            <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)}
-              className="px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:border-brandNavy/30 bg-white">
-              <option value="All">All Priority</option>
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
-              <option value="Urgent">Urgent</option>
-            </select>
-          </div>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+            className="px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:border-brandNavy/30 bg-white">
+            <option value="All">All Status</option>
+            <option value="Open">Open</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Needs Clarification">Needs Clarification</option>
+            <option value="Resolved">Resolved</option>
+            <option value="Closed">Closed</option>
+            <option value="Withdrawn">Withdrawn</option>
+          </select>
         </div>
 
         {/* Tickets Tracking Grid */}
@@ -1509,7 +1575,6 @@ const UserDashboard = () => {
               const deptName = ticket.assigned_department || ticket.business_unit || getDepartmentForCategory(categoryName);
               const relativeTime = getRelativeTime(ticket.created_at || ticket.updated_at);
               const statusStyles = getTrackStatusBadgeStyles(ticket.status);
-              const priorityStyles = getPriorityBadgeStyles(ticket.priority);
 
               return (
                 <div
@@ -1531,11 +1596,6 @@ const UserDashboard = () => {
                         {ticket.status}
                       </span>
                     </div>
-
-                    {/* Priority Pill */}
-                    <span className={`px-3 py-1 rounded-xl text-[10px] font-bold border self-start sm:self-center ${priorityStyles}`}>
-                      {ticket.priority === 'Urgent' ? 'Critical' : ticket.priority}
-                    </span>
                   </div>
 
                   {/* Subtitle / User Name */}
@@ -2039,17 +2099,6 @@ const UserDashboard = () => {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Priority</span>
-                      <span className="flex items-center space-x-1 text-brandDarkNavy">
-                        <span className={`w-1.5 h-1.5 rounded-full ${
-                          activeMessageTicket.priority === 'Urgent' || activeMessageTicket.priority === 'High'
-                            ? 'bg-brandRed'
-                            : 'bg-yellow-400'
-                        }`} />
-                        <span>{activeMessageTicket.priority}</span>
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
                       <span className="text-gray-400">Status</span>
                       <span className="px-2 py-0.5 rounded-full text-[9px] bg-brandNavy/5 border border-brandNavy/10 text-brandNavy uppercase">{activeMessageTicket.status}</span>
                     </div>
@@ -2130,11 +2179,7 @@ const UserDashboard = () => {
     const progressCount = tickets.filter(t => t.status === 'In Progress' || t.status === 'Under Review').length;
     const clarificationCount = tickets.filter(t => t.status === 'Needs Clarification').length;
     const resolvedCount = tickets.filter(t => isResolvedStatus(t.status)).length;
-    const urgentCount = tickets.filter(t => t.priority === 'Urgent' || t.priority === 'High').length;
     const completionRate = totalCount ? Math.round((resolvedCount / totalCount) * 100) : 0;
-    const priorityOrder = ['Low', 'Medium', 'High', 'Urgent'];
-    const priorityValues = priorityOrder.map(priority => tickets.filter(t => t.priority === priority).length);
-    const priorityColors = ['#CBD5E1', primaryColor, '#F59E0B', '#E31837'];
 
     const monthKeys = Array.from({ length: 6 }, (_, index) => {
       const date = new Date();
@@ -2276,22 +2321,11 @@ const UserDashboard = () => {
       }]
     };
 
-    const priorityChartData = {
-      labels: priorityOrder,
-      datasets: [{
-        label: 'Tickets',
-        data: priorityValues,
-        backgroundColor: priorityColors.map(color => `${color}CC`),
-        borderColor: '#ffffff',
-        borderWidth: 2
-      }]
-    };
-
     const statCards = [
       { label: 'Total Queries', value: totalCount, sub: 'Tickets raised by your account', color: isVendor ? 'text-brandRed' : 'text-brandNavy' },
       { label: 'Completion Rate', value: `${completionRate}%`, sub: `${resolvedCount} resolved or closed`, color: 'text-emerald-600' },
       { label: 'Active Work', value: progressCount, sub: 'In progress or under review', color: 'text-amber-600' },
-      { label: 'Priority Items', value: urgentCount, sub: 'High or urgent tickets', color: 'text-brandRed' }
+      { label: 'Needs Clarification', value: clarificationCount, sub: 'Tickets waiting for more information', color: 'text-brandRed' }
     ];
 
     return (
@@ -2369,31 +2403,20 @@ const UserDashboard = () => {
               </div>
 
               <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm xl:col-span-2">
-                <h3 className="font-extrabold text-base text-brandDarkNavy font-sora">Priority Mix</h3>
-                <p className="text-xs text-gray-500 mt-1 font-semibold">Polar view of ticket urgency across your queue.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-center mt-6">
-                  <div className="h-64">
-                    {totalCount ? (
-                      <PolarArea data={priorityChartData} options={polarOptions} />
-                    ) : (
-                      <div className="h-full flex items-center justify-center rounded-2xl border border-dashed border-gray-200 text-xs font-bold text-gray-400">
-                        No priority data
-                      </div>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 gap-2.5">
-                    {[
-                      ['Open', openCount, 'bg-red-50 text-red-600 border-red-100'],
-                      ['In Progress / Review', progressCount, 'bg-amber-50 text-amber-600 border-amber-100'],
-                      ['Needs Clarification', clarificationCount, 'bg-blue-50 text-blue-600 border-blue-100'],
-                      ['Resolved / Closed', resolvedCount, 'bg-emerald-50 text-emerald-600 border-emerald-100']
-                    ].map(([label, value, style]) => (
-                      <div key={label} className={`rounded-2xl border px-4 py-3 ${style}`}>
-                        <p className="text-[10px] font-extrabold uppercase tracking-wider font-sora">{label}</p>
-                        <p className="text-xl font-extrabold mt-1 font-sora">{value}</p>
-                      </div>
-                    ))}
-                  </div>
+                <h3 className="font-extrabold text-base text-brandDarkNavy font-sora">Status Overview</h3>
+                <p className="text-xs text-gray-500 mt-1 font-semibold">Current workload grouped by ticket status.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
+                  {[
+                    ['Open', openCount, 'bg-red-50 text-red-600 border-red-100'],
+                    ['In Progress / Review', progressCount, 'bg-amber-50 text-amber-600 border-amber-100'],
+                    ['Needs Clarification', clarificationCount, 'bg-blue-50 text-blue-600 border-blue-100'],
+                    ['Resolved / Closed', resolvedCount, 'bg-emerald-50 text-emerald-600 border-emerald-100']
+                  ].map(([label, value, style]) => (
+                    <div key={label} className={`rounded-2xl border px-4 py-5 ${style}`}>
+                      <p className="text-[10px] font-extrabold uppercase tracking-wider font-sora">{label}</p>
+                      <p className="text-2xl font-extrabold mt-2 font-sora">{value}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -2409,7 +2432,7 @@ const UserDashboard = () => {
   const renderProfile = () => {
     const activeTickets = tickets.filter(ticket => !['Resolved', 'Closed'].includes(ticket.status)).length;
     const resolvedTickets = tickets.filter(ticket => ['Resolved', 'Closed'].includes(ticket.status)).length;
-    const urgentTickets = tickets.filter(ticket => ['Urgent', 'High', 'Critical'].includes(ticket.priority)).length;
+    const clarificationTickets = tickets.filter(ticket => ticket.status === 'Needs Clarification').length;
 
     return (
       <div className="space-y-8 text-left">
@@ -2436,7 +2459,7 @@ const UserDashboard = () => {
                 {[
                   ['Active', activeTickets],
                   ['Resolved', resolvedTickets],
-                  ['Urgent', urgentTickets]
+                  ['Clarify', clarificationTickets]
                 ].map(([label, value]) => (
                   <div key={label} className="rounded-2xl border border-gray-100 bg-gray-50/70 px-3 py-3">
                     <p className="text-lg font-extrabold text-brandDarkNavy font-sora">{value}</p>
@@ -2495,8 +2518,8 @@ const UserDashboard = () => {
                     toggle: () => setEmailAlerts(!emailAlerts)
                   },
                   {
-                    label: 'SMS urgent alerts',
-                    sub: 'Get text alerts for high priority or urgent queries.',
+                    label: 'SMS ticket updates',
+                    sub: 'Get text alerts for important query updates.',
                     enabled: smsAlerts,
                     toggle: () => setSmsAlerts(!smsAlerts)
                   }
@@ -2591,11 +2614,8 @@ const UserDashboard = () => {
               setSearchQuery(e.target.value);
               if (activeTab !== 'My Queries' && activeTab !== 'Track Status' && activeTab !== 'Dashboard') switchTab('My Queries');
             }}
-            className="w-full pl-11 pr-16 py-3 bg-white/60 backdrop-blur border border-gray-200/70 rounded-2xl outline-none focus:border-brandNavy/50 focus:bg-white/90 text-xs font-bold text-gray-700 transition-all font-dmSans placeholder-gray-400/80 shadow-[inset_0_1px_3px_rgba(0,0,0,.03)]"
+            className="w-full pl-11 pr-4 py-3 bg-white/60 backdrop-blur border-2 border-slate-200 rounded-2xl outline-none focus:border-brandNavy/60 focus:bg-white/90 text-sm font-extrabold text-brandDarkNavy transition-all font-dmSans placeholder:text-slate-500 placeholder:font-extrabold shadow-[inset_0_1px_3px_rgba(0,0,0,.03)]"
           />
-          <div className="absolute right-0 inset-y-0 pr-4 flex items-center pointer-events-none">
-            <kbd className="text-[10px] font-extrabold text-gray-400 bg-white border border-gray-200 px-2 py-0.5 rounded-lg shadow-sm font-sora">⌘ F</kbd>
-          </div>
         </div>
 
         <div className="flex items-center space-x-4">
@@ -2619,9 +2639,9 @@ const UserDashboard = () => {
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
                 </svg>
-                {tickets.filter(t => t.priority === 'Urgent' || t.status === 'Open').length > 0 && (
+                {tickets.filter(t => t.status === 'Open').length > 0 && (
                   <span className={`absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-full text-[8px] font-extrabold text-white ring-2 ring-white ${notifPopped ? 'badge-pop' : ''} ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`}>
-                    {tickets.filter(t => t.priority === 'Urgent' || t.status === 'Open').length}
+                    {tickets.filter(t => t.status === 'Open').length}
                   </span>
                 )}
               </button>
@@ -2787,8 +2807,6 @@ const UserDashboard = () => {
         setFormSubject={setFormSubject}
         categories={categories}
         setFormCategory={setFormCategory}
-        formPriority={formPriority}
-        setFormPriority={setFormPriority}
         formDescription={formDescription}
         setFormDescription={setFormDescription}
         getAISuggestion={getAISuggestion}
@@ -2828,7 +2846,7 @@ const UserDashboard = () => {
               <div className="mt-5 space-y-3">
                 {[
                   ['Raise a Query', 'Open Dashboard, choose a category, fill details, and submit your ticket.'],
-                  ['Track Status', 'Use Track Status or My Queries to follow progress, priority, and resolution.'],
+                  ['Track Status', 'Use Track Status or My Queries to follow progress and resolution.'],
                   // TEMPORARILY DISABLED - MESSAGES FEATURE
                   ...(MESSAGES_FEATURE_ENABLED ? [['Messages', 'Open Messages to read admin replies and send follow-up messages.']] : []),
                   ['Contact Support', 'Use Contact Support to create a support request with the ticket form.']
@@ -3064,31 +3082,6 @@ const UserDashboard = () => {
                 </div>
               )}
 
-              {/* Priority */}
-              <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0 border ${
-                  selectedTicket.priority === 'Urgent' ? 'text-brandRed bg-rose-50/50 border-rose-100 animate-pulse' :
-                  selectedTicket.priority === 'High' ? 'text-orange-500 bg-orange-50/50 border-orange-100' :
-                  selectedTicket.priority === 'Medium' ? 'text-amber-500 bg-amber-50/50 border-amber-100' :
-                  'text-gray-500 bg-gray-50/50 border-gray-150'
-                }`}>
-                  <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a1.5 1.5 0 0 0 1.154-1.464V6.105a1.5 1.5 0 0 0-1.654-1.49l-2.908.685a9 9 0 0 1-6.2 0l-.108-.054a9 9 0 0 0-6.2 0L3 5.75m0 9.25V5.75" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-[9px] uppercase text-gray-400 font-extrabold tracking-wider font-sora leading-none">Priority</p>
-                  <span className={`inline-block text-[10px] font-extrabold mt-1 px-2 py-0.5 rounded border leading-none ${
-                    selectedTicket.priority === 'Urgent' ? 'bg-red-50 text-red-700 border-red-200/50' :
-                    selectedTicket.priority === 'High' ? 'bg-orange-50 text-orange-700 border-orange-200/50' :
-                    selectedTicket.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border-amber-200/50' :
-                    'bg-gray-50 text-gray-700 border-gray-200/50'
-                  }`}>
-                    {selectedTicket.priority}
-                  </span>
-                </div>
-              </div>
-
               {/* Submitted Date */}
               <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
                 <div className="w-7 h-7 rounded-lg bg-gray-50 text-gray-500 flex items-center justify-center flex-shrink-0 border border-gray-100">
@@ -3107,6 +3100,128 @@ const UserDashboard = () => {
 
             {/* Divider */}
             <div className="border-t border-gray-100 mx-4" />
+
+            {selectedTicket.status === 'Open' && (
+              <div className="mx-4 mt-3 rounded-xl border border-brandNavy/10 bg-blue-50/40 p-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-[9px] font-extrabold uppercase tracking-wider text-brandNavy font-sora">Ticket is still open</p>
+                    <p className="mt-1 text-xs font-semibold text-gray-500">You can edit or withdraw this ticket before work starts.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingTicket((value) => !value);
+                        setEditTicketForm({
+                          title: selectedTicket.title || '',
+                          description: selectedTicket.description || '',
+                          category_id: String(selectedTicket.category_id || categories[0]?.category_id || '1')
+                        });
+                      }}
+                      className="rounded-lg bg-brandNavy px-4 py-2 text-xs font-extrabold text-white"
+                    >
+                      {isEditingTicket ? 'Cancel Edit' : 'Edit Ticket'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={ticketActionLoading === 'withdraw'}
+                      onClick={handleWithdrawTicket}
+                      className="rounded-lg border border-brandRed/20 px-4 py-2 text-xs font-extrabold text-brandRed disabled:opacity-50"
+                    >
+                      {ticketActionLoading === 'withdraw' ? 'Withdrawing...' : 'Withdraw'}
+                    </button>
+                  </div>
+                </div>
+
+                {isEditingTicket && (
+                  <form onSubmit={handleEditTicketSubmit} className="mt-3 grid gap-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="block">
+                        <span className="mb-1 block text-[9px] font-extrabold uppercase text-gray-400">Title</span>
+                        <input
+                          required
+                          value={editTicketForm.title}
+                          onChange={(event) => setEditTicketForm((prev) => ({ ...prev, title: event.target.value }))}
+                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold outline-none focus:border-brandNavy"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-[9px] font-extrabold uppercase text-gray-400">Category</span>
+                        <select
+                          value={editTicketForm.category_id}
+                          onChange={(event) => setEditTicketForm((prev) => ({ ...prev, category_id: event.target.value }))}
+                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold outline-none focus:border-brandNavy"
+                        >
+                          {categories.map((category) => (
+                            <option key={category.category_id} value={category.category_id}>{category.name}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <label className="block">
+                      <span className="mb-1 block text-[9px] font-extrabold uppercase text-gray-400">Description</span>
+                      <textarea
+                        required
+                        value={editTicketForm.description}
+                        onChange={(event) => setEditTicketForm((prev) => ({ ...prev, description: event.target.value }))}
+                        className="min-h-[80px] w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold outline-none focus:border-brandNavy"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-[9px] font-extrabold uppercase text-gray-400">Replace Attachment Optional</span>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png,.xlsx"
+                        onChange={(event) => setEditTicketAttachment(event.target.files?.[0] || null)}
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold"
+                      />
+                    </label>
+                    <button
+                      disabled={ticketActionLoading === 'edit'}
+                      className="justify-self-end rounded-lg bg-brandNavy px-5 py-2 text-xs font-extrabold text-white disabled:opacity-50"
+                    >
+                      {ticketActionLoading === 'edit' ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
+
+            {selectedTicket.status === 'Needs Clarification' && (
+              <form onSubmit={handleClarificationSubmit} className="mx-4 mt-3 rounded-xl border border-brandRed/20 bg-red-50/50 p-3">
+                <p className="text-[9px] font-extrabold uppercase tracking-wider text-brandRed font-sora">Clarification requested</p>
+                <p className="mt-1 text-xs font-semibold text-gray-500">Add the details requested by the admin or department team.</p>
+                {getLatestClarificationRequest(selectedTicket) && (
+                  <div className="mt-3 rounded-lg border border-brandRed/15 bg-white px-3 py-2">
+                    <p className="text-[9px] font-extrabold uppercase tracking-wider text-gray-400">Request note</p>
+                    <p className="mt-1 text-xs font-bold text-brandDarkNavy">{getLatestClarificationRequest(selectedTicket)}</p>
+                  </div>
+                )}
+                <textarea
+                  required
+                  value={clarificationText}
+                  onChange={(event) => setClarificationText(event.target.value)}
+                  placeholder="Type the additional details here..."
+                  className="mt-3 min-h-[90px] w-full resize-none rounded-lg border border-brandRed/20 bg-white px-3 py-2 text-xs font-semibold outline-none focus:border-brandRed"
+                />
+                <label className="mt-2 block">
+                  <span className="mb-1 block text-[9px] font-extrabold uppercase text-gray-400">Attachment Optional</span>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.xlsx"
+                    onChange={(event) => setClarificationAttachment(event.target.files?.[0] || null)}
+                    className="w-full rounded-lg border border-brandRed/20 bg-white px-3 py-2 text-xs font-semibold"
+                  />
+                </label>
+                <button
+                  disabled={ticketActionLoading === 'clarification' || !clarificationText.trim()}
+                  className="mt-3 rounded-lg bg-brandRed px-5 py-2 text-xs font-extrabold text-white disabled:opacity-50"
+                >
+                  {ticketActionLoading === 'clarification' ? 'Submitting...' : 'Submit Clarification'}
+                </button>
+              </form>
+            )}
 
             {selectedTicketView === 'track' ? (
               <div className="grid flex-1 grid-cols-1 lg:grid-cols-12 gap-3.5 px-4 py-3 min-h-0">
@@ -3204,9 +3319,12 @@ const UserDashboard = () => {
             <div className="px-4 py-2 flex justify-end gap-3 bg-gray-50/50 border-t border-gray-100">
               <button
                 onClick={closeTicketDetails}
-                className="px-5 py-2 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200 hover:border-gray-300 transition-all duration-200"
+                aria-label="Close details"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-400 transition-all duration-200 hover:border-brandRed/20 hover:bg-red-50 hover:text-brandRed"
               >
-                Close Details
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.4" stroke="currentColor" className="h-4 w-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
           </div>

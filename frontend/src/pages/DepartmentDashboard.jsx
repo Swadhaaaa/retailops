@@ -1,11 +1,22 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Bar, Doughnut } from 'react-chartjs-2';
+import {
+  ArcElement,
+  BarElement,
+  CategoryScale,
+  Chart as ChartJS,
+  Legend,
+  LinearScale,
+  Tooltip
+} from 'chart.js';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
 import relianceLogo from '../assets/reliance_logo.png';
 
+ChartJS.register(ArcElement, BarElement, CategoryScale, Legend, LinearScale, Tooltip);
+
 const STATUS_OPTIONS = ['Open', 'Under Review', 'In Progress', 'Needs Clarification', 'Resolved', 'Closed'];
-const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical', 'Urgent'];
 const CHECKLIST_ITEMS = [
   ['documents_verified', 'Documents verified'],
   ['issue_investigated', 'Issue investigated'],
@@ -83,12 +94,6 @@ const statusClass = (status) => {
   return 'border-slate-200 bg-slate-50 text-slate-700';
 };
 
-const priorityClass = (priority) => {
-  if (['Critical', 'Urgent', 'High'].includes(priority)) return 'border-red-200 bg-red-50 text-brandRed';
-  if (priority === 'Medium') return 'border-amber-200 bg-amber-50 text-amber-700';
-  return 'border-blue-200 bg-blue-50 text-brandNavy';
-};
-
 const DepartmentDashboard = () => {
   const { user: contextUser, logout } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -98,21 +103,23 @@ const DepartmentDashboard = () => {
   const userRoleLabel = getUserRoleLabel(user);
 
   const [tickets, setTickets] = useState([]);
-  const [departments, setDepartments] = useState([]);
+  const [departmentAgents, setDepartmentAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [activeView, setActiveView] = useState('queue');
   const [queue, setQueue] = useState('All Tickets');
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [working, setWorking] = useState('');
   const [noteText, setNoteText] = useState('');
+  const [clarificationNote, setClarificationNote] = useState('');
   const [showResolutionForm, setShowResolutionForm] = useState(false);
   const [resolutionForm, setResolutionForm] = useState({
     resolution_summary: '', root_cause: '', action_taken: '', resolution_remarks: '',
     checklist: { documents_verified: false, issue_investigated: false, requester_updated: false, final_confirmation_done: false }
   });
-  const [escalationForm, setEscalationForm] = useState({ target_department: '', reason: '' });
+  const [transferForm, setTransferForm] = useState({ target_agent: '' });
   const [reopenReason, setReopenReason] = useState('');
 
   const fetchTickets = useCallback(async ({ silent = false } = {}) => {
@@ -138,9 +145,9 @@ const DepartmentDashboard = () => {
       console.error('Department tickets fetch failed:', err);
       setError(`Unable to load ${department} tickets. Please refresh.`);
     }).finally(() => setLoading(false));
-    api.get('/tickets/departments').then((response) => {
-      if (response.data?.length) setDepartments(response.data);
-    }).catch((err) => console.error('Department list fetch failed:', err));
+    api.get('/users/agents').then((response) => {
+      setDepartmentAgents(response.data || []);
+    }).catch((err) => console.error('Department users fetch failed:', err));
     const interval = setInterval(() => fetchTickets({ silent: true }), 15000);
     return () => clearInterval(interval);
   }, [department, fetchTickets]);
@@ -155,7 +162,9 @@ const DepartmentDashboard = () => {
     setSelectedTicket(ticket);
     setDetailsLoading(true);
     setNoteText('');
+    setClarificationNote('');
     setShowResolutionForm(false);
+    setTransferForm({ target_agent: '' });
     setReopenReason('');
     try { await refreshSelectedTicket(ticket.ticket_id); }
     catch (err) { alert(err.response?.data?.error || 'Unable to open ticket details.'); }
@@ -165,8 +174,9 @@ const DepartmentDashboard = () => {
   const closeDetails = () => {
     setSelectedTicket(null);
     setNoteText('');
+    setClarificationNote('');
     setShowResolutionForm(false);
-    setEscalationForm({ target_department: '', reason: '' });
+    setTransferForm({ target_agent: '' });
     setReopenReason('');
   };
 
@@ -197,16 +207,112 @@ const DepartmentDashboard = () => {
   }), [tickets, queue, user.user_id]);
 
   const workload = useMemo(() => calculateWorkload(tickets), [tickets]);
+  const analytics = useMemo(() => {
+    const countBy = (key) => Object.entries(tickets.reduce((result, ticket) => {
+      const value = ticket[key] || 'Unspecified';
+      result[value] = (result[value] || 0) + 1;
+      return result;
+    }, {}));
+    const statusRows = ['Open', 'In Progress', 'Under Review', 'Needs Clarification', 'Resolved', 'Closed']
+      .map((status) => [status, tickets.filter((ticket) => ticket.status === status).length])
+      .filter(([, count]) => count > 0);
+
+    return {
+      categoryRows: countBy('category_name'),
+      statusRows,
+      statusTotal: statusRows.reduce((sum, [, count]) => sum + count, 0),
+      active: tickets.filter((ticket) => !isResolved(ticket)).length,
+      resolved: tickets.filter(isResolved).length,
+      unclaimed: tickets.filter(isUnclaimed).length
+    };
+  }, [tickets]);
+  const chartOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(15, 27, 76, 0.92)',
+        titleColor: '#ffffff',
+        bodyColor: '#ffffff',
+        displayColors: false,
+        padding: 12,
+        cornerRadius: 12
+      }
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { color: '#64748B', font: { size: 10, weight: '700' } }
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: 'rgba(148, 163, 184, 0.18)' },
+        ticks: { precision: 0, color: '#64748B', font: { size: 10, weight: '700' } }
+      }
+    }
+  }), []);
+  const doughnutOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '68%',
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(15, 27, 76, 0.92)',
+        titleColor: '#ffffff',
+        bodyColor: '#ffffff',
+        displayColors: false,
+        padding: 12,
+        cornerRadius: 12
+      }
+    }
+  }), []);
+  const categoryChartData = useMemo(() => ({
+    labels: analytics.categoryRows.map(([label]) => label),
+    datasets: [{
+      data: analytics.categoryRows.map(([, count]) => count),
+      backgroundColor: 'rgba(15, 27, 76, 0.82)',
+      borderColor: '#0F1B4C',
+      borderRadius: 12,
+      borderSkipped: false,
+      maxBarThickness: 46
+    }]
+  }), [analytics.categoryRows]);
+  const statusChartData = useMemo(() => ({
+    labels: analytics.statusRows.map(([label]) => label),
+    datasets: [{
+      data: analytics.statusRows.map(([, count]) => count),
+      backgroundColor: ['#E31837', '#2563EB', '#F59E0B', '#FBBF24', '#059669', '#64748B'],
+      borderColor: '#ffffff',
+      borderWidth: 4
+    }]
+  }), [analytics.statusRows]);
 
   const selectedIsMine = selectedTicket?.claimed_by === user.user_id;
-  const availableDepartments = departments.filter((item) => item !== (selectedTicket?.assigned_department || department));
+  const availableAgents = selectedTicket ? departmentAgents.filter((agent) => {
+    const owner = getTicketOwnerName(selectedTicket);
+    return agent.name && agent.name !== owner;
+  }) : [];
 
   const updateStatus = (status) => {
     if (status === 'Resolved') { setShowResolutionForm(true); return; }
     runAction('status', () => api.put(`/tickets/${selectedTicket.ticket_id}/status`, { status }));
   };
 
-  const updatePriority = (priority) => runAction('priority', () => api.put(`/tickets/${selectedTicket.ticket_id}/priority`, { priority }));
+  const sendClarificationNote = (event) => {
+    event.preventDefault();
+    if (!clarificationNote.trim()) return;
+    runAction(
+      'clarification-note',
+      () => api.put(`/tickets/${selectedTicket.ticket_id}/status`, {
+        status: 'Needs Clarification',
+        clarification_note: clarificationNote.trim()
+      }),
+      { onSuccess: () => setClarificationNote('') }
+    );
+  };
+
   const claimTicket = () => runAction('claim', () => api.post(`/tickets/${selectedTicket.ticket_id}/claim`));
   const releaseTicket = () => runAction('release', () => api.post(`/tickets/${selectedTicket.ticket_id}/release`));
 
@@ -221,9 +327,9 @@ const DepartmentDashboard = () => {
     runAction('resolve', () => api.post(`/tickets/${selectedTicket.ticket_id}/resolve`, resolutionForm), { onSuccess: () => setShowResolutionForm(false) });
   };
 
-  const submitEscalation = (event) => {
+  const submitTransfer = (event) => {
     event.preventDefault();
-    runAction('escalate', () => api.post(`/tickets/${selectedTicket.ticket_id}/reassign-department`, escalationForm), { close: true });
+    runAction('transfer', () => api.put(`/tickets/${selectedTicket.ticket_id}/assign`, { agent: transferForm.target_agent }), { close: true });
   };
 
   const reopenTicket = (event) => {
@@ -260,12 +366,12 @@ const DepartmentDashboard = () => {
         </div>
         <nav className="flex-1 space-y-6 overflow-y-auto px-4 pb-5">
           <div><p className="mb-2 px-3 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Workspace</p>
-            <button type="button" onClick={() => setQueue('All Tickets')} className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[11px] font-extrabold transition-all duration-200 ${queue === 'All Tickets' ? 'bg-brandNavy text-white shadow-lg' : 'text-slate-600 hover:bg-blue-50 hover:text-brandNavy'}`}><span>Department Overview</span><span className="text-[9px]">{queueCounts['All Tickets']}</span></button>
-            <button type="button" onClick={() => setQueue('New / Unclaimed')} className={`mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[11px] font-bold transition-all duration-200 ${queue === 'New / Unclaimed' ? 'bg-red-50 text-brandRed' : 'text-slate-500 hover:bg-slate-50 hover:text-brandNavy'}`}><span>New / Unclaimed</span><span className="text-[9px] font-extrabold">{queueCounts['New / Unclaimed']}</span></button>
-            <button type="button" onClick={() => setQueue('Assigned to Me')} className={`mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[11px] font-bold transition-all duration-200 ${queue === 'Assigned to Me' ? 'bg-blue-50 text-brandNavy' : 'text-slate-500 hover:bg-slate-50 hover:text-brandNavy'}`}><span>Assigned to Me</span><span className="text-[9px] font-extrabold">{queueCounts['Assigned to Me']}</span></button>
+            <button type="button" onClick={() => { setActiveView('queue'); setQueue('All Tickets'); }} className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[11px] font-extrabold transition-all duration-200 ${activeView === 'queue' && queue === 'All Tickets' ? 'border border-blue-200 bg-blue-50 text-brandNavy shadow-sm' : 'text-slate-600 hover:bg-blue-50 hover:text-brandNavy'}`}><span>Department Overview</span><span className="text-[9px]">{queueCounts['All Tickets']}</span></button>
+            <button type="button" onClick={() => { setActiveView('queue'); setQueue('New / Unclaimed'); }} className={`mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[11px] font-bold transition-all duration-200 ${activeView === 'queue' && queue === 'New / Unclaimed' ? 'bg-red-50 text-brandRed' : 'text-slate-500 hover:bg-slate-50 hover:text-brandNavy'}`}><span>New / Unclaimed</span><span className="text-[9px] font-extrabold">{queueCounts['New / Unclaimed']}</span></button>
+            <button type="button" onClick={() => { setActiveView('queue'); setQueue('Assigned to Me'); }} className={`mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[11px] font-bold transition-all duration-200 ${activeView === 'queue' && queue === 'Assigned to Me' ? 'bg-blue-50 text-brandNavy' : 'text-slate-500 hover:bg-slate-50 hover:text-brandNavy'}`}><span>Assigned to Me</span><span className="text-[9px] font-extrabold">{queueCounts['Assigned to Me']}</span></button>
           </div>
-          <div><p className="mb-2 px-3 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Ticket Views</p>{['In Progress', 'Waiting for User', 'Escalated', 'Resolved'].map((item) => <button type="button" key={item} onClick={() => setQueue(item)} className={`mb-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[11px] font-bold transition-all duration-200 ${queue === item ? 'border-l-[3px] border-brandRed bg-red-50 text-brandRed' : 'text-slate-500 hover:bg-slate-50 hover:text-brandNavy'}`}><span>{item}</span><span className="text-[9px] font-extrabold">{queueCounts[item]}</span></button>)}</div>
-          <div><p className="mb-2 px-3 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Reports</p><button type="button" onClick={() => navigate('/department-analytics')} className="flex w-full items-center rounded-xl px-3 py-2.5 text-left text-[11px] font-bold text-slate-500 transition-all duration-200 hover:bg-blue-50 hover:text-brandNavy">Analytics</button></div>
+          <div><p className="mb-2 px-3 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Ticket Views</p>{['In Progress', 'Waiting for User', 'Escalated', 'Resolved'].map((item) => <button type="button" key={item} onClick={() => { setActiveView('queue'); setQueue(item); }} className={`mb-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[11px] font-bold transition-all duration-200 ${activeView === 'queue' && queue === item ? 'border-l-[3px] border-brandRed bg-red-50 text-brandRed' : 'text-slate-500 hover:bg-slate-50 hover:text-brandNavy'}`}><span>{item}</span><span className="text-[9px] font-extrabold">{queueCounts[item]}</span></button>)}</div>
+          <div><p className="mb-2 px-3 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Reports</p><button type="button" onClick={() => setActiveView('analytics')} className={`flex w-full items-center rounded-xl px-3 py-2.5 text-left text-[11px] font-bold transition-all duration-200 ${activeView === 'analytics' ? 'border border-brandNavy/20 bg-blue-50 text-brandNavy' : 'text-slate-500 hover:bg-blue-50 hover:text-brandNavy'}`}>Analytics</button></div>
         </nav>
         <div className="border-t border-slate-100 p-4"><button type="button" onClick={handleLogout} className="w-full rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-[10px] font-extrabold text-brandRed transition-all duration-200 hover:bg-brandRed hover:text-white">Sign Out</button></div>
       </aside>
@@ -285,34 +391,111 @@ const DepartmentDashboard = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button type="button" aria-label="Notifications" className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-all duration-200 hover:border-brandNavy/20 hover:bg-blue-50 hover:text-brandNavy"><svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a3 3 0 1 1-5.714 0" /></svg></button>
             <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white py-1.5 pl-1.5 pr-3"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brandNavy text-[10px] font-extrabold text-white">{userDisplayName.charAt(0).toUpperCase()}</span><div className="hidden sm:block"><p className="max-w-[120px] truncate text-[10px] font-extrabold text-brandDarkNavy">{userDisplayName}</p><p className="text-[8px] font-semibold text-slate-400">{userRoleLabel}</p></div></div>
           </div>
         </div>
       </header>
 
       <main className="relative z-10 mx-auto max-w-[1500px] space-y-5 bg-white px-5 py-6 lg:ml-64">
+        {activeView === 'analytics' ? (
+          <>
+            <section className="rounded-[20px] border border-brandRed/25 bg-gradient-to-r from-white to-blue-50/35 p-5 shadow-[0_12px_32px_rgba(15,27,76,0.055)]">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-brandRed">{department.toUpperCase()} Reports</p>
+              <h1 className="mt-1 font-sora text-2xl font-extrabold text-brandDarkNavy">Analytics Summary</h1>
+            </section>
+
+            <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              {[
+                ['Total Tickets', tickets.length, 'text-brandNavy'],
+                ['Active Work', analytics.active, 'text-brandRed'],
+                ['Resolved', analytics.resolved, 'text-emerald-600'],
+                ['Unclaimed', analytics.unclaimed, 'text-amber-600']
+              ].map(([label, value, tone]) => <div key={label} className="rounded-[18px] border border-brandRed/25 bg-white p-4 shadow-[0_8px_24px_rgba(15,27,76,0.045)]"><div className="mb-3 h-1 w-8 rounded-full bg-gradient-to-r from-brandNavy to-brandRed" /><p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">{label}</p><p className={`mt-2 font-sora text-3xl font-extrabold ${tone}`}>{value}</p></div>)}
+            </section>
+
+            <section className="grid gap-5 lg:grid-cols-2">
+              <div className="rounded-[20px] border border-brandNavy/25 bg-white p-5 shadow-[0_12px_35px_rgba(15,27,76,0.055)]">
+                <h2 className="font-sora text-base font-extrabold text-brandDarkNavy">Tickets by Category</h2>
+                <p className="mt-1 text-[10px] font-semibold text-slate-400">Distribution of assigned tickets by category.</p>
+                <div className="mt-5 h-72">
+                  {analytics.categoryRows.length ? <Bar data={categoryChartData} options={chartOptions} /> : <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs font-bold text-slate-400">No category data available</div>}
+                </div>
+              </div>
+
+              <div className="rounded-[20px] border border-brandRed/25 bg-white p-5 shadow-[0_12px_35px_rgba(15,27,76,0.055)]">
+                <h2 className="font-sora text-base font-extrabold text-brandDarkNavy">Status Summary</h2>
+                <p className="mt-1 text-[10px] font-semibold text-slate-400">How department tickets are distributed by status.</p>
+                <div className="mt-5 h-72">
+                  {analytics.statusRows.length ? <Bar data={statusChartData} options={chartOptions} /> : <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs font-bold text-slate-400">No status data available</div>}
+                </div>
+              </div>
+            </section>
+
+            <section className="grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+              <div className="rounded-[20px] border border-brandNavy/25 bg-white p-5 shadow-[0_12px_35px_rgba(15,27,76,0.055)]">
+                <h2 className="font-sora text-base font-extrabold text-brandDarkNavy">Status Split</h2>
+                <div className="mt-5 grid gap-5 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:items-center">
+                  <div className="relative h-64">
+                    {analytics.statusRows.length ? <>
+                      <Doughnut data={statusChartData} options={doughnutOptions} />
+                      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="font-sora text-2xl font-extrabold text-brandNavy">{analytics.statusTotal}</span>
+                        <span className="mt-1 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Tickets</span>
+                      </div>
+                    </> : <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs font-bold text-slate-400">No status data available</div>}
+                  </div>
+                  <div className="space-y-2.5">
+                    {analytics.statusRows.map(([label, count], index) => {
+                      const percent = analytics.statusTotal ? Math.round((count / analytics.statusTotal) * 100) : 0;
+                      const colors = ['bg-brandRed', 'bg-blue-600', 'bg-amber-500', 'bg-yellow-400', 'bg-emerald-600', 'bg-slate-500'];
+                      return <div key={label} className="rounded-2xl border border-slate-200 bg-slate-50/60 px-3.5 py-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5">
+                            <span className={`h-2.5 w-2.5 rounded-full ${colors[index % colors.length]}`} />
+                            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-600">{label}</span>
+                          </div>
+                          <span className="font-sora text-xs font-extrabold text-brandNavy">{count} ({percent}%)</span>
+                        </div>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
+                          <div className={`h-full rounded-full ${colors[index % colors.length]}`} style={{ width: `${percent}%` }} />
+                        </div>
+                      </div>;
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[20px] border border-brandRed/25 bg-white p-5 shadow-[0_12px_35px_rgba(15,27,76,0.055)]">
+                <h2 className="font-sora text-base font-extrabold text-brandDarkNavy">Status Counts</h2>
+                <div className="mt-5 space-y-3">
+                  {analytics.statusRows.length ? analytics.statusRows.map(([label, count], index) => <div key={label} className={`flex items-center justify-between rounded-2xl border bg-white px-4 py-3 shadow-sm ${index % 2 === 0 ? 'border-brandRed/25' : 'border-brandNavy/25'}`}><span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">{label}</span><span className="font-sora text-sm font-extrabold text-brandNavy">{count}</span></div>) : <p className="text-xs font-bold text-slate-400">No status data available.</p>}
+                </div>
+              </div>
+            </section>
+          </>
+        ) : (
+          <>
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_230px] lg:items-stretch">
-          <div className="flex flex-col justify-center rounded-[20px] border border-slate-200/80 bg-gradient-to-r from-white to-blue-50/35 p-5 shadow-[0_12px_32px_rgba(15,27,76,0.055)] transition-shadow duration-200 hover:shadow-[0_16px_36px_rgba(15,27,76,0.08)]">
+          <div className="flex flex-col justify-center rounded-[20px] border border-brandRed/25 bg-gradient-to-r from-white to-blue-50/35 p-5 shadow-[0_12px_32px_rgba(15,27,76,0.055)] transition-shadow duration-200 hover:border-brandRed/35 hover:shadow-[0_16px_36px_rgba(15,27,76,0.08)]">
             <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-brandRed">{department.toUpperCase()} Operations</p>
             <h1 className="mt-1 font-sora text-2xl font-extrabold text-brandDarkNavy">{department} Department</h1>
             <p className="mt-1 text-xs font-semibold text-slate-500">Manage {department} tickets assigned to your department in real time.</p>
           </div>
 
           <div className="w-full">
-            <div className="relative flex h-full min-h-[132px] flex-col overflow-hidden rounded-[20px] border border-brandRed bg-brandRed p-4 shadow-[0_14px_34px_rgba(227,24,55,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(227,24,55,0.24)]">
-              <span className="absolute right-0 top-0 h-20 w-20 rounded-bl-full bg-white/[0.07]" />
+            <div className="relative flex h-full min-h-[132px] flex-col overflow-hidden rounded-[20px] border border-brandRed/25 bg-gradient-to-br from-red-50 via-rose-50/80 to-white p-4 shadow-[0_14px_34px_rgba(227,24,55,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:border-brandRed/35 hover:shadow-[0_18px_40px_rgba(227,24,55,0.12)]">
+              <span className="absolute right-0 top-0 h-20 w-20 rounded-bl-full bg-brandRed/[0.05]" />
               <div className="relative">
-                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-white/70">Department Workload</p>
+                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-brandRed/75">Department Workload</p>
               </div>
               <div className="relative mt-3 grid flex-1 grid-cols-2 gap-2.5">
-                <div className="flex flex-col justify-center rounded-xl border border-white/10 bg-white/[0.07] px-3 py-2.5">
-                  <p className="font-sora text-2xl font-extrabold leading-none text-white">{workload.owners.reduce((sum, [, count]) => sum + count, 0)}</p>
-                  <p className="mt-1.5 text-[8px] font-extrabold uppercase tracking-wider text-white/65">Active</p>
+                <div className="flex flex-col justify-center rounded-xl border border-brandRed/25 bg-white/70 px-3 py-2.5">
+                  <p className="font-sora text-2xl font-extrabold leading-none text-brandRed">{workload.owners.reduce((sum, [, count]) => sum + count, 0)}</p>
+                  <p className="mt-1.5 text-[8px] font-extrabold uppercase tracking-wider text-brandRed/60">Active</p>
                 </div>
-                <div className="flex flex-col justify-center rounded-xl border border-white/10 bg-brandNavy/25 px-3 py-2.5">
-                  <p className="font-sora text-2xl font-extrabold leading-none text-white">{workload.unclaimed}</p>
-                  <p className="mt-1.5 text-[8px] font-extrabold uppercase tracking-wider text-white/65">Unclaimed</p>
+                <div className="flex flex-col justify-center rounded-xl border border-brandRed/25 bg-brandNavy/[0.06] px-3 py-2.5">
+                  <p className="font-sora text-2xl font-extrabold leading-none text-brandNavy">{workload.unclaimed}</p>
+                  <p className="mt-1.5 text-[8px] font-extrabold uppercase tracking-wider text-brandNavy/55">Unclaimed</p>
                 </div>
               </div>
             </div>
@@ -324,11 +507,11 @@ const DepartmentDashboard = () => {
             ['Total Assigned', stats.total, 'text-brandNavy'], ['Open', stats.open, 'text-brandRed'],
             ['In Progress', stats.progress, 'text-blue-600'], ['Waiting / Clarification', stats.waiting, 'text-amber-600'],
             ['Resolved', stats.resolved, 'text-emerald-600']
-          ].map(([label, value, tone]) => <div key={label} className="rounded-[18px] border border-slate-200/80 bg-white p-4 shadow-[0_8px_24px_rgba(15,27,76,0.045)] transition-all duration-200 hover:-translate-y-0.5 hover:border-brandNavy/15 hover:shadow-[0_12px_28px_rgba(15,27,76,0.08)]"><div className="mb-3 h-1 w-8 rounded-full bg-gradient-to-r from-brandNavy to-brandRed" /><p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">{label}</p><p className={`mt-2 font-sora text-3xl font-extrabold ${tone}`}>{value}</p></div>)}
+          ].map(([label, value, tone]) => <div key={label} className="rounded-[18px] border border-brandRed/25 bg-white p-4 shadow-[0_8px_24px_rgba(15,27,76,0.045)] transition-all duration-200 hover:-translate-y-0.5 hover:border-brandRed/35 hover:shadow-[0_12px_28px_rgba(15,27,76,0.08)]"><div className="mb-3 h-1 w-8 rounded-full bg-gradient-to-r from-brandNavy to-brandRed" /><p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">{label}</p><p className={`mt-2 font-sora text-3xl font-extrabold ${tone}`}>{value}</p></div>)}
         </section>
 
         <section>
-          <div className="min-w-0 overflow-hidden rounded-[20px] border border-slate-200/80 bg-white shadow-[0_12px_35px_rgba(15,27,76,0.055)]">
+          <div className="min-w-0 overflow-hidden rounded-[20px] border border-brandRed/25 bg-white shadow-[0_12px_35px_rgba(15,27,76,0.055)]">
             <div className="border-b border-slate-100 p-4">
               <div><p className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-brandRed">Live Department Queue</p><h3 className="mt-1 font-sora text-base font-extrabold text-brandDarkNavy">{queue}</h3></div>
             </div>
@@ -339,27 +522,25 @@ const DepartmentDashboard = () => {
                   : <div className="max-h-[620px] overflow-auto">
                     <table className="w-full min-w-[1050px] text-left">
                       <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
-                        <tr className="border-b border-slate-200 text-[8px] uppercase tracking-[0.14em] text-slate-400">
+                        <tr className="border-b border-slate-200 text-[9px] uppercase tracking-[0.14em] text-slate-400">
                           <th className="px-5 py-3">Ticket</th>
                           <th className="px-4 py-3">Owner</th>
                           <th className="px-4 py-3">Status</th>
-                          <th className="px-4 py-3">Priority</th>
                           <th className="px-4 py-3">Category</th>
                           <th className="px-4 py-3">Requester</th>
                           <th className="px-4 py-3">Created</th>
-                          <th className="px-4 py-3">Action</th>
+                          <th className="px-4 py-3 text-center">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {filteredTickets.map((ticket) => <tr key={ticket.ticket_id} className="group transition-colors duration-200 hover:bg-blue-50/45">
-                          <td className="px-5 py-3.5"><p className="font-sora text-[10px] font-extrabold text-brandNavy">#{ticket.ticket_id}</p><p className="mt-0.5 max-w-[240px] truncate text-[11px] font-bold text-slate-700">{ticket.title}</p></td>
-                          <td className="px-4 py-3.5 text-[10px] font-semibold text-slate-600">{getTicketOwnerName(ticket) || 'Unclaimed'}</td>
-                          <td className="px-4 py-3.5"><span className={`inline-flex min-w-[78px] justify-center rounded-full border px-2.5 py-1 text-[8px] font-extrabold ${statusClass(ticket.status)}`}>{ticket.status}</span></td>
-                          <td className="px-4 py-3.5"><span className={`inline-flex min-w-[54px] justify-center rounded-full border px-2.5 py-1 text-[8px] font-extrabold ${priorityClass(ticket.priority)}`}>{ticket.priority}</span></td>
-                          <td className="px-4 py-3.5 text-[10px] font-semibold text-slate-600">{ticket.category_name || `#${ticket.category_id}`}</td>
-                          <td className="px-4 py-3.5 text-[10px] font-semibold text-slate-600">{ticket.vendor_name || ticket.raised_by}</td>
-                          <td className="whitespace-nowrap px-4 py-3.5 text-[9px] font-bold text-slate-500">{formatDate(ticket.created_at)}</td>
-                          <td className="px-4 py-3.5 text-right"><button onClick={() => openDetails(ticket)} className="rounded-lg border border-brandNavy bg-brandNavy px-3 py-1.5 text-[8px] font-extrabold text-white shadow-sm transition-all duration-200 hover:-translate-y-px hover:border-brandRed hover:bg-brandRed hover:shadow-md">Process / View</button></td>
+                          <td className="px-5 py-3.5"><p className="font-sora text-[11px] font-extrabold text-brandNavy">#{ticket.ticket_id}</p><p className="mt-0.5 max-w-[240px] truncate text-xs font-bold text-slate-700">{ticket.title}</p></td>
+                          <td className="px-4 py-3.5 text-[11px] font-semibold text-slate-600">{getTicketOwnerName(ticket) || 'Unclaimed'}</td>
+                          <td className="px-4 py-3.5"><span className={`inline-flex min-w-[82px] justify-center rounded-full border px-2.5 py-1 text-[9px] font-extrabold ${statusClass(ticket.status)}`}>{ticket.status}</span></td>
+                          <td className="px-4 py-3.5 text-[11px] font-semibold text-slate-600">{ticket.category_name || `#${ticket.category_id}`}</td>
+                          <td className="px-4 py-3.5 text-[11px] font-semibold text-slate-600">{ticket.vendor_name || ticket.raised_by}</td>
+                          <td className="whitespace-nowrap px-4 py-3.5 text-[10px] font-bold text-slate-500">{formatDate(ticket.created_at)}</td>
+                          <td className="px-4 py-3.5 text-center"><button onClick={() => openDetails(ticket)} className="min-w-[112px] rounded-lg border border-brandNavy bg-brandNavy px-3 py-1.5 text-[9px] font-extrabold text-white shadow-sm transition-all duration-200 hover:-translate-y-px hover:border-brandRed hover:bg-brandRed hover:shadow-md">Process / View</button></td>
                         </tr>)}
                       </tbody>
                     </table>
@@ -367,25 +548,30 @@ const DepartmentDashboard = () => {
           </div>
 
         </section>
+          </>
+        )}
       </main>
 
-      {selectedTicket && <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-brandDarkNavy/45 p-4 backdrop-blur-sm sm:p-6"><button aria-label="Close details" className="absolute inset-0 cursor-default" onClick={closeDetails} /><div className="relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_28px_80px_rgba(15,27,76,0.24)]"><div className="h-1 bg-gradient-to-r from-brandNavy via-blue-600 to-brandRed" /><div className="flex items-start justify-between border-b border-slate-200 bg-white px-6 py-4"><div><p className="text-[9px] font-extrabold uppercase tracking-widest text-brandRed">Process Ticket #{selectedTicket.ticket_id}</p><h2 className="mt-1 font-sora text-xl font-extrabold text-brandDarkNavy">{selectedTicket.title}</h2><p className="mt-1 text-xs font-semibold text-slate-500">{selectedTicket.assigned_department || department} | {getTicketOwnerName(selectedTicket) ? `Owned by ${getTicketOwnerName(selectedTicket)}` : 'Unclaimed'}</p></div><button onClick={closeDetails} className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-extrabold text-slate-500">Close</button></div>
-        <div className="grid flex-1 overflow-y-auto lg:grid-cols-2">
-          <section className="space-y-4 p-5">{detailsLoading && <p className="rounded-xl bg-blue-50 p-3 text-xs font-bold text-brandNavy">Refreshing complete ticket details...</p>}
-            <div className="grid grid-cols-2 gap-3">{[['Requester', selectedTicket.vendor_name || selectedTicket.raised_by], ['Category', selectedTicket.category_name || `#${selectedTicket.category_id}`], ['Status', selectedTicket.status], ['Priority', selectedTicket.priority]].map(([label, value]) => <div key={label} className="rounded-2xl border border-slate-100 bg-white p-4"><p className="text-[9px] font-extrabold uppercase text-slate-400">{label}</p><p className="mt-1 break-words text-sm font-extrabold text-brandDarkNavy">{value}</p></div>)}</div>
-            <div className="rounded-2xl border border-slate-100 bg-white p-4"><p className="text-[9px] font-extrabold uppercase text-slate-400">Ticket Summary</p><p className="mt-2 text-sm font-semibold leading-6 text-slate-700">{selectedTicket.description}</p></div>
-            <div className="rounded-2xl border border-slate-100 bg-white p-4"><p className="text-[9px] font-extrabold uppercase text-slate-400">Attachment</p>{selectedTicket.has_attachment ? <div className="mt-2 flex items-center justify-between gap-3"><p className="truncate text-xs font-bold text-slate-700">{attachmentName(selectedTicket.attachment_path)}</p><button onClick={() => downloadAttachment(selectedTicket.attachment_path)} className="rounded-xl bg-brandNavy px-3 py-2 text-[10px] font-extrabold text-white">Download</button></div> : <p className="mt-2 text-xs font-bold text-slate-400">No attachment uploaded.</p>}</div>
-            {(selectedTicket.resolution_summary || selectedTicket.root_cause) && <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4"><p className="text-[9px] font-extrabold uppercase text-emerald-700">Resolution Details</p><div className="mt-3 space-y-2 text-xs font-semibold text-slate-700"><p><b>Summary:</b> {selectedTicket.resolution_summary}</p><p><b>Root cause:</b> {selectedTicket.root_cause}</p><p><b>Actions taken:</b> {selectedTicket.action_taken}</p><p className="text-[10px] text-slate-400">Resolved by {selectedTicket.resolved_by || selectedTicket.resolution_submitted_by} on {formatDate(selectedTicket.resolved_at)}</p></div></div>}
-            <div className="rounded-2xl border border-slate-100 bg-white p-4"><p className="text-[9px] font-extrabold uppercase text-slate-400">Activity Timeline</p><div className="mt-4 max-h-80 space-y-3 overflow-y-auto">{(selectedTicket.activity || []).map((item) => <div key={item.activity_id} className="relative border-l-2 border-brandNavy/15 pl-4"><span className="absolute -left-[5px] top-1 h-2 w-2 rounded-full bg-brandRed" /><p className="text-xs font-extrabold text-brandDarkNavy">{item.action_text}</p><p className="mt-1 text-[9px] font-semibold text-slate-400">{item.actor_name || 'System'} | {formatDate(item.created_at)}</p></div>)}</div></div>
+      {selectedTicket && <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-brandDarkNavy/45 p-3 backdrop-blur-sm sm:p-5"><button aria-label="Close details" className="absolute inset-0 cursor-default" onClick={closeDetails} /><div className="relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[20px] border border-brandRed/25 bg-white shadow-[0_28px_80px_rgba(15,27,76,0.24)]"><div className="h-1 bg-gradient-to-r from-brandNavy via-blue-600 to-brandRed" /><div className="flex items-start justify-between border-b border-brandRed/20 bg-white px-5 py-2.5"><div><p className="text-[9px] font-extrabold uppercase tracking-widest text-brandRed">Process Ticket #{selectedTicket.ticket_id}</p><h2 className="mt-0.5 font-sora text-lg font-extrabold text-brandDarkNavy">{selectedTicket.title}</h2><p className="mt-0.5 text-xs font-semibold text-slate-500">{selectedTicket.assigned_department || department} | {getTicketOwnerName(selectedTicket) ? `Owned by ${getTicketOwnerName(selectedTicket)}` : 'Unclaimed'}</p></div><button onClick={closeDetails} aria-label="Close details" className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition hover:bg-red-50 hover:text-brandRed"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.4" stroke="currentColor" className="h-4 w-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg></button></div>
+        <div className="grid flex-1 overflow-y-auto lg:grid-cols-[1fr_0.9fr]">
+          <section className="space-y-2.5 p-3">{detailsLoading && <p className="rounded-lg bg-blue-50 p-2 text-xs font-bold text-brandNavy">Refreshing complete ticket details...</p>}
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">{[['Requester', selectedTicket.vendor_name || selectedTicket.raised_by], ['Category', selectedTicket.category_name || `#${selectedTicket.category_id}`], ['Status', selectedTicket.status]].map(([label, value]) => <div key={label} className="rounded-lg border border-brandRed/25 bg-white px-3 py-2.5"><p className="text-[8px] font-extrabold uppercase text-slate-400">{label}</p><p className="mt-1 truncate text-xs font-extrabold text-brandDarkNavy" title={value}>{value}</p></div>)}</div>
+            <div className="rounded-lg border border-brandRed/25 bg-white px-3 py-2.5"><p className="text-[8px] font-extrabold uppercase text-slate-400">Ticket Summary</p><p className="mt-1.5 text-xs font-semibold leading-5 text-slate-700">{selectedTicket.description}</p></div>
+            <div className="rounded-lg border border-brandRed/25 bg-white px-3 py-2.5"><p className="text-[8px] font-extrabold uppercase text-slate-400">Attachment</p>{selectedTicket.has_attachment ? <div className="mt-1.5 flex items-center justify-between gap-3"><p className="truncate text-xs font-bold text-slate-700">{attachmentName(selectedTicket.attachment_path)}</p><button onClick={() => downloadAttachment(selectedTicket.attachment_path)} className="rounded-md bg-brandNavy px-3 py-1.5 text-[10px] font-extrabold text-white">Download</button></div> : <p className="mt-1.5 text-xs font-bold text-slate-400">No attachment uploaded.</p>}</div>
+            {(selectedTicket.resolution_summary || selectedTicket.root_cause) && <div className="rounded-lg border border-brandRed/25 bg-emerald-50/60 px-3 py-2.5"><p className="text-[8px] font-extrabold uppercase text-emerald-700">Resolution Details</p><div className="mt-1.5 space-y-1 text-xs font-semibold text-slate-700"><p><b>Summary:</b> {selectedTicket.resolution_summary}</p><p><b>Root cause:</b> {selectedTicket.root_cause}</p><p><b>Actions taken:</b> {selectedTicket.action_taken}</p><p className="text-[10px] text-slate-400">Resolved by {selectedTicket.resolved_by || selectedTicket.resolution_submitted_by} on {formatDate(selectedTicket.resolved_at)}</p></div></div>}
+            <div className="rounded-lg border border-brandRed/25 bg-white px-3 py-2.5"><p className="text-[8px] font-extrabold uppercase text-slate-400">Activity Timeline</p><div className="mt-2 max-h-56 space-y-2 overflow-y-auto">{(selectedTicket.activity || []).map((item) => <div key={item.activity_id} className="relative border-l-2 border-brandNavy/15 pl-3"><span className="absolute -left-[5px] top-1 h-2 w-2 rounded-full bg-brandRed" /><p className="text-xs font-extrabold text-brandDarkNavy">{item.action_text}</p><p className="mt-0.5 text-[9px] font-semibold text-slate-400">{item.actor_name || 'System'} | {formatDate(item.created_at)}</p></div>)}</div></div>
           </section>
 
-          <aside className="space-y-4 border-t border-slate-200 bg-slate-100/50 p-5 lg:border-l lg:border-t-0">
-            <div className="rounded-2xl border border-white bg-white p-4"><p className="text-[9px] font-extrabold uppercase text-slate-400">Ownership</p><div className="mt-2 flex items-center justify-between gap-3"><div><p className="text-sm font-extrabold text-brandDarkNavy">{getTicketOwnerName(selectedTicket) || 'Available to claim'}</p><p className="mt-1 text-[9px] font-semibold text-slate-400">{selectedTicket.claimed_at ? `Claimed ${formatDate(selectedTicket.claimed_at)}` : 'No department owner'}</p></div>{isUnclaimed(selectedTicket) ? <button disabled={!!working} onClick={claimTicket} className="rounded-xl bg-brandNavy px-4 py-2.5 text-xs font-extrabold text-white disabled:opacity-50">{working === 'claim' ? 'Claiming...' : 'Claim Ticket'}</button> : selectedIsMine ? <button disabled={!!working} onClick={releaseTicket} className="rounded-xl border border-brandRed/20 px-4 py-2.5 text-xs font-extrabold text-brandRed disabled:opacity-50">{working === 'release' ? 'Releasing...' : 'Release'}</button> : null}</div></div>
-            <div className="grid grid-cols-2 gap-3"><label className="rounded-2xl bg-white p-4"><span className="mb-2 block text-[9px] font-extrabold uppercase text-slate-400">Update Status</span><select value={selectedTicket.status} disabled={!!working} onChange={(event) => updateStatus(event.target.value)} className="w-full rounded-xl border border-slate-200 px-2 py-2.5 text-xs font-bold">{STATUS_OPTIONS.map((item) => <option key={item}>{item}</option>)}</select></label><label className="rounded-2xl bg-white p-4"><span className="mb-2 block text-[9px] font-extrabold uppercase text-slate-400">Update Priority</span><select value={selectedTicket.priority} disabled={!!working} onChange={(event) => updatePriority(event.target.value)} className="w-full rounded-xl border border-slate-200 px-2 py-2.5 text-xs font-bold">{PRIORITY_OPTIONS.map((item) => <option key={item}>{item}</option>)}</select></label></div>
-            {showResolutionForm && <form onSubmit={submitResolution} className="rounded-2xl border border-emerald-100 bg-white p-4"><p className="text-[9px] font-extrabold uppercase text-emerald-700">Resolution Form</p>{[['root_cause', 'Root cause'], ['action_taken', 'Actions taken'], ['resolution_summary', 'Resolution summary'], ['resolution_remarks', 'Optional remarks']].map(([key, label]) => <label key={key} className="mt-3 block"><span className="mb-1 block text-[9px] font-extrabold uppercase text-slate-400">{label}</span><textarea required={key !== 'resolution_remarks'} value={resolutionForm[key]} onChange={(event) => setResolutionForm((prev) => ({ ...prev, [key]: event.target.value }))} className="min-h-[70px] w-full resize-none rounded-xl border border-slate-200 p-3 text-xs font-semibold" /></label>)}<div className="mt-3 space-y-2">{CHECKLIST_ITEMS.map(([key, label]) => <label key={key} className="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" checked={resolutionForm.checklist[key]} onChange={(event) => setResolutionForm((prev) => ({ ...prev, checklist: { ...prev.checklist, [key]: event.target.checked } }))} />{label}</label>)}</div><button disabled={!!working || !Object.values(resolutionForm.checklist).every(Boolean)} className="mt-4 w-full rounded-xl bg-brandRed px-4 py-3 text-xs font-extrabold text-white disabled:opacity-50">{working === 'resolve' ? 'Resolving...' : 'Resolve Ticket'}</button></form>}
-            {isResolved(selectedTicket) && <form onSubmit={reopenTicket} className="rounded-2xl bg-white p-4"><p className="text-[9px] font-extrabold uppercase text-slate-400">Reopen Ticket</p><textarea required value={reopenReason} onChange={(event) => setReopenReason(event.target.value)} placeholder="Mandatory reason for reopening..." className="mt-2 min-h-[70px] w-full resize-none rounded-xl border border-slate-200 p-3 text-xs font-semibold" /><button disabled={!!working} className="mt-2 w-full rounded-xl bg-brandNavy px-4 py-3 text-xs font-extrabold text-white">{working === 'reopen' ? 'Reopening...' : `Reopen Ticket (${selectedTicket.reopened_count || 0} prior)`}</button></form>}
-            <form onSubmit={saveInternalNote} className="rounded-2xl bg-white p-4"><p className="text-[9px] font-extrabold uppercase text-slate-400">Internal Department Notes</p><textarea required value={noteText} onChange={(event) => setNoteText(event.target.value)} placeholder="Visible only to admin and department users..." className="mt-2 min-h-[80px] w-full resize-none rounded-xl border border-slate-200 p-3 text-xs font-semibold" /><button disabled={!!working || !noteText.trim()} className="mt-2 w-full rounded-xl bg-brandNavy px-4 py-3 text-xs font-extrabold text-white disabled:opacity-50">{working === 'note' ? 'Saving...' : 'Add Internal Note'}</button><div className="mt-3 max-h-44 space-y-2 overflow-y-auto">{(selectedTicket.internal_notes || []).map((note) => <div key={note.note_id} className="rounded-xl bg-slate-50 p-3"><p className="text-xs font-semibold text-slate-700">{note.note_text}</p><p className="mt-1 text-[9px] font-bold text-slate-400">{note.created_by_name} | {formatDate(note.created_at)}</p></div>)}</div></form>
-            <form onSubmit={submitEscalation} className="rounded-2xl bg-white p-4"><p className="text-[9px] font-extrabold uppercase text-slate-400">Escalate / Reassign</p><select required value={escalationForm.target_department} onChange={(event) => setEscalationForm((prev) => ({ ...prev, target_department: event.target.value }))} className="mt-2 w-full rounded-xl border border-slate-200 p-3 text-xs font-bold"><option value="">Target department</option>{availableDepartments.map((item) => <option key={item}>{item}</option>)}</select><textarea required value={escalationForm.reason} onChange={(event) => setEscalationForm((prev) => ({ ...prev, reason: event.target.value }))} placeholder="Mandatory escalation reason..." className="mt-2 min-h-[70px] w-full resize-none rounded-xl border border-slate-200 p-3 text-xs font-semibold" /><button disabled={!!working} className="mt-2 w-full rounded-xl bg-brandRed px-4 py-3 text-xs font-extrabold text-white">{working === 'escalate' ? 'Transferring...' : 'Transfer Ticket'}</button>{(selectedTicket.escalations || []).length > 0 && <div className="mt-3 space-y-2">{selectedTicket.escalations.map((item) => <div key={item.escalation_id} className="rounded-xl bg-red-50/60 p-3 text-[10px] font-semibold text-slate-600"><b>{item.from_department} to {item.to_department}</b><p className="mt-1">{item.reason}</p><p className="mt-1 text-slate-400">{formatDate(item.created_at)}</p></div>)}</div>}</form>
+          <aside className="space-y-2.5 border-t border-brandRed/20 bg-slate-100/50 p-3 lg:border-l lg:border-t-0">
+            <div className="rounded-lg border border-brandRed/25 bg-white px-3 py-2.5"><p className="text-[8px] font-extrabold uppercase text-slate-400">Ownership</p><div className="mt-1.5 flex items-center justify-between gap-3"><div><p className="text-sm font-extrabold text-brandDarkNavy">{getTicketOwnerName(selectedTicket) || 'Available to claim'}</p><p className="mt-0.5 text-[9px] font-semibold text-slate-400">{selectedTicket.claimed_at ? `Claimed ${formatDate(selectedTicket.claimed_at)}` : 'No department owner'}</p></div>{isUnclaimed(selectedTicket) ? <button disabled={!!working} onClick={claimTicket} className="rounded-md bg-brandNavy px-3 py-1.5 text-xs font-extrabold text-white disabled:opacity-50">{working === 'claim' ? 'Claiming...' : 'Claim Ticket'}</button> : selectedIsMine ? <button disabled={!!working} onClick={releaseTicket} className="rounded-md border border-brandRed/20 px-3 py-1.5 text-xs font-extrabold text-brandRed disabled:opacity-50">{working === 'release' ? 'Releasing...' : 'Release'}</button> : null}</div></div>
+            <label className="block rounded-lg border border-brandRed/25 bg-white px-3 py-2.5"><span className="mb-1.5 block text-[8px] font-extrabold uppercase text-slate-400">Update Status</span><select value={selectedTicket.status} disabled={!!working} onChange={(event) => updateStatus(event.target.value)} className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-bold">{STATUS_OPTIONS.map((item) => <option key={item}>{item}</option>)}</select></label>
+            {selectedTicket.status === 'Needs Clarification' && <form onSubmit={sendClarificationNote} className="rounded-lg border border-brandRed/25 bg-red-50/40 px-3 py-2.5"><p className="text-[8px] font-extrabold uppercase text-brandRed">Note to User</p><textarea required value={clarificationNote} onChange={(event) => setClarificationNote(event.target.value)} placeholder="Tell the user what details are needed..." className="mt-1.5 min-h-[48px] w-full resize-none rounded-md border border-brandRed/20 bg-white p-2 text-xs font-semibold outline-none focus:border-brandRed" /><button disabled={!!working || !clarificationNote.trim()} className="mt-2 w-full rounded-md bg-brandRed px-4 py-2 text-xs font-extrabold text-white disabled:opacity-50">{working === 'clarification-note' ? 'Sending...' : 'Send Note to User'}</button></form>}
+            {showResolutionForm && <form onSubmit={submitResolution} className="rounded-lg border border-brandRed/25 bg-white px-3 py-2.5"><p className="text-[8px] font-extrabold uppercase text-emerald-700">Resolution Form</p>{[['root_cause', 'Root cause'], ['action_taken', 'Actions taken'], ['resolution_summary', 'Resolution summary'], ['resolution_remarks', 'Optional remarks']].map(([key, label]) => <label key={key} className="mt-1.5 block"><span className="mb-1 block text-[8px] font-extrabold uppercase text-slate-400">{label}</span><textarea required={key !== 'resolution_remarks'} value={resolutionForm[key]} onChange={(event) => setResolutionForm((prev) => ({ ...prev, [key]: event.target.value }))} className="min-h-[44px] w-full resize-none rounded-md border border-slate-200 p-2 text-xs font-semibold" /></label>)}<div className="mt-2 space-y-1">{CHECKLIST_ITEMS.map(([key, label]) => <label key={key} className="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" checked={resolutionForm.checklist[key]} onChange={(event) => setResolutionForm((prev) => ({ ...prev, checklist: { ...prev.checklist, [key]: event.target.checked } }))} />{label}</label>)}</div><button disabled={!!working || !Object.values(resolutionForm.checklist).every(Boolean)} className="mt-2.5 w-full rounded-md bg-brandRed px-4 py-2 text-xs font-extrabold text-white disabled:opacity-50">{working === 'resolve' ? 'Resolving...' : 'Resolve Ticket'}</button></form>}
+            {isResolved(selectedTicket) && <form onSubmit={reopenTicket} className="rounded-lg border border-brandRed/25 bg-white px-3 py-2.5"><p className="text-[8px] font-extrabold uppercase text-slate-400">Reopen Ticket</p><textarea required value={reopenReason} onChange={(event) => setReopenReason(event.target.value)} placeholder="Mandatory reason for reopening..." className="mt-1.5 min-h-[44px] w-full resize-none rounded-md border border-slate-200 p-2 text-xs font-semibold" /><button disabled={!!working} className="mt-2 w-full rounded-md bg-brandNavy px-4 py-2 text-xs font-extrabold text-white">{working === 'reopen' ? 'Reopening...' : `Reopen Ticket (${selectedTicket.reopened_count || 0} prior)`}</button></form>}
+            <div className="grid gap-2.5 xl:grid-cols-2">
+              <form onSubmit={saveInternalNote} className="rounded-lg border border-brandRed/25 bg-white px-3 py-2.5"><p className="text-[8px] font-extrabold uppercase text-slate-400">Internal Department Notes</p><textarea required value={noteText} onChange={(event) => setNoteText(event.target.value)} placeholder="Visible only to admin and department users..." className="mt-1.5 min-h-[48px] w-full resize-none rounded-md border border-slate-200 p-2 text-xs font-semibold" /><button disabled={!!working || !noteText.trim()} className="mt-2 w-full rounded-md bg-brandNavy px-4 py-2 text-xs font-extrabold text-white disabled:opacity-50">{working === 'note' ? 'Saving...' : 'Add Internal Note'}</button><div className="mt-2 max-h-28 space-y-1.5 overflow-y-auto">{(selectedTicket.internal_notes || []).map((note) => <div key={note.note_id} className="rounded-md border border-brandRed/20 bg-slate-50 p-2"><p className="text-xs font-semibold text-slate-700">{note.note_text}</p><p className="mt-0.5 text-[9px] font-bold text-slate-400">{note.created_by_name} | {formatDate(note.created_at)}</p></div>)}</div></form>
+              <form onSubmit={submitTransfer} className="rounded-lg border border-brandRed/25 bg-white px-3 py-2.5"><p className="text-[8px] font-extrabold uppercase text-slate-400">Transfer Within Department</p><select required value={transferForm.target_agent} onChange={(event) => setTransferForm({ target_agent: event.target.value })} className="mt-1.5 w-full rounded-md border border-slate-200 p-2 text-xs font-bold"><option value="">Select department user</option>{availableAgents.map((agent) => <option key={agent.email || agent.name} value={agent.name}>{agent.name}</option>)}</select>{availableAgents.length === 0 && <p className="mt-1.5 text-[10px] font-bold text-slate-400">No other users found in {department}.</p>}<button disabled={!!working || !transferForm.target_agent} className="mt-2 w-full rounded-md bg-brandRed px-4 py-2 text-xs font-extrabold text-white disabled:opacity-50">{working === 'transfer' ? 'Transferring...' : 'Transfer Ticket'}</button></form>
+            </div>
           </aside>
         </div></div></div>}
     </div>
