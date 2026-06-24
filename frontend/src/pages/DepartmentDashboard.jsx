@@ -201,10 +201,12 @@ const DepartmentDashboard = () => {
     if (queue === 'Assigned to Me') queueMatch = ticket.claimed_by === user.user_id;
     if (queue === 'In Progress') queueMatch = ['Under Review', 'In Progress'].includes(ticket.status);
     if (queue === 'Waiting for User') queueMatch = ticket.status === 'Needs Clarification';
+    if (queue === 'Clarified by User') queueMatch = ticket.has_user_clarification && !isResolved(ticket);
     if (queue === 'Escalated') queueMatch = Number(ticket.escalation_count || 0) > 0;
     if (queue === 'Resolved') queueMatch = isResolved(ticket);
     return queueMatch;
   }), [tickets, queue, user.user_id]);
+  const clarifiedTickets = useMemo(() => tickets.filter((ticket) => ticket.has_user_clarification && !isResolved(ticket)), [tickets]);
 
   const workload = useMemo(() => calculateWorkload(tickets), [tickets]);
   const analytics = useMemo(() => {
@@ -391,6 +393,19 @@ const DepartmentDashboard = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {clarifiedTickets.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveView('queue');
+                  setQueue('Clarified by User');
+                }}
+                className="relative rounded-xl border border-brandRed/20 bg-red-50 px-3 py-2 text-[10px] font-extrabold text-brandRed transition hover:bg-red-100"
+              >
+                User clarified
+                <span className="ml-2 rounded-full bg-brandRed px-1.5 py-0.5 text-[8px] text-white">{clarifiedTickets.length}</span>
+              </button>
+            )}
             <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white py-1.5 pl-1.5 pr-3"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brandNavy text-[10px] font-extrabold text-white">{userDisplayName.charAt(0).toUpperCase()}</span><div className="hidden sm:block"><p className="max-w-[120px] truncate text-[10px] font-extrabold text-brandDarkNavy">{userDisplayName}</p><p className="text-[8px] font-semibold text-slate-400">{userRoleLabel}</p></div></div>
           </div>
         </div>
@@ -509,6 +524,25 @@ const DepartmentDashboard = () => {
             ['Resolved', stats.resolved, 'text-emerald-600']
           ].map(([label, value, tone]) => <div key={label} className="rounded-[18px] border border-brandRed/25 bg-white p-4 shadow-[0_8px_24px_rgba(15,27,76,0.045)] transition-all duration-200 hover:-translate-y-0.5 hover:border-brandRed/35 hover:shadow-[0_12px_28px_rgba(15,27,76,0.08)]"><div className="mb-3 h-1 w-8 rounded-full bg-gradient-to-r from-brandNavy to-brandRed" /><p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">{label}</p><p className={`mt-2 font-sora text-3xl font-extrabold ${tone}`}>{value}</p></div>)}
         </section>
+
+        {clarifiedTickets.length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveView('queue');
+              setQueue('Clarified by User');
+            }}
+            className="flex w-full items-center justify-between rounded-xl border border-brandNavy/20 bg-blue-50/70 px-4 py-2.5 text-left shadow-sm transition hover:border-brandNavy/35 hover:bg-blue-50"
+          >
+            <div>
+              <p className="text-[9px] font-extrabold uppercase tracking-wider text-brandNavy">User Clarified</p>
+              <p className="mt-0.5 text-xs font-bold text-brandDarkNavy">
+                {clarifiedTickets.length} {clarifiedTickets.length === 1 ? 'ticket has' : 'tickets have'} new clarification from user.
+              </p>
+            </div>
+            <span className="rounded-lg bg-brandNavy px-3 py-1.5 text-[10px] font-extrabold text-white">View</span>
+          </button>
+        )}
 
         <section>
           <div className="min-w-0 overflow-hidden rounded-[20px] border border-brandRed/25 bg-white shadow-[0_12px_35px_rgba(15,27,76,0.055)]">

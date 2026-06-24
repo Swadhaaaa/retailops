@@ -1027,6 +1027,7 @@ const UserDashboard = () => {
     const openCount = tickets.filter(t => t.status === 'Open').length;
     const progressCount = tickets.filter(t => t.status === 'In Progress').length;
     const resolvedCount = tickets.filter(t => t.status === 'Resolved').length;
+    const clarificationCount = tickets.filter(t => t.status === 'Needs Clarification').length;
 
     return (
       <div className="space-y-6 text-left">
@@ -1047,6 +1048,25 @@ const UserDashboard = () => {
         </div>
 
         {/* ── Stat Cards ── */}
+        {clarificationCount > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setStatusFilter('Needs Clarification');
+              switchTab('My Queries');
+            }}
+            className="flex w-full items-center justify-between gap-4 rounded-xl border border-brandRed/25 bg-red-50/70 px-4 py-2.5 text-left shadow-sm transition hover:border-brandRed/40 hover:bg-red-50"
+          >
+            <div>
+              <p className="text-[9px] font-extrabold uppercase tracking-wider text-brandRed">Clarification Needed</p>
+              <p className="mt-0.5 text-xs font-bold text-brandDarkNavy">
+                {clarificationCount} {clarificationCount === 1 ? 'query needs' : 'queries need'} your clarification.
+              </p>
+            </div>
+            <span className="rounded-lg bg-brandRed px-3 py-1.5 text-[10px] font-extrabold text-white">View</span>
+          </button>
+        )}
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-xl border border-gray-200 flex flex-col justify-center text-left shadow-sm">
             <span className="text-sm font-medium text-gray-500">Total</span>
@@ -2600,24 +2620,6 @@ const UserDashboard = () => {
           <span className="text-[10px] text-brandMuted uppercase ml-2 hidden lg:inline-block border-l pl-3 border-gray-200 tracking-widest font-extrabold font-sora">QMS Portal</span>
         </div>
 
-        <div className="hidden md:flex items-center relative flex-1 max-w-md mx-8">
-          <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.637 10.637Z" />
-            </svg>
-          </span>
-          <input
-            type="text"
-            placeholder="Search queries, ticket IDs or topics..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              if (activeTab !== 'My Queries' && activeTab !== 'Track Status' && activeTab !== 'Dashboard') switchTab('My Queries');
-            }}
-            className="w-full pl-11 pr-4 py-3 bg-white/60 backdrop-blur border-2 border-slate-200 rounded-2xl outline-none focus:border-brandNavy/60 focus:bg-white/90 text-sm font-extrabold text-brandDarkNavy transition-all font-dmSans placeholder:text-slate-500 placeholder:font-extrabold shadow-[inset_0_1px_3px_rgba(0,0,0,.03)]"
-          />
-        </div>
-
         <div className="flex items-center space-x-4">
           {/* TEMPORARILY DISABLED - MESSAGES FEATURE */}
           {MESSAGES_FEATURE_ENABLED && (
@@ -2646,6 +2648,25 @@ const UserDashboard = () => {
                 )}
               </button>
             </>
+          )}
+
+          {tickets.filter(t => t.status === 'Needs Clarification').length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('Needs Clarification');
+                switchTab('My Queries');
+              }}
+              className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-brandRed/20 bg-red-50 text-brandRed transition hover:bg-red-100"
+              aria-label="Clarification notifications"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.3" stroke="currentColor" className="h-5 w-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+              </svg>
+              <span className="absolute -right-1.5 -top-1.5 rounded-full bg-brandRed px-1.5 py-0.5 text-[8px] font-extrabold text-white ring-2 ring-white">
+                {tickets.filter(t => t.status === 'Needs Clarification').length}
+              </span>
+            </button>
           )}
 
           <div className={`flex items-center space-x-3 ${MESSAGES_FEATURE_ENABLED ? 'pl-3 border-l border-gray-100' : ''}`}>
@@ -3002,7 +3023,7 @@ const UserDashboard = () => {
       {selectedTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-brandNavy/35 backdrop-blur-sm overflow-hidden animate-fade-in">
           <div className="absolute inset-0 bg-brandNavy/10 backdrop-blur-[1px]" onClick={closeTicketDetails} />
-          <div className={`relative bg-white w-full ${selectedTicketView === 'track' ? 'max-w-6xl max-h-[calc(100vh-5.5rem)]' : 'max-w-2xl'} rounded-2xl shadow-2xl border border-gray-100/90 overflow-hidden z-10 animate-scale-in flex flex-col font-dmSans`}>
+          <div className={`relative bg-white w-full ${selectedTicketView === 'track' ? 'max-w-6xl max-h-[calc(100vh-5.5rem)]' : 'max-w-5xl max-h-[calc(100vh-4rem)]'} rounded-2xl shadow-2xl border border-gray-100/90 overflow-hidden z-10 animate-scale-in flex flex-col font-dmSans`}>
             <div className={`h-1.5 w-full ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
             
             <button onClick={closeTicketDetails}
@@ -3028,7 +3049,7 @@ const UserDashboard = () => {
               </div>
             </div>
 
-            <div className={`grid ${selectedTicketView === 'track' ? 'grid-cols-2 lg:grid-cols-5' : 'grid-cols-1 sm:grid-cols-2'} gap-2.5 px-4 py-3 bg-gray-50/30`}>
+            <div className={`grid ${selectedTicketView === 'track' ? 'grid-cols-2 lg:grid-cols-5' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'} gap-2.5 px-4 py-3 bg-gray-50/30`}>
               {/* Category */}
               <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
                 <div className="w-7 h-7 rounded-lg bg-brandNavy/5 text-brandNavy flex items-center justify-center flex-shrink-0 border border-brandNavy/10">
@@ -3315,18 +3336,6 @@ const UserDashboard = () => {
               </div>
             )}
 
-            {/* Footer Close Actions */}
-            <div className="px-4 py-2 flex justify-end gap-3 bg-gray-50/50 border-t border-gray-100">
-              <button
-                onClick={closeTicketDetails}
-                aria-label="Close details"
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-400 transition-all duration-200 hover:border-brandRed/20 hover:bg-red-50 hover:text-brandRed"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.4" stroke="currentColor" className="h-4 w-4">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
           </div>
         </div>
       )}

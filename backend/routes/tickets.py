@@ -467,7 +467,8 @@ def admin_ticket_to_dict(ticket):
             'issue_investigated': bool(ticket[28]) if len(ticket) > 28 else False,
             'requester_updated': bool(ticket[29]) if len(ticket) > 29 else False,
             'final_confirmation_done': bool(ticket[30]) if len(ticket) > 30 else False
-        }
+        },
+        'has_user_clarification': bool(ticket[31]) if len(ticket) > 31 else False
     }
 
 
@@ -870,7 +871,13 @@ def get_single_ticket(ticket_id):
                    u.name AS vendor_name, c.name AS category_name,
                    t.claimed_by, t.claimed_at, t.resolved_by, t.reopened_count,
                    t.escalation_count, t.documents_verified,
-                   t.issue_investigated, t.requester_updated, t.final_confirmation_done
+                   t.issue_investigated, t.requester_updated, t.final_confirmation_done,
+                   EXISTS (
+                       SELECT 1
+                       FROM ticket_activity a
+                       WHERE a.ticket_id = t.ticket_id
+                         AND a.action_type = 'user_clarification'
+                   ) AS has_user_clarification
             FROM tickets t
             LEFT JOIN users u ON t.raised_by = u.user_id OR t.raised_by = u.email
             LEFT JOIN categories c ON t.category_id = c.category_id
@@ -1193,6 +1200,7 @@ def get_department_assigned_tickets():
             return jsonify({'error': 'Department access required'}), 403
 
         conn = get_conn()
+        ensure_ticket_activity_table(conn)
         tickets = conn.execute(f"""
             SELECT t.ticket_id, t.title, t.description, t.category_id, t.priority,
                    t.status, t.raised_by, t.assigned_to, t.created_at, t.attachment_path,

@@ -136,6 +136,7 @@ const AdminDashboard = () => {
   const [editingAdmin, setEditingAdmin] = useState(null);
   const [selectedDepartmentName, setSelectedDepartmentName] = useState('');
   const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState('All');
+  const [departmentSearchQuery, setDepartmentSearchQuery] = useState('');
   const [adminForm, setAdminForm] = useState({
     name: '',
     email: '',
@@ -1231,6 +1232,7 @@ const AdminDashboard = () => {
         </div>
 
         {/* ── Recent Tickets Table ── */}
+        {false && (
         <div className="min-w-0 overflow-hidden rounded-[20px] border border-brandRed/25 bg-white shadow-[0_12px_35px_rgba(15,27,76,0.055)]">
           <div className="border-b border-slate-100 p-4 flex items-center justify-between flex-wrap gap-3">
             <div>
@@ -1336,6 +1338,7 @@ const AdminDashboard = () => {
             )}
           </div>
         </div>
+        )}
       </div>
     );
   }
@@ -1525,7 +1528,6 @@ const AdminDashboard = () => {
                       <div className="space-y-2 text-xs font-semibold text-slate-600">
                         <p className="flex justify-between gap-3"><span className="text-slate-400">Name</span><span className="text-brandDarkNavy font-extrabold text-right">{selectedTicket.vendor_name || selectedTicket.raised_by}</span></p>
                         <p className="flex justify-between gap-3"><span className="text-slate-400">Email</span><span className="text-right break-all">{selectedTicket.raised_by}</span></p>
-                        <p className="flex justify-between gap-3"><span className="text-slate-400">Phone</span><span className="text-right">Not available</span></p>
                       </div>
                     </div>
                     <div className="rounded-[18px] border border-brandRed/10 bg-brandRed/[0.035] p-4 shadow-sm">
@@ -2065,6 +2067,11 @@ const AdminDashboard = () => {
 
     const totalMembers = departmentStats.reduce((sum, department) => sum + department.members, 0);
     const totalTickets = departmentStats.reduce((sum, department) => sum + department.total, 0);
+    const departmentSearchTerm = departmentSearchQuery.trim().toLowerCase();
+    const visibleDepartmentStats = departmentStats.filter((department) => {
+      if (!departmentSearchTerm) return true;
+      return [department.name, department.head].some((value) => value.toLowerCase().includes(departmentSearchTerm));
+    });
     const selectedDepartment = departmentStats.find((department) => department.name === selectedDepartmentName);
     const selectedDepartmentTickets = selectedDepartment
       ? tickets.filter((ticket) => getTicketDepartment(ticket) === selectedDepartment.name)
@@ -2075,7 +2082,7 @@ const AdminDashboard = () => {
       if (selectedDepartmentFilter === 'Resolved') return ticket.status === 'Resolved' || ticket.status === 'Closed';
       return true;
     });
-    const selectedDepartmentRecentTickets = selectedDepartmentFilteredTickets.slice(0, 4);
+    const selectedDepartmentRecentTickets = selectedDepartmentFilteredTickets;
     const formatDepartmentTicketDate = (dateStr) => {
       if (!dateStr) return 'No date';
       const date = new Date(dateStr);
@@ -2085,12 +2092,77 @@ const AdminDashboard = () => {
       setSelectedDepartmentName(departmentName);
       setSelectedDepartmentFilter(filter);
     };
+    const downloadDepartmentReport = () => {
+      if (!selectedDepartment) return;
+      const rows = selectedDepartmentFilteredTickets.map((ticket) => `
+        <tr>
+          <td>${ticket.ticket_id || 'N/A'}</td>
+          <td>${ticket.title || 'Untitled ticket'}</td>
+          <td>${ticket.vendor_name || ticket.raised_by || 'Requester'}</td>
+          <td>${ticket.status || 'Open'}</td>
+          <td>${formatDepartmentTicketDate(ticket.created_at)}</td>
+        </tr>
+      `).join('');
+      const documentHtml = `
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <style>
+              body { font-family: Arial, sans-serif; color: #0f1b4c; }
+              h1 { margin-bottom: 4px; }
+              table { border-collapse: collapse; width: 100%; margin-top: 16px; }
+              th, td { border: 1px solid #d9e0ec; padding: 8px; font-size: 12px; text-align: left; }
+              th { background: #f3f6fb; }
+              .stats span { display: inline-block; margin-right: 18px; font-weight: bold; }
+            </style>
+          </head>
+          <body>
+            <h1>${selectedDepartment.name} Department Report</h1>
+            <p>Showing: ${selectedDepartmentFilter === 'All' ? 'All tickets' : selectedDepartmentFilter}</p>
+            <div class="stats">
+              <span>Members: ${selectedDepartment.members}</span>
+              <span>Total: ${selectedDepartment.total}</span>
+              <span>Open: ${selectedDepartment.open}</span>
+              <span>In Progress: ${selectedDepartment.inProgress}</span>
+              <span>Resolved: ${selectedDepartment.resolved}</span>
+              <span>Resolution Rate: ${selectedDepartment.resolutionRate}%</span>
+            </div>
+            <table>
+              <thead><tr><th>Ticket ID</th><th>Title</th><th>Requester</th><th>Status</th><th>Created</th></tr></thead>
+              <tbody>${rows || '<tr><td colspan="5">No tickets found.</td></tr>'}</tbody>
+            </table>
+          </body>
+        </html>
+      `;
+      const blob = new Blob(['\ufeff', documentHtml], { type: 'application/msword' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${selectedDepartment.name.replace(/\s+/g, '_')}_department_report.doc`;
+      document.body.appendChild(link);
+      link.click();
+      URL.revokeObjectURL(link.href);
+      document.body.removeChild(link);
+    };
 
     return (
       <div className="space-y-6 text-left">
-        <div>
-          <h2 className="font-sora text-3xl font-extrabold text-brandNavy">Departments</h2>
-          <p className="text-sm text-gray-500 mt-1">Overview of all departments and their ticket performance.</p>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="font-sora text-3xl font-extrabold text-brandNavy">Departments</h2>
+            <p className="text-sm text-gray-500 mt-1">Overview of all departments and their ticket performance.</p>
+          </div>
+          <div className="relative w-full lg:w-80">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.6" stroke="currentColor" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brandNavy/65">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+            </svg>
+            <input
+              type="text"
+              value={departmentSearchQuery}
+              onChange={(event) => setDepartmentSearchQuery(event.target.value)}
+              placeholder="Search departments..."
+              className="w-full rounded-2xl border border-brandNavy/20 bg-white px-9 py-3 text-xs font-bold text-brandNavy outline-none transition focus:border-brandRed/35 focus:ring-4 focus:ring-brandNavy/8"
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -2110,8 +2182,8 @@ const AdminDashboard = () => {
               value: totalTickets,
               iconClass: 'bg-green-50 text-green-700'
             }
-          ].map((card) => (
-            <div key={card.label} className="premium-glass rounded-[18px] p-6 border border-white/60 flex items-center gap-4">
+          ].map((card, index) => (
+            <div key={card.label} className={`premium-glass rounded-[18px] p-6 border flex items-center gap-4 ${index % 2 === 0 ? 'border-brandNavy/25' : 'border-brandRed/25'}`}>
               <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center ${card.iconClass}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="w-6 h-6">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M8.25 6.75h1.5m-1.5 3h1.5m4.5-3h1.5m-1.5 3h1.5M8.25 21v-3.375c0-.621.504-1.125 1.125-1.125h3.25c.621 0 1.125.504 1.125 1.125V21" />
@@ -2136,14 +2208,14 @@ const AdminDashboard = () => {
                 setSelectedDepartmentFilter('All');
               }}
             />
-            <div className="relative w-full max-w-4xl overflow-hidden rounded-[22px] border border-white/70 bg-white shadow-[0_28px_90px_rgba(15,27,76,0.28)]">
-              <div className="h-1.5 bg-gradient-to-r from-brandNavy via-blue-600 to-brandRed" />
-              <div className="p-5">
+            <div className="relative max-h-[88vh] w-full max-w-5xl overflow-y-auto rounded-[18px] border border-slate-200 bg-white shadow-[0_22px_70px_rgba(15,27,76,0.22)]">
+              <div className="h-1 bg-brandNavy/80" />
+              <div className="p-5 sm:p-6">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-brandRed">Department Overview</p>
-                    <h3 className="mt-1 font-sora text-2xl font-extrabold text-brandNavy">{selectedDepartment.name}</h3>
-                    <p className="mt-1 text-xs font-semibold text-slate-500">Head: {selectedDepartment.head} | Showing {selectedDepartmentFilter === 'All' ? 'all tickets' : selectedDepartmentFilter}</p>
+                    <p className="text-[9px] font-extrabold uppercase tracking-[0.2em] text-brandRed/80">Department Overview</p>
+                    <h3 className="mt-1 font-sora text-3xl font-extrabold text-brandNavy">{selectedDepartment.name}</h3>
+                    <p className="mt-1 text-xs font-semibold text-brandNavy/65">Showing {selectedDepartmentFilter === 'All' ? 'all tickets' : selectedDepartmentFilter}</p>
                   </div>
                   <button
                     type="button"
@@ -2152,7 +2224,7 @@ const AdminDashboard = () => {
                       setSelectedDepartmentFilter('All');
                     }}
                     aria-label="Close department overview"
-                    className="flex h-9 w-9 items-center justify-center self-start rounded-full border border-slate-200 bg-white text-slate-400 transition hover:border-brandRed/30 hover:text-brandRed"
+                    className="flex h-9 w-9 items-center justify-center self-start rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-brandRed/30 hover:text-brandRed"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.4" stroke="currentColor" className="h-4 w-4">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -2162,42 +2234,58 @@ const AdminDashboard = () => {
 
                 <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
                   {[
-                    ['Members', selectedDepartment.members],
-                    ['Total Tickets', selectedDepartment.total],
-                    ['Open', selectedDepartment.open],
-                    ['In Progress', selectedDepartment.inProgress],
-                    ['Resolved', selectedDepartment.resolved]
-                  ].map(([label, value], index) => (
-                    <div key={label} className={`rounded-2xl border px-4 py-3 ${index % 2 === 0 ? 'border-brandNavy/25 bg-brandNavy/[0.03]' : 'border-brandRed/25 bg-brandRed/[0.03]'}`}>
-                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">{label}</p>
-                      <p className="mt-1 font-sora text-xl font-extrabold text-brandNavy">{value}</p>
+                    ['Members', selectedDepartment.members, 'Active users', 'navy'],
+                    ['Total Tickets', selectedDepartment.total, 'All time', 'navy'],
+                    ['Open', selectedDepartment.open, 'Needs attention', 'red'],
+                    ['In Progress', selectedDepartment.inProgress, 'In progress', 'navy'],
+                    ['Resolved', selectedDepartment.resolved, 'Completed', 'navy']
+                  ].map(([label, value, helper, tone]) => (
+                    <div key={label} className={`rounded-xl border px-3.5 py-3 ${tone === 'red' ? 'border-brandRed/20 bg-brandRed/[0.025]' : 'border-brandNavy/15 bg-brandNavy/[0.025]'}`}>
+                      <div>
+                        <p className={`text-[10px] font-extrabold uppercase tracking-wider ${tone === 'red' ? 'text-brandRed/85' : 'text-blue-700/85'}`}>{label}</p>
+                        <p className="mt-1 font-sora text-2xl font-extrabold text-brandNavy">{value}</p>
+                        <p className="mt-1 text-[10px] font-semibold text-brandNavy/60">{helper}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-5 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-                  <div className="rounded-2xl border border-brandNavy/25 bg-white px-4 py-3">
-                    <div className="flex justify-between text-xs font-bold text-slate-500">
-                      <span>Resolution Rate</span>
-                      <span className="text-brandNavy">{selectedDepartment.resolutionRate}%</span>
+                <div className="mt-4 grid gap-4 lg:grid-cols-[0.75fr_1.7fr]">
+                  <div className="rounded-xl border border-brandNavy/15 bg-white p-4 shadow-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <h4 className="font-sora text-sm font-extrabold uppercase text-brandNavy">Resolution Rate</h4>
+                      <span className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] font-semibold text-brandNavy">This Month</span>
                     </div>
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
-                      <div className="h-full rounded-full bg-brandNavy" style={{ width: `${selectedDepartment.resolutionRate}%` }} />
+                    <div className="mx-auto mt-4 flex h-32 w-32 items-center justify-center rounded-full p-2.5" style={{ background: `conic-gradient(#e65b70 ${selectedDepartment.resolutionRate * 3.6}deg, #edf1f7 0deg)` }}>
+                      <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-white">
+                        <p className="font-sora text-3xl font-extrabold text-brandNavy">{selectedDepartment.resolutionRate}%</p>
+                        <p className="text-[10px] font-semibold text-brandNavy/60">Resolved</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 divide-x divide-slate-200 border-t border-slate-100 pt-3 text-center">
+                      <div><p className="text-[10px] font-semibold text-brandNavy/70">Resolved</p><p className="mt-1 text-lg font-extrabold text-blue-700">{selectedDepartment.resolved}</p></div>
+                      <div><p className="text-[10px] font-semibold text-brandNavy/70">Total Tickets</p><p className="mt-1 text-lg font-extrabold text-brandNavy">{selectedDepartment.total}</p></div>
+                    </div>
+                    <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-2.5">
+                      <p className="text-xs font-semibold text-brandNavy">Resolved {selectedDepartment.resolved} tickets this month.</p>
                     </div>
                   </div>
-                  <div className="rounded-2xl border border-brandRed/25 bg-white px-4 py-3">
-                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">{selectedDepartmentFilter === 'All' ? 'Recent Tickets' : `${selectedDepartmentFilter} Tickets`}</p>
-                    <div className="mt-2 max-h-64 space-y-2 overflow-y-auto">
+
+                  <div className="rounded-xl border border-brandNavy/15 bg-white p-4 shadow-sm">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <h4 className="font-sora text-sm font-extrabold uppercase text-brandNavy">{selectedDepartmentFilter === 'All' ? 'All Tickets' : `${selectedDepartmentFilter} Tickets`}</h4>
+                    </div>
+                    <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
                       {selectedDepartmentRecentTickets.length ? selectedDepartmentRecentTickets.map((ticket, index) => (
-                        <div key={ticket.ticket_id} className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${index % 2 === 0 ? 'border-brandNavy/20 bg-brandNavy/[0.03]' : 'border-brandRed/20 bg-brandRed/[0.03]'}`}>
+                        <div key={ticket.ticket_id} className={`flex items-center justify-between gap-3 rounded-lg border bg-white px-3 py-2.5 shadow-sm ${index % 2 === 0 ? 'border-brandRed/15 border-l-2 border-l-brandRed/70' : 'border-brandNavy/15 border-l-2 border-l-blue-500/70'}`}>
                           <div className="min-w-0">
-                            <p className="truncate text-xs font-extrabold text-brandNavy">#{ticket.ticket_id || 'N/A'} - {ticket.title || 'Untitled ticket'}</p>
-                            <p className="mt-0.5 text-[10px] font-semibold text-slate-400">{ticket.vendor_name || ticket.raised_by || 'Requester'} | {formatDepartmentTicketDate(ticket.created_at)}</p>
+                            <p className="truncate text-sm font-extrabold text-brandNavy">#{ticket.ticket_id || 'N/A'} - {ticket.title || 'Untitled ticket'}</p>
+                            <p className="mt-0.5 text-[10px] font-semibold text-brandNavy/55">{ticket.vendor_name || ticket.raised_by || 'Requester'} <span className="mx-1.5">/</span> {formatDepartmentTicketDate(ticket.created_at)}</p>
                           </div>
-                          <span className="shrink-0 rounded-full border border-brandNavy/10 bg-brandNavy/5 px-2.5 py-1 text-[9px] font-extrabold text-brandNavy">{ticket.status || 'Open'}</span>
+                          <span className={`shrink-0 rounded-lg px-2.5 py-1.5 text-[10px] font-extrabold ${ticket.status === 'Needs Clarification' ? 'bg-brandRed/7 text-brandRed/85' : 'bg-blue-50/80 text-blue-700/85'}`}>{ticket.status || 'Open'}</span>
                         </div>
                       )) : (
-                        <p className="rounded-xl bg-slate-50 px-3 py-3 text-xs font-bold text-slate-400">No tickets found for this department yet.</p>
+                        <p className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-4 text-sm font-bold text-slate-400">No tickets found for this department yet.</p>
                       )}
                     </div>
                   </div>
@@ -2207,8 +2295,8 @@ const AdminDashboard = () => {
           </div>
         ), document.body)}
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-          {departmentStats.map((department) => {
+        <div className="space-y-3">
+          {visibleDepartmentStats.map((department) => {
             const styles = accentStyles[department.accent] || accentStyles.brandNavy;
             return (
               <div
@@ -2222,13 +2310,74 @@ const AdminDashboard = () => {
                     openDepartmentOverview(department.name);
                   }
                 }}
-                className={`premium-glass cursor-pointer rounded-[20px] border overflow-hidden bg-gradient-to-br text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-brandNavy/25 ${styles.card} ${selectedDepartmentName === department.name ? 'ring-2 ring-brandNavy/25 shadow-xl' : ''}`}
+                className={`premium-glass grid cursor-pointer gap-4 rounded-[18px] border bg-white px-5 py-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-brandNavy/25 lg:grid-cols-[minmax(240px,1.2fr)_130px_minmax(300px,1.2fr)_180px] lg:items-center ${selectedDepartmentName === department.name ? 'ring-2 ring-brandNavy/25 shadow-xl' : ''} ${visibleDepartmentStats.indexOf(department) % 2 === 0 ? 'border-brandNavy/25' : 'border-brandRed/25'}`}
               >
+                <div className="flex items-center gap-4">
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${styles.button}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M8.25 6.75h1.5m-1.5 3h1.5m4.5-3h1.5m-1.5 3h1.5M8.25 21v-3.375c0-.621.504-1.125 1.125-1.125h3.25c.621 0 1.125.504 1.125 1.125V21" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="truncate font-sora text-lg font-extrabold text-brandNavy">{department.name}</h3>
+                  </div>
+                </div>
+
+                <div className={`inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1 text-xs font-extrabold ${styles.soft}`}>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Z" />
+                  </svg>
+                  {department.members} Members
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openDepartmentOverview(department.name, 'All');
+                    }}
+                    className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2 text-left transition hover:border-brandNavy/20 hover:bg-brandNavy/5 focus:outline-none focus:ring-2 focus:ring-brandNavy/15"
+                  >
+                    <p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">Total</p>
+                    <p className="mt-0.5 font-sora text-lg font-extrabold text-brandNavy">{department.total}</p>
+                  </button>
+                  {[
+                    ['Open', department.open, 'text-blue-600'],
+                    ['In Progress', department.inProgress, 'text-orange-600'],
+                    ['Resolved', department.resolved, 'text-green-600']
+                  ].map(([label, value, colorClass]) => (
+                    <button
+                      type="button"
+                      key={label}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openDepartmentOverview(department.name, label);
+                      }}
+                      className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2 text-left transition hover:border-brandRed/20 hover:bg-brandRed/5 focus:outline-none focus:ring-2 focus:ring-brandNavy/15"
+                    >
+                      <p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">{label}</p>
+                      <p className={`mt-0.5 font-sora text-lg font-extrabold ${colorClass}`}>{value}</p>
+                    </button>
+                  ))}
+                </div>
+
+                <div>
+                  <div className="mb-2 flex justify-between text-xs font-bold text-slate-500">
+                    <span>Resolution Rate</span>
+                    <span className={styles.soft.split(' ')[1]}>{department.resolutionRate}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+                    <div className={`h-full rounded-full ${styles.bar}`} style={{ width: `${department.resolutionRate}%` }} />
+                  </div>
+                </div>
+                {false && (
+                <>
                 <div className="p-6 border-b border-white/70">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <h3 className="font-sora text-lg font-extrabold text-brandNavy">{department.name}</h3>
-                      <p className="text-xs font-semibold text-slate-500 mt-1">Head: {department.head}</p>
+                      <p className="text-xs font-semibold text-slate-500 mt-1">{department.members} members</p>
                     </div>
                     <div className={`w-11 h-11 rounded-[12px] flex items-center justify-center ${styles.button}`}>
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="w-5 h-5">
@@ -2292,6 +2441,8 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                 </div>
+                </>
+                )}
               </div>
             );
           })}
@@ -2309,7 +2460,7 @@ const AdminDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {departmentStats.map((department) => {
+                {visibleDepartmentStats.map((department) => {
                   const styles = accentStyles[department.accent] || accentStyles.brandNavy;
                   return (
                     <tr key={department.name} className="border-b border-slate-100 last:border-b-0">
@@ -2414,7 +2565,7 @@ const AdminDashboard = () => {
             <table className="w-full min-w-[880px] text-left">
               <thead className="bg-white/50 border-b border-slate-100">
                 <tr>
-                  {['ADMIN', 'EMAIL', 'ROLE', 'DEPARTMENT', 'STATUS', 'ACTIONS'].map((heading) => (
+                  {['ADMIN', 'ID', 'ROLE', 'DEPARTMENT', 'STATUS', 'ACTIONS'].map((heading) => (
                     <th key={heading} className="px-6 py-4 text-[11px] font-extrabold text-brandNavy/80">
                       {heading}
                     </th>
@@ -2432,7 +2583,7 @@ const AdminDashboard = () => {
                         <span className="text-sm font-extrabold text-brandNavy">{admin.name}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm font-semibold text-slate-600">{admin.email}</td>
+                    <td className="px-6 py-4 text-sm font-semibold text-slate-600">{admin.id}</td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-extrabold ${getRoleBadgeClass(admin.role)}`}>
                         {admin.role}
