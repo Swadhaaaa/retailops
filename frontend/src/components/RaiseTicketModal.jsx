@@ -50,7 +50,6 @@ const RaiseTicketModal = ({
     if (!formSubject.trim()) missing.push('Subject / Title is required.');
     if (!formCategory) missing.push('Category is required.');
     if (!formDescription.trim()) missing.push('Description details are required.');
-    if (!attachment) missing.push('No attachment selected. Please attach supporting details.');
 
     if (missing.length) {
       setValidationErrors(missing);
@@ -187,11 +186,11 @@ const RaiseTicketModal = ({
               </div>
 
               <div>
-                <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Attachment</label>
+                <label className="block text-[9px] font-bold text-brandDarkNavy font-sora tracking-wider uppercase mb-1.5">Attachment Optional</label>
                 <div
                   onDragOver={handleDragOver} onDrop={handleDrop}
                   onClick={() => document.getElementById('dashboard-file-upload').click()}
-                  className={`flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-5 text-center transition-all hover:border-brandNavy/30 hover:bg-gray-50/50 ${validationErrors.some(error => error.includes('attachment')) ? 'border-brandRed bg-red-50/30' : 'border-gray-200'}`}
+                  className="flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 p-5 text-center transition-all hover:border-brandNavy/30 hover:bg-gray-50/50"
                 >
                   <input id="dashboard-file-upload" type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.xlsx" onChange={(event) => { clearValidation(); handleFileChange(event); }} />
                   {!attachment ? (
@@ -202,7 +201,7 @@ const RaiseTicketModal = ({
                         </svg>
                       </div>
                       <p className="text-sm font-bold text-brandDarkNavy font-sora">Click to upload or drag</p>
-                      <p className="mt-1 text-xs font-medium text-gray-400">PDF, JPG, PNG, XLSX (25MB max)</p>
+                      <p className="mt-1 text-xs font-medium text-gray-400">Optional: PDF, JPG, PNG, XLSX (25MB max)</p>
                     </>
                   ) : (
                     <div className="flex flex-col items-center">
@@ -219,9 +218,6 @@ const RaiseTicketModal = ({
                   )}
                 </div>
                 {attachmentError && <p className="text-xs text-brandRed font-bold mt-1">{attachmentError}</p>}
-                {validationErrors.some(error => error.includes('attachment')) && (
-                  <p className="mt-1 text-xs font-bold text-brandRed">No attachment selected.</p>
-                )}
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-2">

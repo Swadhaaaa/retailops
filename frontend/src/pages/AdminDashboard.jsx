@@ -2435,22 +2435,24 @@ const AdminDashboard = () => {
       }
     };
 
-    const departmentStats = DEPARTMENT_DIRECTORY.map((department) => {
-      const deptTickets = tickets.filter((ticket) => getTicketDepartment(ticket) === department.name);
-      const open = deptTickets.filter((ticket) => ticket.status === 'Open').length;
-      const inProgress = deptTickets.filter((ticket) => ticket.status === 'In Progress').length;
-      const resolved = deptTickets.filter((ticket) => ticket.status === 'Resolved' || ticket.status === 'Closed').length;
-      const resolutionRate = deptTickets.length ? Math.round((resolved / deptTickets.length) * 100) : 0;
+    const departmentStats = DEPARTMENT_DIRECTORY
+      .map((department) => {
+        const deptTickets = tickets.filter((ticket) => getTicketDepartment(ticket) === department.name);
+        const open = deptTickets.filter((ticket) => ticket.status === 'Open').length;
+        const inProgress = deptTickets.filter((ticket) => ticket.status === 'In Progress').length;
+        const resolved = deptTickets.filter((ticket) => ticket.status === 'Resolved' || ticket.status === 'Closed').length;
+        const resolutionRate = deptTickets.length ? Math.round((resolved / deptTickets.length) * 100) : 0;
 
-      return {
-        ...department,
-        total: deptTickets.length,
-        open,
-        inProgress,
-        resolved,
-        resolutionRate
-      };
-    });
+        return {
+          ...department,
+          total: deptTickets.length,
+          open,
+          inProgress,
+          resolved,
+          resolutionRate
+        };
+      })
+      .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
 
     const totalMembers = departmentStats.reduce((sum, department) => sum + department.members, 0);
     const totalTickets = departmentStats.reduce((sum, department) => sum + department.total, 0);
