@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -37,49 +37,6 @@ const DEFAULT_AGENTS = [
   'Amit Patel',
   'Neha Gupta',
   'Vikas Singh'
-];
-
-const INITIAL_ADMIN_DIRECTORY = [
-  {
-    id: 1,
-    name: 'Admin Manager',
-    email: 'admin@reliance.com',
-    role: 'Super Admin',
-    department: 'Supply Chain Operations',
-    status: 'Active'
-  },
-  {
-    id: 2,
-    name: 'Rahul Sharma',
-    email: 'rahul.sharma@reliance.com',
-    role: 'Support Admin',
-    department: 'Finance',
-    status: 'Active'
-  },
-  {
-    id: 3,
-    name: 'Swadha Kumari',
-    email: 'swadha.kumari@reliance.com',
-    role: 'IT Support',
-    department: 'IT Support',
-    status: 'Active'
-  },
-  {
-    id: 4,
-    name: 'Amit Patel',
-    email: 'amit.patel@reliance.com',
-    role: 'Operations Admin',
-    department: 'Operations',
-    status: 'Active'
-  },
-  {
-    id: 5,
-    name: 'Neha Gupta',
-    email: 'neha.gupta@reliance.com',
-    role: 'Compliance Admin',
-    department: 'Compliance',
-    status: 'Inactive'
-  }
 ];
 
 // TEMPORARILY DISABLED - MESSAGES FEATURE
@@ -128,9 +85,18 @@ const AdminDashboard = () => {
   const [queryComment, setQueryComment] = useState('');
   const [queryIsSubmitting, setQueryIsSubmitting] = useState(false);
   const [isQueryQueueCollapsed, setIsQueryQueueCollapsed] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [queryFilters, setQueryFilters] = useState({
+    status: 'All',
+    department: 'All',
+    assignedUser: 'All',
+    slaRisk: 'All',
+    dateFrom: '',
+    dateTo: ''
+  });
 
   // Admin management states
-  const [adminDirectory, setAdminDirectory] = useState(INITIAL_ADMIN_DIRECTORY);
+  const [adminDirectory, setAdminDirectory] = useState([]);
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
   const [isAdminFormOpen, setIsAdminFormOpen] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState(null);
@@ -140,10 +106,12 @@ const AdminDashboard = () => {
   const [adminForm, setAdminForm] = useState({
     name: '',
     email: '',
-    role: 'Support Admin',
+    password: '',
+    role: 'Admin',
     department: 'Operations',
     status: 'Active'
   });
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
 
   const QUICK_REPLIES = [
     "Hello, we have received your query and our team is reviewing the details.",
@@ -196,6 +164,90 @@ const AdminDashboard = () => {
     ticket?.business_unit ||
     getAssignedTeam(ticket?.category_name)
   );
+
+  const parseTicketDate = (value) => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return 'Not logged in';
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return dateStr;
+    return `${date.toLocaleDateString([], {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit'
+    })}, ${date.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
+    })}`;
+  };
+
+  const getTicketAgeHours = (ticket) => {
+    const created = parseTicketDate(ticket?.created_at);
+    if (!created) return 0;
+    return Math.max((Date.now() - created.getTime()) / 36e5, 0);
+  };
+
+  const isResolvedTicket = (ticket) => ['Resolved', 'Closed'].includes(ticket?.status);
+
+  const getTicketPriority = (ticket) => {
+    if (ticket?.priority) return ticket.priority;
+    if (ticket?.is_escalated || getTicketAgeHours(ticket) >= 48) return 'Critical';
+    if (getTicketAgeHours(ticket) >= 24) return 'High';
+    return 'Normal';
+  };
+
+  const getSlaRisk = (ticket) => {
+    if (isResolvedTicket(ticket)) return 'Met';
+    if (ticket?.sla_status) return ticket.sla_status;
+    const ageHours = getTicketAgeHours(ticket);
+    if (ageHours >= 48) return 'Breached';
+    if (ageHours >= 24) return 'At Risk';
+    return 'Healthy';
+  };
+
+  const isTicketEscalated = (ticket) => {
+    const text = [
+      ticket?.status,
+      ticket?.priority,
+      ticket?.title,
+      ticket?.description,
+      ...(ticket?.activity || []).map(item => `${item.action_text || ''} ${item.action_type || ''}`)
+    ].join(' ').toLowerCase();
+    return Boolean(ticket?.is_escalated || text.includes('escalat'));
+  };
+
+  const exportTickets = (rows, filename = 'admin_ticket_export.csv') => {
+    const exportRows = rows.length ? rows : tickets;
+    const csvRows = [
+      ['Ticket ID', 'Title', 'Department', 'Status', 'Priority', 'Assigned To', 'SLA Risk', 'Created At'],
+      ...exportRows.map(ticket => [
+        ticket.ticket_id,
+        ticket.title || ticket.description || 'Ticket',
+        getTicketDepartment(ticket),
+        ticket.status || 'Open',
+        getTicketPriority(ticket),
+        ticket.assigned_to || 'Unassigned',
+        getSlaRisk(ticket),
+        ticket.created_at || ''
+      ])
+    ];
+    const csv = csvRows
+      .map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
 
   const fetchMessagesStats = async () => {
     // TEMPORARILY DISABLED - MESSAGES FEATURE
@@ -325,7 +377,7 @@ const AdminDashboard = () => {
       notifyTicketsChanged();
     } catch (err) {
       console.error('Error updating query status:', err);
-      alert('Failed to update status.');
+      alert(err.response?.data?.error || 'Failed to update status.');
     }
   };
 
@@ -342,13 +394,40 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleResolveQueryTicket = async () => {
+    if (!queryTicket) return;
+    const ticketTitle = queryTicket.title || queryTicket.description || `Ticket ${queryTicket.ticket_id}`;
+
+    try {
+      await api.post(`/tickets/${queryTicket.ticket_id}/resolve`, {
+        resolution_summary: `Resolved by admin for ${ticketTitle}`,
+        root_cause: 'Reviewed and completed by admin team',
+        action_taken: 'Ticket marked resolved from admin dashboard',
+        resolution_remarks: '',
+        checklist: {
+          documents_verified: true,
+          issue_investigated: true,
+          requester_updated: true,
+          final_confirmation_done: true
+        }
+      });
+      await fetchTickets({ silent: true });
+      await refreshQueryTicket(queryTicket.ticket_id);
+      notifyTicketsChanged();
+    } catch (err) {
+      console.error('Error resolving query:', err);
+      alert(err.response?.data?.error || 'Failed to resolve ticket.');
+    }
+  };
+
   const firstAgent = agents[0] || 'Unassigned';
 
   const resetAdminForm = () => {
     setAdminForm({
       name: '',
       email: '',
-      role: 'Support Admin',
+      password: '',
+      role: 'Admin',
       department: 'Operations',
       status: 'Active'
     });
@@ -365,6 +444,7 @@ const AdminDashboard = () => {
     setAdminForm({
       name: admin.name,
       email: admin.email,
+      password: '',
       role: admin.role,
       department: admin.department,
       status: admin.status
@@ -377,45 +457,86 @@ const AdminDashboard = () => {
     resetAdminForm();
   };
 
-  const handleAdminFormSubmit = (event) => {
+  const handleAdminFormSubmit = async (event) => {
     event.preventDefault();
     if (!adminForm.name.trim() || !adminForm.email.trim()) return;
+    if (!editingAdmin && !adminForm.password.trim()) return;
 
-    if (editingAdmin) {
-      setAdminDirectory(prev =>
-        prev.map(admin =>
-          admin.id === editingAdmin.id
-            ? { ...admin, ...adminForm, name: adminForm.name.trim(), email: adminForm.email.trim() }
-            : admin
-        )
-      );
-    } else {
-      setAdminDirectory(prev => [
-        ...prev,
-        {
-          id: Date.now(),
-          ...adminForm,
-          name: adminForm.name.trim(),
-          email: adminForm.email.trim()
-        }
-      ]);
+    const payload = {
+      name: adminForm.name.trim(),
+      email: adminForm.email.trim(),
+      role: adminForm.role,
+      department: adminForm.department,
+      status: adminForm.status
+    };
+
+    try {
+      if (editingAdmin) {
+        await api.put(`/users/admins/${editingAdmin.id}`, payload);
+      } else {
+        await api.post('/users/admins', {
+          ...payload,
+          password: adminForm.password
+        });
+      }
+      await fetchAdmins();
+      closeAdminForm();
+    } catch (err) {
+      console.error('Error saving admin:', err);
+      alert(err.response?.data?.error || 'Failed to save admin.');
     }
-
-    closeAdminForm();
   };
 
-  const handleDeleteAdmin = (adminId) => {
-    setAdminDirectory(prev => prev.filter(admin => admin.id !== adminId));
+  const handleDeleteAdmin = async (adminId) => {
+    if (!window.confirm('Deactivate this admin?')) return;
+    try {
+      await api.delete(`/users/admins/${adminId}`);
+      await fetchAdmins();
+    } catch (err) {
+      console.error('Error deactivating admin:', err);
+      alert(err.response?.data?.error || 'Failed to deactivate admin.');
+    }
   };
 
-  const handleToggleAdminStatus = (adminId) => {
-    setAdminDirectory(prev =>
-      prev.map(admin =>
-        admin.id === adminId
-          ? { ...admin, status: admin.status === 'Active' ? 'Inactive' : 'Active' }
-          : admin
-      )
-    );
+  const handleToggleAdminStatus = async (adminId) => {
+    const admin = adminDirectory.find(item => item.id === adminId);
+    if (!admin) return;
+    const nextStatus = admin.status === 'Active' ? 'Inactive' : 'Active';
+    try {
+      await api.put(`/users/admins/${adminId}/status`, { status: nextStatus });
+      await fetchAdmins();
+    } catch (err) {
+      console.error('Error updating admin status:', err);
+      alert(err.response?.data?.error || 'Failed to update admin status.');
+    }
+  };
+
+  const handleTicketQuickAction = async (action, ticket = queryTicket) => {
+    if (!ticket) return;
+    if (action === 'export') {
+      exportTickets([ticket], `ticket_${ticket.ticket_id}_export.csv`);
+      return;
+    }
+    if (action === 'reopen') {
+      const reason = window.prompt('Reason for reopening this ticket:');
+      if (!reason?.trim()) return;
+      try {
+        await api.post(`/tickets/${ticket.ticket_id}/reopen`, { reason: reason.trim() });
+        await fetchTickets({ silent: true });
+        await refreshQueryTicket(ticket.ticket_id);
+        notifyTicketsChanged();
+      } catch (err) {
+        console.error('Error reopening ticket:', err);
+        alert(err.response?.data?.error || 'Failed to reopen ticket.');
+      }
+      return;
+    }
+    const statusMap = {
+      close: 'Closed'
+    };
+    if (statusMap[action]) {
+      await handleQueryStatusChange(statusMap[action]);
+    }
   };
 
   const handleSendQueryComment = async (e) => {
@@ -577,6 +698,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchTickets();
     fetchAgents();
+    fetchAdmins();
     const refreshTickets = () => fetchTickets({ silent: true });
     const refreshOnStorage = (event) => {
       if (event.key === 'tickets:lastChanged') refreshTickets();
@@ -608,6 +730,16 @@ const AdminDashboard = () => {
     } catch (err) {
       console.error('Error fetching agents:', err);
       setAgents(DEFAULT_AGENTS);
+    }
+  }
+
+  async function fetchAdmins() {
+    try {
+      const response = await api.get('/users/admins');
+      setAdminDirectory(response.data || []);
+    } catch (err) {
+      console.error('Error fetching admins:', err);
+      setAdminDirectory([]);
     }
   }
 
@@ -663,6 +795,52 @@ const AdminDashboard = () => {
   const userEmail = user?.email || 'admin@reliance.com';
   const consoleLabel = isDepartmentUser ? `${user?.department || 'Department'} Console` : 'Admin Console';
   const roleLabel = isDepartmentUser ? `${user?.department || 'Department'} Team` : 'Admin / Manager';
+
+  const globalSearchResults = useMemo(() => {
+    const term = globalSearchQuery.trim().toLowerCase();
+    if (!term) return [];
+    const ticketResults = tickets
+      .filter(ticket => [
+        ticket.ticket_id,
+        ticket.title,
+        ticket.description,
+        ticket.vendor_name,
+        ticket.raised_by,
+        getTicketDepartment(ticket)
+      ].some(value => String(value || '').toLowerCase().includes(term)))
+      .slice(0, 5)
+      .map(ticket => ({
+        id: `ticket-${ticket.ticket_id}`,
+        label: `Ticket #${ticket.ticket_id}`,
+        meta: ticket.title || ticket.description || 'Ticket record',
+        action: () => openQueryTicket(ticket)
+      }));
+    const departmentResults = DEPARTMENT_DIRECTORY
+      .filter(department => department.name.toLowerCase().includes(term) || department.head.toLowerCase().includes(term))
+      .slice(0, 4)
+      .map(department => ({
+        id: `department-${department.name}`,
+        label: department.name,
+        meta: 'Department',
+        action: () => {
+          setActiveTab('Departments');
+          setDepartmentSearchQuery(department.name);
+        }
+      }));
+    const adminResults = adminDirectory
+      .filter(admin => [admin.name, admin.email, admin.role, admin.department].some(value => value.toLowerCase().includes(term)))
+      .slice(0, 4)
+      .map(admin => ({
+        id: `admin-${admin.id}`,
+        label: admin.name,
+        meta: `${admin.role} / ${admin.department}`,
+        action: () => {
+          setActiveTab('Admin Management');
+          setAdminSearchQuery(admin.name);
+        }
+      }));
+    return [...ticketResults, ...departmentResults, ...adminResults].slice(0, 8);
+  }, [globalSearchQuery, tickets, adminDirectory]);
 
   // Sidebar Items
   const sidebarItems = [
@@ -754,8 +932,45 @@ const AdminDashboard = () => {
           <span className="text-[10px] text-brandMuted uppercase ml-2 hidden sm:inline-block border-l pl-2 border-gray-200">{consoleLabel}</span>
         </div>
 
+        <div className="relative hidden flex-1 max-w-xl mx-6 lg:block">
+          <div className="relative">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.2" stroke="currentColor" className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brandNavy/70">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+            </svg>
+            <input
+              value={globalSearchQuery}
+              onChange={(event) => setGlobalSearchQuery(event.target.value)}
+              placeholder="Search tickets, departments, vendors, admins, IDs..."
+              className="h-10 w-full rounded-2xl border border-brandNavy/25 bg-white/85 pl-10 pr-4 text-xs font-bold text-brandNavy outline-none shadow-sm backdrop-blur-md transition placeholder:text-slate-500 focus:border-brandNavy/50 focus:ring-4 focus:ring-brandNavy/10"
+            />
+          </div>
+          {globalSearchQuery.trim() && (
+            <div className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-[18px] border border-white/80 bg-white/95 shadow-2xl shadow-brandNavy/12 backdrop-blur-xl">
+              {globalSearchResults.length ? globalSearchResults.map(result => (
+                <button
+                  key={result.id}
+                  type="button"
+                  onClick={() => {
+                    result.action();
+                    setGlobalSearchQuery('');
+                  }}
+                  className="flex w-full items-center justify-between gap-4 border-b border-slate-100 px-4 py-3 text-left last:border-b-0 hover:bg-blue-50/60"
+                >
+                  <span>
+                    <span className="block text-xs font-extrabold text-brandNavy">{result.label}</span>
+                    <span className="mt-0.5 block max-w-[360px] truncate text-[10px] font-semibold text-slate-400">{result.meta}</span>
+                  </span>
+                  <span className="text-[9px] font-extrabold uppercase text-brandRed">Open</span>
+                </button>
+              )) : (
+                <div className="px-4 py-5 text-center text-xs font-bold text-slate-400">No matching records found.</div>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* User Info & Avatar */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3">
           <div className="px-3 py-1 rounded-full text-xs font-semibold bg-white/70 border border-white/60 text-brandNavy shadow-sm backdrop-blur-md">
             {roleLabel}
           </div>
@@ -1077,6 +1292,45 @@ const AdminDashboard = () => {
       }
     ];
 
+    const todayKey = new Date().toDateString();
+    const isToday = (value) => {
+      const date = parseTicketDate(value);
+      return date ? date.toDateString() === todayKey : false;
+    };
+    const ticketsWaiting24 = tickets.filter(ticket => !isResolvedTicket(ticket) && getTicketAgeHours(ticket) >= 24);
+    const slaBreaches = tickets.filter(ticket => getSlaRisk(ticket) === 'Breached');
+    const unassignedTickets = tickets.filter(ticket => !ticket.assigned_to || ticket.assigned_to === 'Unassigned');
+    const escalatedTickets = tickets.filter(ticket => isTicketEscalated(ticket));
+    const attentionItems = [
+      { label: 'SLA Breaches', count: slaBreaches.length, tone: 'red', detail: 'Past service target' },
+      { label: 'Waiting more than 24 hours', count: ticketsWaiting24.length, tone: 'amber', detail: 'Open aging queue' },
+      { label: 'Unassigned tickets', count: unassignedTickets.length, tone: 'red', detail: 'Needs owner' },
+      { label: 'Escalated tickets', count: escalatedTickets.length, tone: 'navy', detail: 'Critical handling' }
+    ];
+    const todaysOperations = [
+      { label: 'Created Today', value: tickets.filter(ticket => isToday(ticket.created_at)).length },
+      { label: 'Assigned Today', value: tickets.filter(ticket => (ticket.activity || []).some(item => String(item.action_type || '').includes('assign') && isToday(item.created_at))).length },
+      { label: 'Resolved Today', value: tickets.filter(ticket => isResolvedTicket(ticket) && ((ticket.activity || []).some(item => isToday(item.created_at) && String(item.to_value || item.action_text || '').includes('Resolved')) || isToday(ticket.updated_at))).length },
+      { label: 'Escalated Today', value: tickets.filter(ticket => isTicketEscalated(ticket) && ((ticket.activity || []).some(item => isToday(item.created_at) && String(item.action_text || '').toLowerCase().includes('escalat')) || isToday(ticket.updated_at))).length }
+    ];
+    const recentActivity = tickets
+      .flatMap(ticket => {
+        const history = (ticket.activity || []).map(item => ({
+          ticket,
+          label: item.action_text || item.action_type || 'Ticket updated',
+          actor: item.actor_role === 'admin' ? 'Admin' : item.actor_role === 'user' ? 'Vendor/User' : 'System',
+          time: item.created_at
+        }));
+        return history.length ? history : [{
+          ticket,
+          label: `Ticket created in ${getTicketDepartment(ticket)}`,
+          actor: ticket.vendor_name || ticket.raised_by || 'Requester',
+          time: ticket.created_at
+        }];
+      })
+      .sort((a, b) => (parseTicketDate(b.time)?.getTime() || 0) - (parseTicketDate(a.time)?.getTime() || 0))
+      .slice(0, 6);
+
     return (
       <div className="space-y-7 text-left">
         {/* ── Greeting Header ── */}
@@ -1113,7 +1367,7 @@ const AdminDashboard = () => {
         {/* ── 4 Premium Stat Cards ── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           {statCards.map((card, i) => (
-            <div key={i} className="premium-glass premium-hover rounded-[22px] p-5 relative group overflow-hidden">
+            <div key={i} className={`premium-glass premium-hover rounded-[22px] border ${i % 2 === 0 ? 'border-brandNavy/25' : 'border-brandRed/25'} p-5 relative group overflow-hidden`}>
               <div className={`absolute inset-x-0 bottom-0 h-1 ${i % 2 === 0 ? 'bg-brandNavy/70' : 'bg-brandRed/70'} opacity-80`} />
               <div className="absolute top-0 right-0 w-28 h-28 rounded-full bg-gradient-to-br from-brandNavy/10 to-brandRed/10 -translate-y-10 translate-x-10 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none" />
               
@@ -1135,6 +1389,91 @@ const AdminDashboard = () => {
         </div>
 
         {/* ── Charts Row (2 columns) ── */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
+          <section className="premium-glass rounded-[22px] border border-brandRed/20 p-5 h-full">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-brandRed">Attention Center</p>
+                <h2 className="mt-1 text-sm font-extrabold text-brandDarkNavy font-sora">Urgent admin items</h2>
+              </div>
+              <span className="rounded-full bg-brandRed/10 px-3 py-1 text-[10px] font-extrabold text-brandRed">
+                {attentionItems.reduce((sum, item) => sum + item.count, 0)} Alerts
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 auto-rows-fr">
+              {attentionItems.map(item => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => setActiveTab('Queries')}
+                  className={`min-h-[90px] rounded-2xl border bg-white/75 px-4 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+                    item.tone === 'red'
+                      ? 'border-brandRed/20'
+                      : item.tone === 'amber'
+                        ? 'border-amber-200'
+                        : 'border-brandNavy/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">{item.label}</span>
+                    <span className={`text-xl font-extrabold font-sora ${item.tone === 'red' ? 'text-brandRed' : item.tone === 'amber' ? 'text-amber-600' : 'text-brandNavy'}`}>{item.count}</span>
+                  </div>
+                  <p className="mt-1 text-[10px] font-semibold text-slate-400">{item.detail}</p>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="premium-glass rounded-[22px] border border-brandNavy/20 p-5 h-full">
+            <div className="mb-4">
+              <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-brandNavy">Today's Operations</p>
+              <h2 className="mt-1 text-sm font-extrabold text-brandDarkNavy font-sora">Daily movement summary</h2>
+            </div>
+            <div className="grid grid-cols-2 gap-3 auto-rows-fr">
+              {todaysOperations.map((item, index) => (
+                <div key={item.label} className={`min-h-[90px] rounded-2xl border bg-white/75 px-4 py-3 shadow-sm ${index % 2 === 0 ? 'border-brandNavy/15' : 'border-brandRed/15'}`}>
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">{item.label}</p>
+                  <p className={`mt-1.5 text-2xl font-extrabold font-sora ${index % 2 === 0 ? 'text-brandNavy' : 'text-brandRed'}`}>{item.value}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <section className="premium-glass rounded-[22px] border border-brandNavy/20 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-brandNavy">Recent Activity Feed</p>
+              <h2 className="mt-1 text-sm font-extrabold text-brandDarkNavy font-sora">Latest ticket/admin actions</h2>
+            </div>
+            <button type="button" onClick={() => setActiveTab('Queries')} className="rounded-full border border-brandNavy/15 bg-white px-3 py-1 text-[10px] font-extrabold text-brandNavy">
+              View Queue
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {recentActivity.map((item, index) => (
+              <button
+                key={`${item.ticket.ticket_id}-${item.time}-${index}`}
+                type="button"
+                onClick={() => openQueryTicket(item.ticket)}
+                className="rounded-2xl border border-slate-100 bg-white/75 px-4 py-3 text-left shadow-sm transition hover:border-brandNavy/20 hover:shadow-md"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-extrabold text-brandNavy">#{item.ticket.ticket_id}</span>
+                  <span className="text-[9px] font-bold text-slate-400">{getRelativeTime(item.time)}</span>
+                </div>
+                <p className="mt-1 truncate text-[11px] font-semibold text-slate-600">{item.label}</p>
+                <p className="mt-1 text-[9px] font-extrabold uppercase tracking-wider text-brandRed">{item.actor}</p>
+              </button>
+            ))}
+            {!recentActivity.length && (
+              <div className="md:col-span-2 rounded-2xl border border-dashed border-slate-200 bg-white/60 py-8 text-center text-xs font-bold text-slate-400">
+                Activity will appear as tickets move through the workflow.
+              </div>
+            )}
+          </div>
+        </section>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Vertical Bar Chart - Tickets by Department */}
           <div className="premium-glass premium-hover rounded-[22px] border border-brandRed/25 p-6">
@@ -1409,6 +1748,20 @@ const AdminDashboard = () => {
       return 'bg-brandNavy/10 text-brandNavy border-brandNavy/20';
     };
 
+    const filteredQueryTickets = tickets.filter(ticket => {
+      if (queryFilters.status !== 'All' && (ticket.status || 'Open') !== queryFilters.status) return false;
+      if (queryFilters.department !== 'All' && getTicketDepartment(ticket) !== queryFilters.department) return false;
+      if (queryFilters.assignedUser !== 'All' && (ticket.assigned_to || 'Unassigned') !== queryFilters.assignedUser) return false;
+      if (queryFilters.slaRisk !== 'All' && getSlaRisk(ticket) !== queryFilters.slaRisk) return false;
+      const created = parseTicketDate(ticket.created_at);
+      if (queryFilters.dateFrom && created && created < new Date(queryFilters.dateFrom)) return false;
+      if (queryFilters.dateTo && created) {
+        const endDate = new Date(queryFilters.dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        if (created > endDate) return false;
+      }
+      return true;
+    });
     return (
       <div className="space-y-5 text-left">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
@@ -1417,15 +1770,80 @@ const AdminDashboard = () => {
             <p className="text-xs text-slate-500 mt-1 font-semibold">Review, assign, update, and respond to live tickets.</p>
           </div>
           <span className="text-[10px] font-bold text-brandNavy bg-brandNavy/10 border border-brandNavy/20 px-3 py-1 rounded-full font-sora self-start sm:self-auto">
-            {tickets.length} Active Queries
+            {filteredQueryTickets.length} Active Queries
           </span>
         </div>
 
+        {!isQueryQueueCollapsed && (
+          <div className="premium-glass rounded-[18px] border border-white/70 p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-extrabold text-brandDarkNavy font-sora">Filters</h2>
+                <p className="mt-0.5 text-[10px] font-semibold text-slate-400">Show the tickets you need right now.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedFilters(prev => !prev)}
+                  className="rounded-xl border border-brandNavy/15 bg-white px-3 py-2 text-[10px] font-extrabold text-brandNavy"
+                >
+                  {showAdvancedFilters ? 'Hide Advanced' : 'More Filters'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQueryFilters({ status: 'All', department: 'All', assignedUser: 'All', slaRisk: 'All', dateFrom: '', dateTo: '' })}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-extrabold text-slate-500 hover:text-brandNavy"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <label className="text-[10px] font-extrabold uppercase tracking-wider text-brandNavy">
+                Status
+                <select value={queryFilters.status} onChange={event => setQueryFilters(prev => ({ ...prev, status: event.target.value }))} className="mt-1 w-full rounded-xl border border-brandNavy/20 bg-white/90 px-3 py-2 text-[11px] font-bold text-brandNavy outline-none focus:border-brandNavy/45 focus:ring-4 focus:ring-brandNavy/10">
+                  <option value="All">All statuses</option><option>Open</option><option>In Progress</option><option>Under Review</option><option>Needs Clarification</option><option>Resolved</option><option>Closed</option>
+                </select>
+              </label>
+              <label className="text-[10px] font-extrabold uppercase tracking-wider text-brandNavy">
+                Department
+                <select value={queryFilters.department} onChange={event => setQueryFilters(prev => ({ ...prev, department: event.target.value }))} className="mt-1 w-full rounded-xl border border-brandRed/20 bg-white/90 px-3 py-2 text-[11px] font-bold text-brandNavy outline-none focus:border-brandRed/45 focus:ring-4 focus:ring-brandRed/10">
+                  <option value="All">All departments</option>{DEPARTMENT_DIRECTORY.map(department => <option key={department.name}>{department.name}</option>)}
+                </select>
+              </label>
+              <label className="text-[10px] font-extrabold uppercase tracking-wider text-brandNavy">
+                Assigned User
+                <select value={queryFilters.assignedUser} onChange={event => setQueryFilters(prev => ({ ...prev, assignedUser: event.target.value }))} className="mt-1 w-full rounded-xl border border-brandNavy/20 bg-white/90 px-3 py-2 text-[11px] font-bold text-brandNavy outline-none focus:border-brandNavy/45 focus:ring-4 focus:ring-brandNavy/10">
+                  <option value="All">All assigned users</option><option>Unassigned</option>{agents.map(agent => <option key={agent}>{agent}</option>)}
+                </select>
+              </label>
+            </div>
+            {showAdvancedFilters && (
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-slate-100 pt-3">
+                <label className="text-[10px] font-extrabold uppercase tracking-wider text-brandNavy">
+                  SLA Risk
+                  <select value={queryFilters.slaRisk} onChange={event => setQueryFilters(prev => ({ ...prev, slaRisk: event.target.value }))} className="mt-1 w-full rounded-xl border border-brandNavy/20 bg-white/90 px-3 py-2 text-[11px] font-bold text-brandNavy outline-none focus:border-brandNavy/45 focus:ring-4 focus:ring-brandNavy/10">
+                    <option value="All">All SLA risks</option><option>Healthy</option><option>At Risk</option><option>Breached</option><option>Met</option>
+                  </select>
+                </label>
+                <label className="text-[10px] font-extrabold uppercase tracking-wider text-brandNavy">
+                  From Date
+                  <input type="date" value={queryFilters.dateFrom} onChange={event => setQueryFilters(prev => ({ ...prev, dateFrom: event.target.value }))} className="mt-1 w-full rounded-xl border border-brandRed/20 bg-white/90 px-3 py-2 text-[11px] font-bold text-brandNavy outline-none focus:border-brandRed/45 focus:ring-4 focus:ring-brandRed/10" />
+                </label>
+                <label className="text-[10px] font-extrabold uppercase tracking-wider text-brandNavy">
+                  To Date
+                  <input type="date" value={queryFilters.dateTo} onChange={event => setQueryFilters(prev => ({ ...prev, dateTo: event.target.value }))} className="mt-1 w-full rounded-xl border border-brandNavy/20 bg-white/90 px-3 py-2 text-[11px] font-bold text-brandNavy outline-none focus:border-brandNavy/45 focus:ring-4 focus:ring-brandNavy/10" />
+                </label>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-          <div className={`${isQueryQueueCollapsed ? 'xl:col-span-1' : 'xl:col-span-4'} premium-glass rounded-[22px] overflow-hidden transition-all duration-300`}>
+          <div className={`${isQueryQueueCollapsed ? 'xl:col-span-1' : 'xl:col-span-4'} premium-glass rounded-[18px] overflow-hidden transition-all duration-300`}>
             <div className="px-4 py-3 border-b border-white/60 flex items-center justify-between gap-3">
               {!isQueryQueueCollapsed && (
-                <h2 className="text-xs font-extrabold text-brandDarkNavy font-sora uppercase tracking-wider">Ticket Queue</h2>
+                <h2 className="text-sm font-extrabold text-brandDarkNavy font-sora">Ticket Queue</h2>
               )}
               <button
                 type="button"
@@ -1439,21 +1857,24 @@ const AdminDashboard = () => {
                 </svg>
               </button>
             </div>
-            <div className={`max-h-[720px] overflow-y-auto divide-y divide-slate-100 ${isQueryQueueCollapsed ? 'px-2 py-2' : ''}`}>
+            <div className={`max-h-[680px] overflow-y-auto divide-y divide-slate-100 ${isQueryQueueCollapsed ? 'px-2 py-2' : ''}`}>
               {loading ? (
                 <div className={`${isQueryQueueCollapsed ? 'p-3' : 'p-8'} text-center text-xs font-bold text-slate-400`}>{isQueryQueueCollapsed ? '...' : 'Loading tickets...'}</div>
-              ) : tickets.length === 0 ? (
+              ) : filteredQueryTickets.length === 0 ? (
                 <div className={`${isQueryQueueCollapsed ? 'p-3' : 'p-8'} text-center text-xs font-bold text-slate-400`}>{isQueryQueueCollapsed ? '0' : 'No tickets available.'}</div>
               ) : (
-                tickets.map(ticket => {
-                  const isSelected = selectedTicket?.ticket_id === ticket.ticket_id;
+                filteredQueryTickets.map(ticket => {
+                  const isSelected = String(selectedTicket?.ticket_id) === String(ticket.ticket_id);
                   return (
                     <button
                       key={ticket.ticket_id}
                       type="button"
                       onClick={() => openQueryTicket(ticket)}
-                      className={`w-full text-left transition-all ${isQueryQueueCollapsed ? `my-1 flex h-11 items-center justify-center rounded-xl px-2 ${isSelected ? 'bg-brandNavy text-white shadow-sm' : 'bg-white/65 text-brandNavy hover:bg-white'}` : `px-4 py-3 ${isSelected ? 'bg-white/80 shadow-sm text-brandNavy' : 'hover:bg-white/65 hover:shadow-sm'}`}`}
+                      className={`relative w-full text-left transition-all ${isQueryQueueCollapsed ? `my-1 flex h-11 items-center justify-center rounded-xl px-2 ${isSelected ? 'bg-brandNavy text-white shadow-sm' : 'bg-white/65 text-brandNavy hover:bg-white'}` : `px-4 py-3 ${isSelected ? 'bg-slate-50 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.18)] text-brandNavy' : 'hover:bg-white/65 hover:shadow-sm'}`}`}
                     >
+                      {!isQueryQueueCollapsed && isSelected && (
+                        <span className="absolute left-0 top-0 bottom-0 w-1 bg-brandRed" aria-hidden="true" />
+                      )}
                       {isQueryQueueCollapsed ? (
                         <span
                           className="text-[10px] font-extrabold font-sora tracking-wide"
@@ -1463,12 +1884,14 @@ const AdminDashboard = () => {
                         </span>
                       ) : (
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
+                        <div className="flex min-w-0 gap-2">
+                          <div className="min-w-0">
                           <p className="text-xs font-extrabold text-brandNavy font-sora truncate">#{ticket.ticket_id}</p>
                           <p className="text-[11px] font-bold text-slate-700 mt-1 truncate">{ticket.title}</p>
                           <p className="text-[10px] font-semibold text-slate-400 mt-1 truncate">
                             {ticket.vendor_name || ticket.raised_by} · {ticket.category_name || `Category #${ticket.category_id}`}
                           </p>
+                          </div>
                         </div>
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border shrink-0 ${statusPill(ticket.status)}`}>
                           {ticket.status}
@@ -1510,50 +1933,29 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  <section className="rounded-[18px] border border-slate-100 bg-white/70 p-4 shadow-sm">
-                    <div className="mb-3 flex items-center gap-2">
-                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-brandRed/10 text-brandRed text-[10px] font-extrabold">D</span>
+                  <section className="rounded-2xl border border-slate-100 bg-white/70 p-3 shadow-sm">
+                    <div className="mb-2 flex items-center gap-2">
                       <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora">Description</h3>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Issue Summary</span>
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-slate-500">Issue Summary</span>
                     </div>
-                    <p className="text-sm text-slate-700 leading-relaxed font-semibold whitespace-pre-wrap">{selectedTicket.description}</p>
+                    <p className="text-xs text-slate-700 leading-snug font-semibold whitespace-pre-wrap">{selectedTicket.description}</p>
                   </section>
 
-                  <section className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div className="rounded-[18px] border border-brandNavy/10 bg-brandNavy/[0.04] p-4 shadow-sm">
-                      <div className="mb-3 flex items-center gap-2">
-                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-brandNavy/10 text-brandNavy text-[10px] font-extrabold">U</span>
-                        <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora">User Details</h3>
+                  <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-[18px] border border-slate-100 bg-white/70 p-4 shadow-sm">
+                    {[
+                      ['Requester', selectedTicket.vendor_name || selectedTicket.raised_by],
+                      ['Department', selectedTeam],
+                      ['Assigned To', selectedTicket.assigned_to || 'Unassigned']
+                    ].map(([label, value]) => (
+                      <div key={label}>
+                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">{label}</p>
+                        <p className="mt-1 truncate text-xs font-extrabold text-brandDarkNavy">{value}</p>
                       </div>
-                      <div className="space-y-2 text-xs font-semibold text-slate-600">
-                        <p className="flex justify-between gap-3"><span className="text-slate-400">Name</span><span className="text-brandDarkNavy font-extrabold text-right">{selectedTicket.vendor_name || selectedTicket.raised_by}</span></p>
-                        <p className="flex justify-between gap-3"><span className="text-slate-400">Email</span><span className="text-right break-all">{selectedTicket.raised_by}</span></p>
-                      </div>
-                    </div>
-                    <div className="rounded-[18px] border border-brandRed/10 bg-brandRed/[0.035] p-4 shadow-sm">
-                      <div className="mb-3 flex items-center gap-2">
-                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-brandRed/10 text-brandRed text-[10px] font-extrabold">A</span>
-                        <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora">Assigned Department</h3>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/75 border border-white px-3 py-3">
-                        <div>
-                          <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Department owner</p>
-                          <p className="text-sm font-extrabold text-slate-700 mt-1">{selectedTeam}</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleQueryAgentChange(selectedTicket.assigned_to || firstAgent)}
-                          className="px-4 py-2 rounded-xl border border-brandNavy/20 text-brandNavy text-[10px] font-extrabold hover:bg-brandNavy/5 premium-hover"
-                        >
-                          Change
-                        </button>
-                      </div>
-                    </div>
+                    ))}
                   </section>
 
                   <section className="border-t border-slate-100 pt-5">
                     <div className="mb-3 flex items-center gap-2">
-                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-slate-100 text-brandNavy text-[10px] font-extrabold">F</span>
                       <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora">Attachments</h3>
                       <span className="rounded-full bg-brandNavy/10 px-2.5 py-1 text-[9px] font-extrabold text-brandNavy">{attachments.length} files</span>
                     </div>
@@ -1577,47 +1979,6 @@ const AdminDashboard = () => {
                         ))}
                       </div>
                     )}
-                  </section>
-
-                  <section className="border-t border-slate-100 pt-3">
-                    <div className="mb-2 flex items-center gap-2">
-                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-brandNavy/10 text-brandNavy text-[9px] font-extrabold">T</span>
-                      <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora">Activity Timeline</h3>
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-slate-500">Latest first</span>
-                    </div>
-                    <div className="relative rounded-xl border border-slate-100 bg-slate-50/70 p-2">
-                      <div className="absolute left-[15px] top-4 bottom-4 w-px bg-gradient-to-b from-brandRed/35 via-brandNavy/15 to-slate-200" />
-                      <div className="space-y-1.5">
-                      {timeline.map((item, index) => (
-                        <div key={`${item.label}-${item.time}-${index}`} className="relative flex gap-2">
-                          <div className={`mt-2 h-2.5 w-2.5 rounded-full shrink-0 ring-[3px] ring-white shadow-sm ${
-                            item.tone === 'green'
-                              ? 'bg-green-500'
-                              : item.tone === 'brandRed'
-                                ? 'bg-brandRed'
-                                : 'bg-brandNavy'
-                          }`} />
-                          <div className="flex-1 rounded-xl border border-white bg-white/85 px-2.5 py-1.5 shadow-sm">
-                            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                              <p className="text-[9px] font-bold text-slate-400">{getRelativeTime(item.time)}</p>
-                              <span className="text-[9px] font-extrabold text-brandDarkNavy">{item.actor}</span>
-                              <p className="min-w-[180px] flex-1 truncate text-[11px] font-semibold text-slate-600">{item.label}</p>
-                              <span className="rounded-full bg-slate-50 px-2 py-0.5 text-[7px] font-extrabold uppercase tracking-wider text-slate-400">
-                                {index === 0 ? 'Latest' : 'History'}
-                              </span>
-                            </div>
-                            {(item.fromValue || item.toValue) && (
-                              <div className="mt-1 flex flex-wrap items-center gap-1 text-[8px] font-extrabold uppercase tracking-wider text-slate-400">
-                                {item.fromValue && <span className="rounded-full bg-slate-50 px-1.5 py-0.5">{item.fromValue}</span>}
-                                {item.fromValue && item.toValue && <span>to</span>}
-                                {item.toValue && <span className="rounded-full bg-brandNavy/10 px-1.5 py-0.5 text-brandNavy">{item.toValue}</span>}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                      </div>
-                    </div>
                   </section>
 
                   {/* TEMPORARILY DISABLED - MESSAGES FEATURE */}
@@ -1644,17 +2005,15 @@ const AdminDashboard = () => {
                 </div>
 
                 <aside className="lg:col-span-4 p-5 bg-white/42 backdrop-blur-md">
-                  <div className="sticky top-5 space-y-4 rounded-[22px] border-2 border-brandNavy/10 bg-white/88 p-4 shadow-xl shadow-brandNavy/8 backdrop-blur-xl">
+                  <div className="sticky top-5 space-y-4 rounded-[18px] border border-brandNavy/10 bg-white/88 p-4 shadow-lg shadow-brandNavy/5 backdrop-blur-xl">
                   <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-brandNavy text-white text-[10px] font-extrabold shadow-md shadow-brandNavy/15">C</span>
                     <div>
-                      <h3 className="text-sm font-extrabold text-brandDarkNavy font-sora">Control Panel</h3>
-                      <p className="text-[10px] font-bold text-slate-400">Manage ticket state</p>
+                      <h3 className="text-sm font-extrabold text-brandDarkNavy font-sora">Ticket Actions</h3>
+                      <p className="text-[10px] font-bold text-slate-400">Update ownership and status.</p>
                     </div>
                   </div>
                   <div>
                     <label className="mb-2 flex items-center gap-2 text-xs font-extrabold text-brandDarkNavy font-sora">
-                      <span className="rounded-full bg-brandNavy/10 px-2 py-0.5 text-[9px] text-brandNavy">Status</span>
                       Update Status
                     </label>
                     <select value={selectedTicket.status || 'Open'} onChange={e => handleQueryStatusChange(e.target.value)} className="w-full rounded-2xl border-2 border-brandNavy/15 bg-white/90 px-3 py-3 text-xs font-bold outline-none focus:border-brandNavy shadow-sm shadow-brandNavy/5">
@@ -1662,50 +2021,27 @@ const AdminDashboard = () => {
                       <option value="In Progress">In Progress</option>
                       <option value="Under Review">Under Review</option>
                       <option value="Needs Clarification">Waiting for User</option>
-                      <option value="Resolved">Resolved</option>
-                      <option value="Closed">Closed</option>
+                      <option value="Resolved" disabled>Resolved</option>
+                      <option value="Closed" disabled={selectedTicket.status !== 'Resolved' && selectedTicket.status !== 'Closed'}>Closed</option>
                     </select>
                   </div>
                   <div>
                     <label className="mb-2 flex items-center gap-2 text-xs font-extrabold text-brandDarkNavy font-sora">
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] text-slate-500">Team</span>
-                      Assign Team
+                      Transfer to Team
                     </label>
                     <select value={selectedTicket.assigned_to || 'Unassigned'} onChange={e => handleQueryAgentChange(e.target.value)} className="w-full rounded-2xl border-2 border-slate-200 bg-white/90 px-3 py-3 text-xs font-bold outline-none focus:border-brandNavy shadow-sm">
                       <option value="Unassigned">Unassigned</option>
                       {agents.map(agent => <option key={agent} value={agent}>{agent}</option>)}
                     </select>
                   </div>
-                  <button type="button" onClick={() => refreshQueryTicket(selectedTicket.ticket_id)} className="w-full rounded-2xl bg-brandNavy text-white py-3 text-xs font-extrabold premium-button">
-                    Update Ticket
+                  <button
+                    type="button"
+                    disabled={selectedTicket.status === 'Resolved' || selectedTicket.status === 'Closed'}
+                    onClick={handleResolveQueryTicket}
+                    className={`w-full rounded-2xl border py-3 text-xs font-extrabold transition-all hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60 ${selectedTicket.status === 'Resolved' ? 'border-green-200 bg-green-50 text-green-700' : 'border-brandRed/30 text-brandRed bg-white/70 hover:bg-brandRed/5'}`}
+                  >
+                    {selectedTicket.status === 'Resolved' ? 'Resolved' : 'Mark as Resolved'}
                   </button>
-                  <button type="button" onClick={() => handleQueryStatusChange('Resolved')} className={`w-full rounded-2xl border py-3 text-xs font-extrabold transition-all hover:shadow-sm ${selectedTicket.status === 'Resolved' ? 'border-green-200 bg-green-50 text-green-700' : 'border-brandRed/30 text-brandRed bg-white/70 hover:bg-brandRed/5'}`}>
-                    Mark as Resolved
-                  </button>
-                  <select onChange={e => e.target.value && handleQueryStatusChange(e.target.value)} defaultValue="" className="w-full rounded-2xl border-2 border-brandNavy/12 bg-white/90 px-3 py-3 text-xs font-bold text-brandNavy outline-none focus:border-brandNavy shadow-sm shadow-brandNavy/5">
-                    <option value="">More Actions</option>
-                    <option value="Needs Clarification">Waiting for User</option>
-                    <option value="Closed">Complete Ticket</option>
-                  </select>
-
-                  <div className="rounded-2xl border-2 border-brandNavy/12 bg-gradient-to-br from-brandNavy/[0.07] to-white p-4 backdrop-blur-md">
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                      <h3 className="text-xs font-extrabold text-brandNavy font-sora">Status Guide</h3>
-                      <span className="rounded-full bg-white/80 px-2 py-1 text-[9px] font-extrabold text-slate-400">Reference</span>
-                    </div>
-                    {[
-                      ['Open', 'Newly created ticket'],
-                      ['In Progress', 'Work is being done'],
-                      ['Waiting for User', 'Awaiting user response'],
-                      ['Resolved', 'Issue resolved by admin'],
-                      ['Closed', 'Ticket closed']
-                    ].map(([label, desc]) => (
-                      <div key={label} className="mb-2 last:mb-0 rounded-xl bg-white/65 px-3 py-2">
-                        <p className="text-[10px] font-extrabold text-brandNavy">{label}</p>
-                        <p className="text-[10px] font-semibold text-slate-500">{desc}</p>
-                      </div>
-                    ))}
-                  </div>
                   </div>
                 </aside>
               </div>
@@ -1860,7 +2196,35 @@ const AdminDashboard = () => {
       { label: 'Waiting for User', value: waitingCount, sub: 'Needs clarification', color: 'text-brandRed' },
       { label: 'Unassigned', value: unassignedCount, sub: 'Needs ownership', color: 'text-amber-600' }
     ];
-
+    const departmentLeaderboard = DEPARTMENT_DIRECTORY
+      .map(department => {
+        const deptTickets = tickets.filter(ticket => getTicketDepartment(ticket) === department.name);
+        const deptResolved = deptTickets.filter(ticket => isResolvedStatus(ticket.status)).length;
+        return {
+          name: department.name,
+          total: deptTickets.length,
+          resolved: deptResolved
+        };
+      })
+      .sort((a, b) => b.resolved - a.resolved || b.total - a.total);
+    const maxDepartmentResolved = Math.max(...departmentLeaderboard.map(department => department.resolved), 1);
+    const slaMet = tickets.filter(ticket => getSlaRisk(ticket) === 'Met' || (isResolvedStatus(ticket.status) && getTicketAgeHours(ticket) < 48)).length;
+    const slaBreached = tickets.filter(ticket => getSlaRisk(ticket) === 'Breached').length;
+    const resolutionHours = tickets
+      .filter(ticket => isResolvedStatus(ticket.status))
+      .map(ticket => getTicketAgeHours(ticket))
+      .sort((a, b) => a - b);
+    const formatDuration = (hours) => {
+      if (!Number.isFinite(hours) || hours <= 0) return '0h';
+      if (hours < 1) return `${Math.round(hours * 60)}m`;
+      return `${hours.toFixed(1)}h`;
+    };
+    const medianResolution = resolutionHours.length
+      ? resolutionHours[Math.floor(resolutionHours.length / 2)]
+      : 0;
+    const avgResolution = resolutionHours.length
+      ? resolutionHours.reduce((sum, hours) => sum + hours, 0) / resolutionHours.length
+      : 0;
     return (
       <div className="space-y-6 text-left">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
@@ -1875,12 +2239,52 @@ const AdminDashboard = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
           {analyticsCards.map(card => (
-            <div key={card.label} className="premium-glass premium-hover rounded-[22px] p-5">
+            <div key={card.label} className={`premium-glass premium-hover rounded-[22px] border p-5 ${analyticsCards.indexOf(card) % 2 === 0 ? 'border-brandNavy/25' : 'border-brandRed/25'}`}>
               <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider font-sora">{card.label}</p>
               <h3 className={`text-2xl md:text-3xl font-extrabold mt-2 font-sora leading-none ${card.color}`}>{card.value}</h3>
               <p className="text-[10px] font-bold text-brandNavy/70 mt-3 font-dmSans">{card.sub}</p>
             </div>
           ))}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+          <section className="premium-glass rounded-[18px] border border-brandNavy/20 p-6">
+            <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-brandNavy">Resolved Tickets</p>
+            <h2 className="mt-1 text-sm font-extrabold text-brandDarkNavy font-sora">Resolved tickets by department</h2>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-3">
+              {departmentLeaderboard.map((department, index) => (
+                <div key={department.name} className={`min-h-[78px] rounded-lg border bg-white/75 px-4 py-3 ${index % 2 === 0 ? 'border-brandNavy/25' : 'border-brandRed/25'}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="truncate text-[11px] font-extrabold text-brandNavy">{index + 1}. {department.name}</p>
+                    <span className="shrink-0 text-[11px] font-extrabold text-brandRed">{department.resolved}</span>
+                  </div>
+                  <div className="mt-2 h-1.5 rounded-full bg-slate-100">
+                    <div className="h-1.5 rounded-full bg-brandNavy" style={{ width: `${Math.round((department.resolved / maxDepartmentResolved) * 100)}%` }} />
+                  </div>
+                  <p className="mt-1 text-[9px] font-semibold text-slate-400">{department.resolved}/{department.total} resolved</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="premium-glass rounded-[18px] border border-brandRed/20 p-5">
+            <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-brandRed">SLA Performance</p>
+            <h2 className="mt-1 text-sm font-extrabold text-brandDarkNavy font-sora">Met SLA vs breached SLA</h2>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-green-700">Met SLA</p>
+                <p className="mt-1 text-2xl font-extrabold text-green-700 font-sora">{slaMet}</p>
+              </div>
+              <div className="rounded-lg border border-brandRed/20 bg-brandRed/5 px-4 py-3">
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-brandRed">Breached SLA</p>
+                <p className="mt-1 text-2xl font-extrabold text-brandRed font-sora">{slaBreached}</p>
+              </div>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full bg-green-500" style={{ width: `${totalCount ? Math.round((slaMet / totalCount) * 100) : 0}%` }} />
+            </div>
+          </section>
+
         </div>
 
         {loading ? (
@@ -1889,7 +2293,7 @@ const AdminDashboard = () => {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               <div className="premium-glass premium-hover rounded-[22px] p-6">
                 <h2 className="text-sm font-extrabold text-slate-800 font-sora">Monthly Ticket Trends</h2>
                 <p className="text-[10px] text-slate-400 mt-0.5 font-dmSans font-medium">6-month ticket submission rates</p>
@@ -1903,7 +2307,6 @@ const AdminDashboard = () => {
                   )}
                 </div>
               </div>
-
               <div className="premium-glass premium-hover rounded-[22px] p-6">
                 <h2 className="text-sm font-extrabold text-slate-800 font-sora">Tickets by Team</h2>
                 <p className="text-[10px] text-slate-400 mt-0.5 font-dmSans font-medium">Distribution across operational teams</p>
@@ -1919,11 +2322,11 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-              <div className="premium-glass premium-hover rounded-[22px] p-6">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+              <div className="premium-glass premium-hover rounded-[18px] p-4">
                 <h2 className="text-sm font-extrabold text-slate-800 font-sora">Status Split</h2>
                 <p className="text-[10px] text-slate-400 mt-0.5 font-dmSans font-medium">Current queue state</p>
-                <div className="h-64 mt-5 relative">
+                <div className="h-44 mt-4 relative">
                   {totalCount ? (
                     <>
                       <Doughnut data={statusChartData} options={doughnutOptions} />
@@ -1940,41 +2343,25 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              <div className="premium-glass premium-hover rounded-[22px] p-6 xl:col-span-2">
+              <div className="premium-glass premium-hover rounded-[18px] p-4 xl:col-span-2">
                 <h2 className="text-sm font-extrabold text-slate-800 font-sora">Status Overview</h2>
                 <p className="text-[10px] text-slate-400 mt-0.5 font-dmSans font-medium">Current workload grouped by state</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
                   {[
                     ['Open', openCount, 'bg-brandRed/10 text-brandRed border-brandRed/20'],
                     ['In Progress / Review', progressCount, 'bg-amber-50 text-amber-700 border-amber-200'],
                     ['Waiting for User', waitingCount, 'bg-brandNavy/10 text-brandNavy border-brandNavy/20'],
                     ['Resolved / Closed', resolvedCount, 'bg-green-50 text-green-700 border-green-200']
                   ].map(([label, value, style]) => (
-                    <div key={label} className={`rounded-2xl border px-4 py-5 ${style}`}>
+                    <div key={label} className={`rounded-xl border px-4 py-3 ${style}`}>
                       <p className="text-[10px] font-extrabold uppercase tracking-wider font-sora">{label}</p>
-                      <p className="text-2xl font-extrabold mt-2 font-sora">{value}</p>
+                      <p className="text-xl font-extrabold mt-1 font-sora">{value}</p>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
 
-            <div className="premium-glass rounded-[22px] p-6">
-              <h2 className="text-sm font-extrabold text-slate-800 font-sora mb-4">Queue Health</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                {[
-                  ['Open', openCount, 'bg-brandRed/10 text-brandRed border-brandRed/20'],
-                  ['In Progress / Review', progressCount, 'bg-amber-50 text-amber-700 border-amber-200'],
-                  ['Waiting for User', waitingCount, 'bg-brandNavy/10 text-brandNavy border-brandNavy/20'],
-                  ['Resolved / Closed', resolvedCount, 'bg-green-50 text-green-700 border-green-200']
-                ].map(([label, value, style]) => (
-                  <div key={label} className={`rounded-2xl border px-4 py-3 ${style}`}>
-                    <p className="text-[10px] font-extrabold uppercase tracking-wider font-sora">{label}</p>
-                    <p className="text-2xl font-extrabold mt-2 font-sora">{value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
           </>
         )}
       </div>
@@ -2489,12 +2876,12 @@ const AdminDashboard = () => {
     const searchTerm = adminSearchQuery.trim().toLowerCase();
     const filteredAdmins = adminDirectory.filter((admin) => {
       if (!searchTerm) return true;
-      return [admin.name, admin.email, admin.role, admin.department, admin.status]
-        .some((value) => value.toLowerCase().includes(searchTerm));
+      return [admin.name, admin.email, admin.role, admin.department, admin.status, admin.lastLogin]
+        .some((value) => String(value || '').toLowerCase().includes(searchTerm));
     });
     const activeAdmins = adminDirectory.filter((admin) => admin.status === 'Active').length;
     const superAdmins = adminDirectory.filter((admin) => admin.role === 'Super Admin').length;
-    const supportAdmins = adminDirectory.filter((admin) => admin.role !== 'Super Admin').length;
+    const otherStaff = adminDirectory.filter((admin) => admin.role !== 'Super Admin').length;
 
     const getAdminInitials = (name) => (
       name
@@ -2507,8 +2894,7 @@ const AdminDashboard = () => {
 
     const getRoleBadgeClass = (role) => {
       if (role === 'Super Admin') return 'bg-brandRed/10 text-brandRed border-brandRed/15';
-      if (role === 'IT Support') return 'bg-cyan-50 text-cyan-700 border-cyan-100';
-      if (role === 'Operations Admin') return 'bg-purple-50 text-purple-700 border-purple-100';
+      if (role === 'Department User') return 'bg-cyan-50 text-cyan-700 border-cyan-100';
       return 'bg-brandNavy/10 text-brandNavy border-brandNavy/15';
     };
 
@@ -2517,7 +2903,7 @@ const AdminDashboard = () => {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h2 className="font-sora text-3xl font-extrabold text-brandNavy">Admin Management</h2>
-            <p className="text-sm text-gray-500 mt-1">Manage admins, roles, departments, and permissions.</p>
+            <p className="text-sm text-gray-500 mt-1">Manage admins, roles, and department access.</p>
           </div>
           <button
             type="button"
@@ -2536,7 +2922,7 @@ const AdminDashboard = () => {
             { label: 'Total Admins', value: adminDirectory.length, border: 'border-slate-200', text: 'text-brandNavy' },
             { label: 'Active', value: activeAdmins, border: 'border-green-200', text: 'text-green-700' },
             { label: 'Super Admins', value: superAdmins, border: 'border-brandRed/25', text: 'text-brandRed' },
-            { label: 'Support Admins', value: supportAdmins, border: 'border-blue-200', text: 'text-blue-700' }
+            { label: 'Other Staff', value: otherStaff, border: 'border-blue-200', text: 'text-blue-700' }
           ].map((card) => (
             <div key={card.label} className={`premium-glass rounded-[18px] p-6 border ${card.border}`}>
               <p className={`text-xs font-bold ${card.text}`}>{card.label}</p>
@@ -2562,10 +2948,10 @@ const AdminDashboard = () => {
 
         <div className="premium-glass rounded-[20px] border border-white/60 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[880px] text-left">
+            <table className="w-full min-w-[980px] text-left">
               <thead className="bg-white/50 border-b border-slate-100">
                 <tr>
-                  {['ADMIN', 'ID', 'ROLE', 'DEPARTMENT', 'STATUS', 'ACTIONS'].map((heading) => (
+                  {['ADMIN', 'ID', 'ROLE', 'DEPARTMENT', 'STATUS', 'LAST LOGIN', 'ACTIONS'].map((heading) => (
                     <th key={heading} className="px-6 py-4 text-[11px] font-extrabold text-brandNavy/80">
                       {heading}
                     </th>
@@ -2603,6 +2989,7 @@ const AdminDashboard = () => {
                         {admin.status}
                       </button>
                     </td>
+                    <td className="px-6 py-4 text-xs font-semibold text-slate-500">{formatDateTime(admin.lastLogin)}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <button
@@ -2631,7 +3018,7 @@ const AdminDashboard = () => {
                 ))}
                 {filteredAdmins.length === 0 && (
                   <tr>
-                    <td colSpan="6" className="px-6 py-12 text-center text-sm font-bold text-slate-400">
+                    <td colSpan="7" className="px-6 py-12 text-center text-sm font-bold text-slate-400">
                       No admins found.
                     </td>
                   </tr>
@@ -2693,6 +3080,19 @@ const AdminDashboard = () => {
                     className="mt-2 w-full rounded-[14px] border border-slate-200 bg-white/85 px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-brandNavy/40 focus:ring-4 focus:ring-brandNavy/10"
                   />
                 </label>
+                {!editingAdmin && (
+                  <label className="text-xs font-extrabold text-brandNavy">
+                    Password
+                    <input
+                      type="password"
+                      required
+                      minLength="6"
+                      value={adminForm.password}
+                      onChange={(event) => setAdminForm((prev) => ({ ...prev, password: event.target.value }))}
+                      className="mt-2 w-full rounded-[14px] border border-slate-200 bg-white/85 px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-brandNavy/40 focus:ring-4 focus:ring-brandNavy/10"
+                    />
+                  </label>
+                )}
                 <label className="text-xs font-extrabold text-brandNavy">
                   Role
                   <select
@@ -2701,10 +3101,8 @@ const AdminDashboard = () => {
                     className="mt-2 w-full rounded-[14px] border border-slate-200 bg-white/85 px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-brandNavy/40 focus:ring-4 focus:ring-brandNavy/10"
                   >
                     <option>Super Admin</option>
-                    <option>Support Admin</option>
-                    <option>IT Support</option>
-                    <option>Operations Admin</option>
-                    <option>Compliance Admin</option>
+                    <option>Admin</option>
+                    <option>Department User</option>
                   </select>
                 </label>
                 <label className="text-xs font-extrabold text-brandNavy">
@@ -3089,6 +3487,7 @@ const AdminDashboard = () => {
       />
     );
   }
+
 }
 
 export default AdminDashboard;
