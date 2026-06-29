@@ -1597,7 +1597,7 @@ def submit_resolution(ticket_id):
             return jsonify({'error': 'Ticket not found'}), 404
 
         ticket = conn.execute("""
-            SELECT status
+            SELECT status, assigned_to, claimed_by, COALESCE(assigned_department, business_unit)
             FROM tickets
             WHERE ticket_id = ?
         """, [ticket_id]).fetchone()
@@ -1624,7 +1624,10 @@ def submit_resolution(ticket_id):
                 documents_verified = ?,
                 issue_investigated = ?,
                 requester_updated = ?,
-                final_confirmation_done = ?
+                final_confirmation_done = ?,
+                assigned_to = ?,
+                claimed_by = NULL,
+                claimed_at = NULL
             WHERE ticket_id = ?
         """, [
             now,
@@ -1640,6 +1643,7 @@ def submit_resolution(ticket_id):
             checklist['issue_investigated'],
             checklist['requester_updated'],
             checklist['final_confirmation_done'],
+            ticket[3],
             ticket_id
         ])
 
@@ -1665,6 +1669,19 @@ def submit_resolution(ticket_id):
                 None,
                 ticket[0],
                 'Resolved',
+                now
+            )
+
+        if ticket[2]:
+            record_ticket_activity(
+                conn,
+                ticket_id,
+                'ticket_released',
+                f'Ticket released after resolution by {get_actor_name(conn, current_user)}',
+                current_user,
+                get_current_role(),
+                ticket[1],
+                'Unclaimed',
                 now
             )
 

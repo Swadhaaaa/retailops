@@ -1773,7 +1773,7 @@ const UserDashboard = () => {
           {[
             { label: 'Open Tickets', count: messagesStats.open, icon: (
               <svg className="w-5 h-5 text-brandNavy animate-scale-in" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 7.5h5.379c.397 0 .779.158 1.06.439l1.122 1.122c.281.281.663.439 1.061.439h7.878M4.5 7.5v10.125c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V9.5" />
               </svg>
             ), bg: 'bg-[#F0F4FF]', text: 'text-brandNavy' },
             { label: 'Pending Tickets', count: messagesStats.pending, icon: (
@@ -2489,8 +2489,8 @@ const UserDashboard = () => {
               </div>
 
               <button onClick={handleLogout}
-                className="mt-6 px-5 py-3 rounded-2xl text-xs font-extrabold border border-gray-200 text-gray-500 hover:text-brandRed hover:bg-brandRed/5 hover:border-brandRed/10 transition-all duration-300 w-full">
-                Sign Out Account
+                className="mt-6 w-full rounded-2xl border border-brandRed/15 bg-brandRed/5 px-5 py-3 text-center text-xs font-extrabold text-brandRed transition-all duration-300 hover:border-brandRed/25 hover:bg-brandRed/10">
+                Sign Out
               </button>
             </div>
           </div>
@@ -2795,12 +2795,9 @@ const UserDashboard = () => {
           {/* SIGN OUT AT BOTTOM */}
           <button
             onClick={handleLogout}
-            className="sidebar-item w-full flex items-center space-x-3 px-3.5 py-3 rounded-2xl text-xs font-bold text-gray-500 hover:text-brandRed hover:bg-brandRed/5 border border-transparent hover:border-brandRed/10 transition-all text-left mt-6"
+            className="mt-6 w-full rounded-2xl border border-brandRed/15 bg-brandRed/5 px-3.5 py-3 text-center text-xs font-extrabold text-brandRed transition-all hover:border-brandRed/25 hover:bg-brandRed/10"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4 text-gray-400">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-            </svg>
-            <span>Sign Out Account</span>
+            Sign Out
           </button>
         </aside>
 

@@ -1019,14 +1019,9 @@ const AdminDashboard = () => {
           {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className="w-full min-h-[48px] flex items-center gap-3 px-4 py-3 rounded-2xl text-sm text-left text-gray-500 hover:text-brandRed hover:bg-white/75 hover:shadow-sm transition-all duration-300"
+            className="w-full min-h-[48px] rounded-2xl border border-brandRed/15 bg-brandRed/5 px-4 py-3 text-center text-sm font-extrabold text-brandRed transition-all duration-300 hover:border-brandRed/25 hover:bg-brandRed/10"
           >
-            <span className="w-5 h-5 shrink-0 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5 text-gray-400 hover:text-inherit">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-              </svg>
-            </span>
-            <span className="font-medium whitespace-nowrap leading-none">Sign Out</span>
+            Sign Out
           </button>
         </aside>
 
@@ -1262,9 +1257,13 @@ const AdminDashboard = () => {
         value: totalCount.toLocaleString(),
         trend: 'Live from admin ticket queue',
         bgIcon: 'bg-brandNavy/10 text-brandNavy',
+        panel: 'border-brandNavy/15 bg-[#FAFBFF]',
+        accent: 'bg-brandNavy/45',
+        wash: 'from-brandNavy/5 to-transparent',
+        titleColor: 'text-brandNavy/45',
         icon: (
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 7.5h12M6 12h12M6 16.5h7.5M4.5 4.5h15a1.5 1.5 0 0 1 1.5 1.5v12a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18V6a1.5 1.5 0 0 1 1.5-1.5Z" />
           </svg>
         )
       },
@@ -1273,9 +1272,13 @@ const AdminDashboard = () => {
         value: openCount.toLocaleString(),
         trend: `${totalCount ? Math.round((openCount / totalCount) * 100) : 0}% of total tickets`,
         bgIcon: 'bg-brandRed/10 text-brandRed',
+        panel: 'border-brandRed/15 bg-[#FFFAFB]',
+        accent: 'bg-brandRed/45',
+        wash: 'from-brandRed/5 to-transparent',
+        titleColor: 'text-brandRed/45',
         icon: (
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 7.5h5.379c.397 0 .779.158 1.06.439l1.122 1.122c.281.281.663.439 1.061.439h7.878M4.5 7.5v10.125c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V9.5" />
           </svg>
         )
       },
@@ -1284,6 +1287,10 @@ const AdminDashboard = () => {
         value: resolvedCount.toLocaleString(),
         trend: `${totalCount ? Math.round((resolvedCount / totalCount) * 100) : 0}% completion rate`,
         bgIcon: 'bg-brandNavy/10 text-brandNavy',
+        panel: 'border-brandNavy/15 bg-[#FAFBFF]',
+        accent: 'bg-brandNavy/45',
+        wash: 'from-brandNavy/5 to-transparent',
+        titleColor: 'text-brandNavy/45',
         icon: (
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1367,13 +1374,13 @@ const AdminDashboard = () => {
         {/* ── 4 Premium Stat Cards ── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           {statCards.map((card, i) => (
-            <div key={i} className={`premium-glass premium-hover rounded-[22px] border ${i % 2 === 0 ? 'border-brandNavy/25' : 'border-brandRed/25'} p-5 relative group overflow-hidden`}>
-              <div className={`absolute inset-x-0 bottom-0 h-1 ${i % 2 === 0 ? 'bg-brandNavy/70' : 'bg-brandRed/70'} opacity-80`} />
-              <div className="absolute top-0 right-0 w-28 h-28 rounded-full bg-gradient-to-br from-brandNavy/10 to-brandRed/10 -translate-y-10 translate-x-10 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none" />
+            <div key={i} className={`premium-hover rounded-[24px] border ${card.panel} p-5 relative group overflow-hidden shadow-[0_18px_40px_rgba(15,27,76,0.08)]`}>
+              <div className={`absolute inset-x-0 bottom-0 h-1 ${card.accent} opacity-75`} />
+              <div className={`absolute right-0 top-0 h-full w-2/5 bg-gradient-to-bl ${card.wash} opacity-90 pointer-events-none`} />
               
               <div className="flex items-start justify-between relative z-10">
                 <div>
-                  <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider font-sora">{card.label}</p>
+                  <p className={`text-[10px] font-extrabold uppercase tracking-wider font-sora ${card.titleColor}`}>{card.label}</p>
                   <h3 className="text-2xl md:text-3xl font-extrabold text-slate-800 mt-2 font-sora leading-none">{card.value}</h3>
                   <p className="text-[10px] font-bold text-brandNavy/70 mt-3 flex items-center space-x-1 font-dmSans">
                     <span>{card.trend}</span>
@@ -2479,7 +2486,7 @@ const AdminDashboard = () => {
     };
     const openDepartmentOverview = (departmentName, filter = 'All') => {
       setSelectedDepartmentName(departmentName);
-      setSelectedDepartmentFilter(filter);
+        setSelectedDepartmentFilter(filter);
     };
     const downloadDepartmentReport = () => {
       if (!selectedDepartment) return;

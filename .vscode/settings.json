@@ -1,4 +1,18 @@
 {
   "python.defaultInterpreterPath": "C:\\Users\\sudha\\Desktop\\QMS'\\backend\\venv\\Scripts\\python.exe",
-  "python.terminal.activateEnvironment": true
+  "python.terminal.activateEnvironment": true,
+  "python.terminal.activateEnvInCurrentTerminal": true,
+  "terminal.integrated.defaultProfile.windows": "PowerShell (QMS venv)",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell (QMS venv)": {
+      "source": "PowerShell",
+      "args": [
+        "-NoExit",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\.vscode\\qms-terminal.ps1"
+      ]
+    }
+  }
 }

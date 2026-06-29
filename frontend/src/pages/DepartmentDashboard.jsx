@@ -121,6 +121,7 @@ const DepartmentDashboard = () => {
   });
   const [transferForm, setTransferForm] = useState({ target_agent: '' });
   const [reopenReason, setReopenReason] = useState('');
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const fetchTickets = useCallback(async ({ silent = false } = {}) => {
     if (silent) setRefreshing(true); else setLoading(true);
@@ -292,6 +293,7 @@ const DepartmentDashboard = () => {
   }), [analytics.statusRows]);
 
   const selectedIsMine = selectedTicket?.claimed_by === user.user_id;
+  const selectedIsResolved = selectedTicket ? isResolved(selectedTicket) : false;
   const availableAgents = selectedTicket ? departmentAgents.filter((agent) => {
     const owner = getTicketOwnerName(selectedTicket);
     return agent.name && agent.name !== owner;
@@ -375,22 +377,13 @@ const DepartmentDashboard = () => {
           <div><p className="mb-2 px-3 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Ticket Views</p>{['In Progress', 'Waiting for User', 'Escalated', 'Resolved'].map((item) => <button type="button" key={item} onClick={() => { setActiveView('queue'); setQueue(item); }} className={`mb-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-[11px] font-bold transition-all duration-200 ${activeView === 'queue' && queue === item ? 'border-l-[3px] border-brandRed bg-red-50 text-brandRed' : 'text-slate-500 hover:bg-slate-50 hover:text-brandNavy'}`}><span>{item}</span><span className="text-[9px] font-extrabold">{queueCounts[item]}</span></button>)}</div>
           <div><p className="mb-2 px-3 text-[9px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Reports</p><button type="button" onClick={() => setActiveView('analytics')} className={`flex w-full items-center rounded-xl px-3 py-2.5 text-left text-[11px] font-bold transition-all duration-200 ${activeView === 'analytics' ? 'border border-brandNavy/20 bg-blue-50 text-brandNavy' : 'text-slate-500 hover:bg-blue-50 hover:text-brandNavy'}`}>Analytics</button></div>
         </nav>
-        <div className="border-t border-slate-100 p-4"><button type="button" onClick={handleLogout} className="w-full rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-[10px] font-extrabold text-brandRed transition-all duration-200 hover:bg-brandRed hover:text-white">Sign Out</button></div>
+        <div className="border-t border-slate-100 p-4"><button type="button" onClick={handleLogout} className="w-full rounded-2xl border border-brandRed/15 bg-brandRed/5 px-3 py-3 text-center text-xs font-extrabold text-brandRed transition-all duration-200 hover:border-brandRed/25 hover:bg-brandRed/10">Sign Out</button></div>
       </aside>
 
       <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl lg:ml-64">
         <div className="mx-auto flex h-[72px] max-w-[1500px] flex-wrap items-center justify-between gap-3 px-5">
           <div className="flex items-center gap-3">
             <img src={relianceLogo} alt="Reliance Retail" className="h-8 w-auto lg:hidden" />
-            <div>
-              <p className="font-sora text-sm font-extrabold text-brandDarkNavy">Department Dashboard</p>
-              <div className="mt-0.5 flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-wider">
-                <span className="text-slate-400">{userRoleLabel}</span>
-                <span className={`rounded-full px-2 py-0.5 ${error ? 'bg-red-50 text-brandRed' : loading || refreshing ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                  {error ? 'Connection Issue' : loading || refreshing ? 'Syncing Workflow' : 'Workflow Active'}
-                </span>
-              </div>
-            </div>
           </div>
           <div className="flex items-center gap-2">
             {clarifiedTickets.length > 0 && (
@@ -406,10 +399,61 @@ const DepartmentDashboard = () => {
                 <span className="ml-2 rounded-full bg-brandRed px-1.5 py-0.5 text-[8px] text-white">{clarifiedTickets.length}</span>
               </button>
             )}
-            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white py-1.5 pl-1.5 pr-3"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brandNavy text-[10px] font-extrabold text-white">{userDisplayName.charAt(0).toUpperCase()}</span><div className="hidden sm:block"><p className="max-w-[120px] truncate text-[10px] font-extrabold text-brandDarkNavy">{userDisplayName}</p><p className="text-[8px] font-semibold text-slate-400">{userRoleLabel}</p></div></div>
+            <button
+              type="button"
+              onClick={() => setShowProfileModal(true)}
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white py-1.5 pl-1.5 pr-3 text-left transition hover:border-brandNavy/25 hover:bg-blue-50/40 focus:outline-none focus:ring-2 focus:ring-brandNavy/20"
+              aria-label="Open department user profile"
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brandNavy text-[10px] font-extrabold text-white">{userDisplayName.charAt(0).toUpperCase()}</span>
+              <span className="hidden sm:block">
+                <span className="block max-w-[120px] truncate text-[10px] font-extrabold text-brandDarkNavy">{userDisplayName}</span>
+                <span className="block text-[8px] font-semibold text-slate-400">{userRoleLabel}</span>
+              </span>
+            </button>
           </div>
         </div>
       </header>
+
+      {showProfileModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-brandDarkNavy/40 p-4 backdrop-blur-sm">
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default"
+            aria-label="Close department user profile"
+            onClick={() => setShowProfileModal(false)}
+          />
+          <section className="relative w-full max-w-sm rounded-[24px] border border-white/70 bg-white p-5 shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setShowProfileModal(false)}
+              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-sm font-extrabold text-slate-500 transition hover:bg-brandRed hover:text-white"
+              aria-label="Close profile"
+            >
+              x
+            </button>
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brandNavy text-base font-extrabold text-white">{userDisplayName.charAt(0).toUpperCase()}</span>
+              <div className="min-w-0">
+                <h2 className="truncate font-sora text-base font-extrabold text-brandDarkNavy">{userDisplayName}</h2>
+                <p className="mt-0.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">{userRoleLabel}</p>
+              </div>
+            </div>
+            <div className="mt-4 space-y-3">
+              {[
+                ['Email', user?.email || 'Not available'],
+                ['Department', department],
+                ['Role', userRoleLabel]
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3">
+                  <p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">{label}</p>
+                  <p className="mt-1 break-words text-xs font-bold text-brandDarkNavy">{value}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
 
       <main className="relative z-10 mx-auto max-w-[1500px] space-y-5 bg-white px-5 py-6 lg:ml-64">
         {activeView === 'analytics' ? (
@@ -597,7 +641,7 @@ const DepartmentDashboard = () => {
           </section>
 
           <aside className="space-y-2.5 border-t border-brandRed/20 bg-slate-100/50 p-3 lg:border-l lg:border-t-0">
-            <div className="rounded-lg border border-brandRed/25 bg-white px-3 py-2.5"><p className="text-[8px] font-extrabold uppercase text-slate-400">Ownership</p><div className="mt-1.5 flex items-center justify-between gap-3"><div><p className="text-sm font-extrabold text-brandDarkNavy">{getTicketOwnerName(selectedTicket) || 'Available to claim'}</p><p className="mt-0.5 text-[9px] font-semibold text-slate-400">{selectedTicket.claimed_at ? `Claimed ${formatDate(selectedTicket.claimed_at)}` : 'No department owner'}</p></div>{isUnclaimed(selectedTicket) ? <button disabled={!!working} onClick={claimTicket} className="rounded-md bg-brandNavy px-3 py-1.5 text-xs font-extrabold text-white disabled:opacity-50">{working === 'claim' ? 'Claiming...' : 'Claim Ticket'}</button> : selectedIsMine ? <button disabled={!!working} onClick={releaseTicket} className="rounded-md border border-brandRed/20 px-3 py-1.5 text-xs font-extrabold text-brandRed disabled:opacity-50">{working === 'release' ? 'Releasing...' : 'Release'}</button> : null}</div></div>
+            <div className="rounded-lg border border-brandRed/25 bg-white px-3 py-2.5"><p className="text-[8px] font-extrabold uppercase text-slate-400">Ownership</p><div className="mt-1.5 flex items-center justify-between gap-3"><div><p className="text-sm font-extrabold text-brandDarkNavy">{selectedIsResolved ? 'Released after resolution' : getTicketOwnerName(selectedTicket) || 'Available to claim'}</p><p className="mt-0.5 text-[9px] font-semibold text-slate-400">{selectedIsResolved ? 'No active department owner' : selectedTicket.claimed_at ? `Claimed ${formatDate(selectedTicket.claimed_at)}` : 'No department owner'}</p></div>{selectedIsResolved ? null : isUnclaimed(selectedTicket) ? <button disabled={!!working} onClick={claimTicket} className="rounded-md bg-brandNavy px-3 py-1.5 text-xs font-extrabold text-white disabled:opacity-50">{working === 'claim' ? 'Claiming...' : 'Claim Ticket'}</button> : selectedIsMine ? <button disabled={!!working} onClick={releaseTicket} className="rounded-md border border-brandRed/20 px-3 py-1.5 text-xs font-extrabold text-brandRed disabled:opacity-50">{working === 'release' ? 'Releasing...' : 'Release'}</button> : null}</div></div>
             <label className="block rounded-lg border border-brandRed/25 bg-white px-3 py-2.5"><span className="mb-1.5 block text-[8px] font-extrabold uppercase text-slate-400">Update Status</span><select value={selectedTicket.status} disabled={!!working} onChange={(event) => updateStatus(event.target.value)} className="w-full rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-bold">{STATUS_OPTIONS.map((item) => <option key={item}>{item}</option>)}</select></label>
             {selectedTicket.status === 'Needs Clarification' && <form onSubmit={sendClarificationNote} className="rounded-lg border border-brandRed/25 bg-red-50/40 px-3 py-2.5"><p className="text-[8px] font-extrabold uppercase text-brandRed">Note to User</p><textarea required value={clarificationNote} onChange={(event) => setClarificationNote(event.target.value)} placeholder="Tell the user what details are needed..." className="mt-1.5 min-h-[48px] w-full resize-none rounded-md border border-brandRed/20 bg-white p-2 text-xs font-semibold outline-none focus:border-brandRed" /><button disabled={!!working || !clarificationNote.trim()} className="mt-2 w-full rounded-md bg-brandRed px-4 py-2 text-xs font-extrabold text-white disabled:opacity-50">{working === 'clarification-note' ? 'Sending...' : 'Send Note to User'}</button></form>}
             {showResolutionForm && <form onSubmit={submitResolution} className="rounded-lg border border-brandRed/25 bg-white px-3 py-2.5"><p className="text-[8px] font-extrabold uppercase text-emerald-700">Resolution Form</p>{[['root_cause', 'Root cause'], ['action_taken', 'Actions taken'], ['resolution_summary', 'Resolution summary'], ['resolution_remarks', 'Optional remarks']].map(([key, label]) => <label key={key} className="mt-1.5 block"><span className="mb-1 block text-[8px] font-extrabold uppercase text-slate-400">{label}</span><textarea required={key !== 'resolution_remarks'} value={resolutionForm[key]} onChange={(event) => setResolutionForm((prev) => ({ ...prev, [key]: event.target.value }))} className="min-h-[44px] w-full resize-none rounded-md border border-slate-200 p-2 text-xs font-semibold" /></label>)}<div className="mt-2 space-y-1">{CHECKLIST_ITEMS.map(([key, label]) => <label key={key} className="flex items-center gap-2 text-xs font-bold text-slate-600"><input type="checkbox" checked={resolutionForm.checklist[key]} onChange={(event) => setResolutionForm((prev) => ({ ...prev, checklist: { ...prev.checklist, [key]: event.target.checked } }))} />{label}</label>)}</div><button disabled={!!working || !Object.values(resolutionForm.checklist).every(Boolean)} className="mt-2.5 w-full rounded-md bg-brandRed px-4 py-2 text-xs font-extrabold text-white disabled:opacity-50">{working === 'resolve' ? 'Resolving...' : 'Resolve Ticket'}</button></form>}
