@@ -226,8 +226,8 @@ const staticCategories = [
   { category_id: 20, name: 'Finance & Reporting', description: 'Financial reports, budgets, and reconciliation' }
 ];
 
-// TEMPORARILY DISABLED - MESSAGES FEATURE
-const MESSAGES_FEATURE_ENABLED = false;
+// Enable the message-thread experience for the new backend comment storage.
+const MESSAGES_FEATURE_ENABLED = true;
 
 const getCategoryIcon = (catId) => {
   const styles = getCategoryStyles(catId);
@@ -367,6 +367,50 @@ const UserDashboard = () => {
   const { user, logout } = useContext(AuthContext);
   const { selectedSubRole } = useContext(RoleContext);
   const navigate = useNavigate();
+
+  const normalizeTicketDetail = (ticket) => {
+    if (!ticket) return ticket;
+
+    const rawMessages = Array.isArray(ticket.messages)
+      ? ticket.messages
+      : Array.isArray(ticket.comments)
+        ? ticket.comments
+        : [];
+
+    const normalizedMessages = rawMessages.map((msg) => {
+      const body = msg.body || msg.message_text || msg.content || msg.message || '';
+      const attachmentPath = msg.attachment_path || msg.stored_path || msg.file_path || null;
+      const isCurrentUser = user && (String(msg.author_id) === String(user.user_id) || String(msg.author_id) === String(user.email));
+      const senderRole = msg.sender_role || (isCurrentUser ? 'user' : 'admin');
+
+      return {
+        ...msg,
+        message_text: body,
+        sender_role: senderRole,
+        created_at: msg.created_at || msg.createdAt || msg.timestamp,
+        attachment_path: attachmentPath,
+        has_attachment: Boolean(attachmentPath),
+        author_name: msg.author_name || msg.sender_name || msg.author_id || (senderRole === 'admin' ? 'Support' : 'You')
+      };
+    });
+
+    const normalizedAttachments = Array.isArray(ticket.attachments)
+      ? ticket.attachments.map((item) => ({
+        ...item,
+        stored_path: item.stored_path || item.attachment_path || item.path || item.file_path || null,
+        file_name: item.file_name || item.name || item.original_name || item.filename || 'Attachment'
+      }))
+      : [];
+
+    return {
+      ...ticket,
+      messages: normalizedMessages,
+      comments: normalizedMessages,
+      attachments: normalizedAttachments,
+      attachment_path: ticket.attachment_path || normalizedAttachments[0]?.stored_path || null,
+      has_attachment: Boolean(ticket.has_attachment || ticket.attachment_path || normalizedAttachments.length)
+    };
+  };
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [transitionKey, setTransitionKey] = useState(0);
   const [tickets, setTickets] = useState([]);
@@ -429,7 +473,7 @@ const UserDashboard = () => {
     setClarificationText('');
     setClarificationAttachment(null);
     api.get(`/tickets/${ticket.ticket_id}`)
-      .then((response) => setSelectedTicket(response.data))
+      .then((response) => setSelectedTicket(normalizeTicketDetail(response.data)))
       .catch((err) => console.error('Unable to load full ticket details:', err));
   };
 
@@ -464,13 +508,12 @@ const UserDashboard = () => {
   };
 
   const fetchActiveTicketMessages = async (ticketId) => {
-    // TEMPORARILY DISABLED - MESSAGES FEATURE
     if (!MESSAGES_FEATURE_ENABLED) return;
     try {
       const res = await api.get(`/tickets/${ticketId}`);
-      setMessages(res.data.messages || []);
-      // Sync detailed ticket info with current response
-      setActiveMessageTicket(res.data);
+      const normalized = normalizeTicketDetail(res.data);
+      setMessages(normalized.messages || []);
+      setActiveMessageTicket(normalized);
     } catch (err) {
       console.error('Error fetching messages:', err);
     }
@@ -481,19 +524,19 @@ const UserDashboard = () => {
     // TEMPORARILY DISABLED - MESSAGES FEATURE
     if (!MESSAGES_FEATURE_ENABLED) return;
     if (activeTab !== 'Messages') return;
-    
+
     fetchAnnouncementsAndStats();
     if (activeMessageTicket?.ticket_id) {
       fetchActiveTicketMessages(activeMessageTicket.ticket_id);
     }
-    
+
     const interval = setInterval(() => {
       fetchAnnouncementsAndStats();
       if (activeMessageTicket?.ticket_id) {
         fetchActiveTicketMessages(activeMessageTicket.ticket_id);
       }
     }, 5000);
-    
+
     return () => clearInterval(interval);
   }, [activeTab, activeMessageTicket?.ticket_id]);
 
@@ -596,21 +639,11 @@ const UserDashboard = () => {
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   );
 
-  const [notifPopped, setNotifPopped] = useState(false);
-
   useEffect(() => {
     const timer = setInterval(() => {
       setLiveTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    const t = setInterval(() => {
-      setNotifPopped(true);
-      setTimeout(() => setNotifPopped(false), 600);
-    }, 8000);
-    return () => clearInterval(t);
   }, []);
 
   const exportTicketsCSV = () => {
@@ -1037,7 +1070,7 @@ const UserDashboard = () => {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <h1 className="text-2xl lg:text-3xl font-extrabold text-brandDarkNavy font-sora">
-                Good Morning, {userName}! 
+                Good Morning, {userName}!
               </h1>
             </div>
             <p className="text-xs text-gray-500 mt-1 font-semibold font-dmSans">
@@ -1233,47 +1266,47 @@ const UserDashboard = () => {
           </div>
         ) : (
           <div className="space-y-3">
-              {filteredTickets.map((query, index) => {
-                const catObj = categories.find(c => c.category_id === query.category_id);
-                const categoryName = catObj ? catObj.name : `Category #${query.category_id}`;
-                const createdDate = formatTicketDate(query.created_at || query.updated_at).split(',')[0];
-                const outlineStyle = index % 2 === 0
-                  ? 'border-brandNavy/25 hover:border-brandNavy/45'
-                  : 'border-brandRed/25 hover:border-brandRed/45';
+            {filteredTickets.map((query, index) => {
+              const catObj = categories.find(c => c.category_id === query.category_id);
+              const categoryName = catObj ? catObj.name : `Category #${query.category_id}`;
+              const createdDate = formatTicketDate(query.created_at || query.updated_at).split(',')[0];
+              const outlineStyle = index % 2 === 0
+                ? 'border-brandNavy/25 hover:border-brandNavy/45'
+                : 'border-brandRed/25 hover:border-brandRed/45';
 
-                return (
-                  <button
-                    key={query.ticket_id}
-                    type="button"
-                    onClick={() => openTicketDetails(query, 'simple')}
-                    className={`group grid w-full grid-cols-1 gap-4 rounded-2xl border bg-white px-6 py-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:bg-blue-50/35 hover:shadow-md lg:grid-cols-[190px_minmax(0,1fr)_170px_110px] lg:items-center ${outlineStyle}`}
-                  >
-                    <div className="min-w-0">
-                      <p className="text-[10px] uppercase tracking-wide text-gray-400 font-bold">Ticket ID</p>
-                      <p className="mt-1 truncate text-base font-extrabold text-brandDarkNavy">#{query.ticket_id}</p>
-                    </div>
+              return (
+                <button
+                  key={query.ticket_id}
+                  type="button"
+                  onClick={() => openTicketDetails(query, 'simple')}
+                  className={`group grid w-full grid-cols-1 gap-4 rounded-2xl border bg-white px-6 py-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:bg-blue-50/35 hover:shadow-md lg:grid-cols-[190px_minmax(0,1fr)_170px_110px] lg:items-center ${outlineStyle}`}
+                >
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-400 font-bold">Ticket ID</p>
+                    <p className="mt-1 truncate text-base font-extrabold text-brandDarkNavy">#{query.ticket_id}</p>
+                  </div>
 
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-extrabold text-brandDarkNavy">
-                        {query.title}
-                        <span className="font-semibold text-gray-500"> - {query.description || 'No description'}</span>
-                      </p>
-                      <p className="mt-1 truncate text-xs font-semibold text-gray-400">{categoryName}</p>
-                    </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-extrabold text-brandDarkNavy">
+                      {query.title}
+                      <span className="font-semibold text-gray-500"> - {query.description || 'No description'}</span>
+                    </p>
+                    <p className="mt-1 truncate text-xs font-semibold text-gray-400">{categoryName}</p>
+                  </div>
 
-                    <div className="flex items-center lg:justify-center">
-                      <span className={`px-3 py-1 rounded-xl text-[10px] font-bold border ${getStatusBadgeStyles(query.status)}`}>
-                        {query.status}
-                      </span>
-                    </div>
+                  <div className="flex items-center lg:justify-center">
+                    <span className={`px-3 py-1 rounded-xl text-[10px] font-bold border ${getStatusBadgeStyles(query.status)}`}>
+                      {query.status}
+                    </span>
+                  </div>
 
-                    <div className="flex items-center justify-between gap-3 lg:block lg:text-right">
-                      <p className="text-[10px] uppercase tracking-wide text-gray-400 font-bold lg:hidden">Created</p>
-                      <p className="whitespace-nowrap text-xs font-bold text-brandDarkNavy">{createdDate}</p>
-                    </div>
-                  </button>
-                );
-              })}
+                  <div className="flex items-center justify-between gap-3 lg:block lg:text-right">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-400 font-bold lg:hidden">Created</p>
+                    <p className="whitespace-nowrap text-xs font-bold text-brandDarkNavy">{createdDate}</p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
@@ -1533,7 +1566,7 @@ const UserDashboard = () => {
         {/* Ticket Progress Flow Panel */}
         <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm animate-slide-up-fade">
           <h3 className="text-sm font-extrabold text-brandDarkNavy font-sora mb-6">Ticket Progress Flow</h3>
-          
+
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4 relative px-2">
             {/* Horizontal Line background for larger screens */}
             <div className="hidden md:block absolute left-8 right-8 top-1/2 -translate-y-1/2 h-1 bg-slate-200 -z-10" />
@@ -1553,7 +1586,7 @@ const UserDashboard = () => {
                   </div>
                   <span className="text-xs font-extrabold text-gray-700 font-sora">{step.label}</span>
                 </div>
-                
+
                 {/* Line connector for larger screens */}
                 {idx < 4 && (
                   <div className={`hidden md:block flex-1 h-1 rounded-full shadow-sm ${step.line}`} />
@@ -1609,7 +1642,7 @@ const UserDashboard = () => {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                     <div className="flex items-center space-x-3 flex-wrap gap-y-2">
                       <h2 className="text-lg font-extrabold text-brandDarkNavy font-sora leading-snug">{ticket.title}</h2>
-                      
+
                       {/* Status Badge */}
                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${statusStyles}`}>
                         <span className="w-1.5 h-1.5 rounded-full bg-current" />
@@ -1677,20 +1710,20 @@ const UserDashboard = () => {
   };
 
   const formatMessageTime = (dateString) => {
-  if (!dateString) return '';
+    if (!dateString) return '';
 
-  const date = new Date(dateString);
+    const date = new Date(dateString);
 
-  if (isNaN(date.getTime())) return '';
+    if (isNaN(date.getTime())) return '';
 
-  return date.toLocaleString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
-  
+    return date.toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   /* ══════════════════════════════════════════
      MESSAGES TAB
   ══════════════════════════════════════════ */
@@ -1726,7 +1759,7 @@ const UserDashboard = () => {
       );
     }
 
-    const filteredMessageTickets = tickets.filter(t => 
+    const filteredMessageTickets = tickets.filter(t =>
       t.ticket_id.toString().toLowerCase().includes(messagesSearchQuery.toLowerCase()) ||
       t.title.toLowerCase().includes(messagesSearchQuery.toLowerCase())
     );
@@ -1771,26 +1804,34 @@ const UserDashboard = () => {
         {/* Stats Strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'Open Tickets', count: messagesStats.open, icon: (
-              <svg className="w-5 h-5 text-brandNavy animate-scale-in" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 7.5h5.379c.397 0 .779.158 1.06.439l1.122 1.122c.281.281.663.439 1.061.439h7.878M4.5 7.5v10.125c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V9.5" />
-              </svg>
-            ), bg: 'bg-[#F0F4FF]', text: 'text-brandNavy' },
-            { label: 'Pending Tickets', count: messagesStats.pending, icon: (
-              <svg className="w-5 h-5 text-brandGold" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
-              </svg>
-            ), bg: 'bg-brandGold/8', text: 'text-brandGold' },
-            { label: 'Resolved Tickets', count: messagesStats.resolved, icon: (
-              <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
-              </svg>
-            ), bg: 'bg-emerald-50', text: 'text-emerald-600' },
-            { label: 'Announcements', count: messagesStats.announcements, icon: (
-              <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
-              </svg>
-            ), bg: 'bg-purple-50', text: 'text-purple-600' }
+            {
+              label: 'Open Tickets', count: messagesStats.open, icon: (
+                <svg className="w-5 h-5 text-brandNavy animate-scale-in" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 7.5h5.379c.397 0 .779.158 1.06.439l1.122 1.122c.281.281.663.439 1.061.439h7.878M4.5 7.5v10.125c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V9.5" />
+                </svg>
+              ), bg: 'bg-[#F0F4FF]', text: 'text-brandNavy'
+            },
+            {
+              label: 'Pending Tickets', count: messagesStats.pending, icon: (
+                <svg className="w-5 h-5 text-brandGold" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+                </svg>
+              ), bg: 'bg-brandGold/8', text: 'text-brandGold'
+            },
+            {
+              label: 'Resolved Tickets', count: messagesStats.resolved, icon: (
+                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+                </svg>
+              ), bg: 'bg-emerald-50', text: 'text-emerald-600'
+            },
+            {
+              label: 'Announcements', count: messagesStats.announcements, icon: (
+                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
+                </svg>
+              ), bg: 'bg-purple-50', text: 'text-purple-600'
+            }
           ].map((stat, idx) => (
             <div key={idx} className="bg-white border border-gray-100 rounded-2xl p-4 flex items-center justify-between shadow-sm hover:shadow-md transition-all">
               <div className="flex items-center space-x-3">
@@ -1850,11 +1891,10 @@ const UserDashboard = () => {
                       setActiveMessageTicket(t);
                       fetchActiveTicketMessages(t.ticket_id);
                     }}
-                    className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-start space-x-3 text-left ${
-                      isSelected
+                    className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-start space-x-3 text-left ${isSelected
                         ? 'bg-brandNavy/[0.03] border-brandNavy/20 shadow-sm'
                         : 'bg-white border-gray-100 hover:bg-gray-50/50'
-                    }`}
+                      }`}
                   >
                     <div className={`w-8 h-8 rounded-xl shrink-0 flex items-center justify-center ${isSelected ? 'bg-brandNavy text-white' : 'bg-gray-50 text-gray-400 border border-gray-150/60'}`}>
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
@@ -1896,22 +1936,21 @@ const UserDashboard = () => {
                   <div className="min-w-0">
                     <div className="flex items-center space-x-2">
                       <span className="text-sm font-extrabold text-brandDarkNavy font-sora">#{activeMessageTicket.ticket_id}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${
-                        activeMessageTicket.status === 'Open'
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${activeMessageTicket.status === 'Open'
                           ? 'bg-blue-50 text-blue-600 border-blue-100'
                           : activeMessageTicket.status === 'In Progress'
-                          ? 'bg-yellow-50 text-yellow-600 border-yellow-100'
-                          : activeMessageTicket.status === 'Under Review'
-                          ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                          : 'bg-red-50 text-red-600 border-red-100'
-                      }`}>
+                            ? 'bg-yellow-50 text-yellow-600 border-yellow-100'
+                            : activeMessageTicket.status === 'Under Review'
+                              ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                              : 'bg-red-50 text-red-600 border-red-100'
+                        }`}>
                         {activeMessageTicket.status}
                       </span>
                     </div>
                     <h3 className="text-xs font-bold text-gray-600 truncate mt-1">{activeMessageTicket.title}</h3>
                     <p className="text-[9px] text-gray-400 mt-0.5">Created on {formatDate(activeMessageTicket.created_at)}</p>
                   </div>
-                  
+
                   {/* Action Menu */}
                   <button className="p-1 rounded hover:bg-gray-50 text-gray-400">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
@@ -1948,16 +1987,15 @@ const UserDashboard = () => {
                             <span>{isSupport ? 'Reliance Support' : 'You'}</span>
                             <span className="font-medium text-[9px]">• {formatMessageTime(msg.created_at)}</span>
                           </div>
-                          
-                          <div className={`p-3 rounded-2xl text-xs font-medium leading-relaxed ${
-                            isSupport
+
+                          <div className={`p-3 rounded-2xl text-xs font-medium leading-relaxed ${isSupport
                               ? 'bg-blue-50/70 border border-blue-100 text-gray-800 rounded-tl-none'
-                              : (isVendor 
-                                  ? 'bg-brandRed/5 border border-brandRed/10 text-gray-800 rounded-tr-none'
-                                  : 'bg-brandNavy/5 border border-brandNavy/10 text-gray-800 rounded-tr-none')
-                          }`}>
+                              : (isVendor
+                                ? 'bg-brandRed/5 border border-brandRed/10 text-gray-800 rounded-tr-none'
+                                : 'bg-brandNavy/5 border border-brandNavy/10 text-gray-800 rounded-tr-none')
+                            }`}>
                             <p className="whitespace-pre-line">{msg.message_text}</p>
-                            
+
                             {/* Message Level Attachments */}
                             {msg.attachment_path && (
                               <div className="mt-2.5 p-2 rounded-xl bg-white border border-gray-100 flex items-center justify-between space-x-3 shadow-sm max-w-xs">
@@ -1982,12 +2020,12 @@ const UserDashboard = () => {
                       </div>
                     );
                   })}
-                  
+
                   {/* Read Checkmarks for last user reply */}
                   {messages.length > 0 && messages[messages.length - 1].sender_role === 'user' && (
                     <div className="text-right text-[9px] font-bold text-gray-400 flex items-center justify-end space-x-1 pr-10">
                       <svg className="w-3.5 h-3.5 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                        <path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
                       </svg>
                       <span>Read</span>
                     </div>
@@ -2086,7 +2124,7 @@ const UserDashboard = () => {
                         className={`flex items-center space-x-1.5 px-6 py-2.5 rounded-xl text-white text-[10px] font-bold shadow-md transition-all shrink-0 ${buttonColor}`}
                       >
                         <svg className="w-3 h-3 -rotate-45 -mt-0.5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/>
+                          <path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z" />
                         </svg>
                         <span>Send</span>
                       </button>
@@ -2106,7 +2144,7 @@ const UserDashboard = () => {
                 {/* Ticket Details Panel */}
                 <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm text-left">
                   <h4 className="text-xs font-extrabold text-brandDarkNavy font-sora uppercase tracking-wider mb-3">Ticket Details</h4>
-                  
+
                   <div className="space-y-2.5 text-[11px] font-bold text-gray-600 font-dmSans">
                     <div className="flex justify-between">
                       <span className="text-gray-400">Ticket ID</span>
@@ -2140,11 +2178,11 @@ const UserDashboard = () => {
                 {/* Ticket Progress Stepper */}
                 <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm text-left">
                   <h4 className="text-xs font-extrabold text-brandDarkNavy font-sora uppercase tracking-wider mb-4">Ticket Progress</h4>
-                  
+
                   <div className="relative pl-5 space-y-5">
                     {/* Stepper connector lines */}
                     <div className="absolute left-1.5 top-2.5 bottom-2.5 w-0.5 bg-gray-150" />
-                    
+
                     {[
                       { label: 'Created', done: true, date: formatDate(activeMessageTicket.created_at) },
                       { label: 'Assigned', done: !!activeMessageTicket.assigned_to, date: activeMessageTicket.assigned_to ? '06 Jun 2026, 10:20 AM' : 'Pending' },
@@ -2153,11 +2191,10 @@ const UserDashboard = () => {
                     ].map((step, idx) => (
                       <div key={idx} className="relative flex flex-col justify-start">
                         {/* Step Marker Indicator */}
-                        <div className={`absolute -left-[23px] top-[1px] w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                          step.done 
-                            ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm shadow-emerald-100' 
+                        <div className={`absolute -left-[23px] top-[1px] w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${step.done
+                            ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm shadow-emerald-100'
                             : 'border-gray-200 bg-white text-gray-300'
-                        }`} style={{ zIndex: 5 }}>
+                          }`} style={{ zIndex: 5 }}>
                           {step.done ? (
                             <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth="4.5" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
@@ -2166,7 +2203,7 @@ const UserDashboard = () => {
                             <span className="w-1.5 h-1.5 rounded-full bg-gray-200" />
                           )}
                         </div>
-                        
+
                         <span className="text-[11px] font-bold text-brandDarkNavy leading-none">{step.label}</span>
                         <span className="text-[9px] text-gray-400 mt-1 font-medium">{step.date}</span>
                       </div>
@@ -2552,11 +2589,10 @@ const UserDashboard = () => {
                     <button
                       type="button"
                       onClick={toggle}
-                      className={`w-11 h-6 rounded-full p-1 cursor-pointer flex items-center transition-all duration-300 shrink-0 ${
-                        enabled
+                      className={`w-11 h-6 rounded-full p-1 cursor-pointer flex items-center transition-all duration-300 shrink-0 ${enabled
                           ? (isVendor ? 'bg-brandRed justify-end' : 'bg-brandNavy justify-end')
                           : 'bg-gray-200 justify-start'
-                      }`}
+                        }`}
                     >
                       <span className="w-4 h-4 bg-white rounded-full shadow-sm" />
                     </button>
@@ -2623,49 +2659,14 @@ const UserDashboard = () => {
         <div className="flex items-center space-x-4">
           {/* TEMPORARILY DISABLED - MESSAGES FEATURE */}
           {MESSAGES_FEATURE_ENABLED && (
-            <>
-              <button
-                onClick={() => switchTab('Messages')}
-                className={`p-2.5 rounded-xl border border-gray-150/60 hover:bg-gray-50 text-gray-500 transition-all relative ${activeTab === 'Messages' ? 'bg-gray-50 text-brandNavy border-gray-200' : ''}`}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-                </svg>
-                <span className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ring-2 ring-white notif-pulse ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
-              </button>
-
-              <button
-                onClick={() => switchTab('Dashboard')}
-                className="p-2.5 rounded-xl border border-gray-150/60 hover:bg-gray-50 text-gray-500 transition-all relative"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                </svg>
-                {tickets.filter(t => t.status === 'Open').length > 0 && (
-                  <span className={`absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-full text-[8px] font-extrabold text-white ring-2 ring-white ${notifPopped ? 'badge-pop' : ''} ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`}>
-                    {tickets.filter(t => t.status === 'Open').length}
-                  </span>
-                )}
-              </button>
-            </>
-          )}
-
-          {tickets.filter(t => t.status === 'Needs Clarification').length > 0 && (
             <button
-              type="button"
-              onClick={() => {
-                setStatusFilter('Needs Clarification');
-                switchTab('My Queries');
-              }}
-              className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-brandRed/20 bg-red-50 text-brandRed transition hover:bg-red-100"
-              aria-label="Clarification notifications"
+              onClick={() => switchTab('Messages')}
+              className={`p-2.5 rounded-xl border border-gray-150/60 hover:bg-gray-50 text-gray-500 transition-all relative ${activeTab === 'Messages' ? 'bg-gray-50 text-brandNavy border-gray-200' : ''}`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.3" stroke="currentColor" className="h-5 w-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
               </svg>
-              <span className="absolute -right-1.5 -top-1.5 rounded-full bg-brandRed px-1.5 py-0.5 text-[8px] font-extrabold text-white ring-2 ring-white">
-                {tickets.filter(t => t.status === 'Needs Clarification').length}
-              </span>
+              <span className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ring-2 ring-white notif-pulse ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
             </button>
           )}
 
@@ -2693,44 +2694,56 @@ const UserDashboard = () => {
                 <span className="text-[10px] text-gray-400 font-extrabold tracking-widest uppercase block">Menu</span>
               </div>
               {[
-                { name: 'Dashboard', icon: (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-                  </svg>
-                )},
-                { name: 'My Queries', icon: (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
-                  </svg>
-                )},
-                { name: 'Track Status', icon: (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
-                  </svg>
-                )},
-                // TEMPORARILY DISABLED - MESSAGES FEATURE
-                ...(MESSAGES_FEATURE_ENABLED ? [{ name: 'Messages', icon: (
-                  <div className="relative">
+                {
+                  name: 'Dashboard', icon: (
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
                     </svg>
-                    {(messagesStats.open + messagesStats.pending) > 0 && (
-                      <span className="absolute -top-1.5 -right-2 px-1 py-0.5 rounded-full bg-brandRed text-[8px] font-extrabold text-white">
-                        {messagesStats.open + messagesStats.pending}
-                      </span>
-                    )}
-                  </div>
-                )}] : []),
-                { name: 'Analytics', icon: (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v5.625C7.5 19.346 6.996 19.875 6.375 19.875h-2.25A1.375 1.375 0 0 1 3 18.5v-5.375zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v10.125c0 .621-.504 1.125-1.125 1.125h-2.25a1.375 1.375 0 0 1-1.375-1.375V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v14.625c0 .621-.504 1.125-1.125 1.125h-2.25a1.375 1.375 0 0 1-1.375-1.375V4.125z" />
-                  </svg>
-                )},
-                { name: 'Profile', icon: (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                  </svg>
-                )}
+                  )
+                },
+                {
+                  name: 'My Queries', icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                    </svg>
+                  )
+                },
+                {
+                  name: 'Track Status', icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z" />
+                    </svg>
+                  )
+                },
+                // TEMPORARILY DISABLED - MESSAGES FEATURE
+                ...(MESSAGES_FEATURE_ENABLED ? [{
+                  name: 'Messages', icon: (
+                    <div className="relative">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                      </svg>
+                      {(messagesStats.open + messagesStats.pending) > 0 && (
+                        <span className="absolute -top-1.5 -right-2 px-1 py-0.5 rounded-full bg-brandRed text-[8px] font-extrabold text-white">
+                          {messagesStats.open + messagesStats.pending}
+                        </span>
+                      )}
+                    </div>
+                  )
+                }] : []),
+                {
+                  name: 'Analytics', icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v5.625C7.5 19.346 6.996 19.875 6.375 19.875h-2.25A1.375 1.375 0 0 1 3 18.5v-5.375zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v10.125c0 .621-.504 1.125-1.125 1.125h-2.25a1.375 1.375 0 0 1-1.375-1.375V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v14.625c0 .621-.504 1.125-1.125 1.125h-2.25a1.375 1.375 0 0 1-1.375-1.375V4.125z" />
+                    </svg>
+                  )
+                },
+                {
+                  name: 'Profile', icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                    </svg>
+                  )
+                }
               ].map((item) => {
                 const isActive = activeTab === item.name;
                 return (
@@ -2738,16 +2751,16 @@ const UserDashboard = () => {
                     key={item.name}
                     onClick={() => switchTab(item.name)}
                     className={`sidebar-item w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold relative overflow-hidden ${isActive
-                        ? `${activeSidebarBg} ${activeSidebarGlow}`
-                        : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50/80'
+                      ? `${activeSidebarBg} ${activeSidebarGlow}`
+                      : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50/80'
                       }`}
                   >
                     {isActive && (
                       <div className={`absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r-full ${activeSidebarLine}`} />
                     )}
                     <span className={`flex items-center justify-center w-7 h-7 rounded-xl transition-all duration-200 icon-scale ${isActive
-                        ? (isVendor ? 'bg-brandRed/10 text-brandRed' : 'bg-brandNavy/10 text-brandNavy')
-                        : 'text-gray-400'
+                      ? (isVendor ? 'bg-brandRed/10 text-brandRed' : 'bg-brandNavy/10 text-brandNavy')
+                      : 'text-gray-400'
                       }`}>
                       {item.icon}
                     </span>
@@ -2763,21 +2776,27 @@ const UserDashboard = () => {
                 <span className="text-[10px] text-gray-400 font-extrabold tracking-widest uppercase block">Need Help?</span>
               </div>
               {[
-                { label: 'User Guide', onClick: () => setIsUserGuideOpen(true), icon: (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
-                  </svg>
-                )},
-                { label: 'Help Center', onClick: openChatSupport, icon: (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
-                  </svg>
-                )},
-                { label: 'Contact Support', onClick: undefined, icon: (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.824-1.806-5.194-4.176-7-7l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
-                  </svg>
-                )}
+                {
+                  label: 'User Guide', onClick: () => setIsUserGuideOpen(true), icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                    </svg>
+                  )
+                },
+                {
+                  label: 'Help Center', onClick: openChatSupport, icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+                    </svg>
+                  )
+                },
+                {
+                  label: 'Contact Support', onClick: undefined, icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.824-1.806-5.194-4.176-7-7l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
+                    </svg>
+                  )
+                }
               ].map((hlp, idx) => (
                 <button
                   key={idx}
@@ -2947,69 +2966,69 @@ const UserDashboard = () => {
                 </div>
 
                 <div className="mt-5 grid gap-4 md:grid-cols-2">
-                {[
-                  {
-                    label: 'View My Tickets',
-                    desc: 'Review all raised tickets and open the right query.',
-                    onClick: viewTicketsFromSupport,
-                    accent: 'from-brandNavy to-[#1D2D70]',
-                    chip: 'Ticket Hub',
-                    icon: (
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="h-7 w-7">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3.75h10.5A2.25 2.25 0 0 1 19.5 6v12A2.25 2.25 0 0 1 17.25 20.25H6.75A2.25 2.25 0 0 1 4.5 18V6A2.25 2.25 0 0 1 6.75 3.75Zm2.25 4.5h6m-6 3.75h6m-6 3.75h3" />
-                      </svg>
-                    )
-                  },
-                  // TEMPORARILY DISABLED - MESSAGES FEATURE
-                  ...(MESSAGES_FEATURE_ENABLED ? [{
-                    label: 'Open Messages Center',
-                    desc: 'Continue an active conversation with support.',
-                    onClick: openMessagesFromSupport,
-                    accent: 'from-brandRed to-[#A80F26]',
-                    chip: 'Live Thread',
-                    icon: (
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="h-7 w-7">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm3.75 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm3.75 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
-                      </svg>
-                    )
-                  }] : []),
-                  {
-                    label: 'Raise New Ticket',
-                    desc: 'Create a fresh support request with details and attachments.',
-                    onClick: raiseTicketFromSupport,
-                    accent: 'from-[#23347A] to-brandRed',
-                    chip: 'New Request',
-                    icon: (
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="h-7 w-7">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15M6.75 3.75h10.5" />
-                      </svg>
-                    )
-                  }
-                ].map((action) => (
-                  <button
-                    key={action.label}
-                    type="button"
-                    onClick={action.onClick}
-                    className="group relative min-h-[210px] overflow-hidden rounded-2xl border border-white/80 bg-white/75 p-4 text-left shadow-[0_14px_38px_rgba(15,27,76,0.10)] backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_55px_rgba(15,27,76,0.18)]"
-                  >
-                    <div className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${action.accent}`} />
-                    <div className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${action.accent} text-white shadow-lg transition-transform duration-300 group-hover:scale-105`}>
-                      {action.icon}
-                    </div>
-                    <div className="mt-5">
-                      <span className="inline-flex rounded-full bg-brandNavy/5 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-widest text-brandNavy/70">
-                        {action.chip}
-                      </span>
-                      <h4 className="mt-3 text-sm font-extrabold text-brandDarkNavy font-sora leading-snug">{action.label}</h4>
-                      <p className="mt-2 text-[11px] font-semibold leading-relaxed text-gray-500">{action.desc}</p>
-                    </div>
-                    <div className="absolute bottom-4 right-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 text-gray-300 transition-all group-hover:bg-brandNavy group-hover:text-white">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="h-4 w-4">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-                      </svg>
-                    </div>
-                  </button>
-                ))}
+                  {[
+                    {
+                      label: 'View My Tickets',
+                      desc: 'Review all raised tickets and open the right query.',
+                      onClick: viewTicketsFromSupport,
+                      accent: 'from-brandNavy to-[#1D2D70]',
+                      chip: 'Ticket Hub',
+                      icon: (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="h-7 w-7">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3.75h10.5A2.25 2.25 0 0 1 19.5 6v12A2.25 2.25 0 0 1 17.25 20.25H6.75A2.25 2.25 0 0 1 4.5 18V6A2.25 2.25 0 0 1 6.75 3.75Zm2.25 4.5h6m-6 3.75h6m-6 3.75h3" />
+                        </svg>
+                      )
+                    },
+                    // TEMPORARILY DISABLED - MESSAGES FEATURE
+                    ...(MESSAGES_FEATURE_ENABLED ? [{
+                      label: 'Open Messages Center',
+                      desc: 'Continue an active conversation with support.',
+                      onClick: openMessagesFromSupport,
+                      accent: 'from-brandRed to-[#A80F26]',
+                      chip: 'Live Thread',
+                      icon: (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="h-7 w-7">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm3.75 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm3.75 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+                        </svg>
+                      )
+                    }] : []),
+                    {
+                      label: 'Raise New Ticket',
+                      desc: 'Create a fresh support request with details and attachments.',
+                      onClick: raiseTicketFromSupport,
+                      accent: 'from-[#23347A] to-brandRed',
+                      chip: 'New Request',
+                      icon: (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="h-7 w-7">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15M6.75 3.75h10.5" />
+                        </svg>
+                      )
+                    }
+                  ].map((action) => (
+                    <button
+                      key={action.label}
+                      type="button"
+                      onClick={action.onClick}
+                      className="group relative min-h-[210px] overflow-hidden rounded-2xl border border-white/80 bg-white/75 p-4 text-left shadow-[0_14px_38px_rgba(15,27,76,0.10)] backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_55px_rgba(15,27,76,0.18)]"
+                    >
+                      <div className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${action.accent}`} />
+                      <div className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${action.accent} text-white shadow-lg transition-transform duration-300 group-hover:scale-105`}>
+                        {action.icon}
+                      </div>
+                      <div className="mt-5">
+                        <span className="inline-flex rounded-full bg-brandNavy/5 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-widest text-brandNavy/70">
+                          {action.chip}
+                        </span>
+                        <h4 className="mt-3 text-sm font-extrabold text-brandDarkNavy font-sora leading-snug">{action.label}</h4>
+                        <p className="mt-2 text-[11px] font-semibold leading-relaxed text-gray-500">{action.desc}</p>
+                      </div>
+                      <div className="absolute bottom-4 right-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 text-gray-300 transition-all group-hover:bg-brandNavy group-hover:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="h-4 w-4">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                        </svg>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -3022,7 +3041,7 @@ const UserDashboard = () => {
           <div className="absolute inset-0 bg-brandNavy/10 backdrop-blur-[1px]" onClick={closeTicketDetails} />
           <div className={`relative bg-white w-full ${selectedTicketView === 'track' ? 'max-w-6xl max-h-[calc(100vh-5.5rem)]' : 'max-w-5xl max-h-[calc(100vh-4rem)]'} rounded-2xl shadow-2xl border border-gray-100/90 overflow-hidden z-10 animate-scale-in flex flex-col font-dmSans`}>
             <div className={`h-1.5 w-full ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
-            
+
             <button onClick={closeTicketDetails}
               className="absolute top-3 right-3 w-8 h-8 rounded-lg hover:bg-gray-100 active:bg-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -3077,23 +3096,21 @@ const UserDashboard = () => {
 
               {selectedTicketView === 'track' && (
                 <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0 border ${
-                    selectedTicket.status === 'Resolved' ? 'text-emerald-600 bg-emerald-50/50 border-emerald-100' :
-                    selectedTicket.status === 'In Progress' ? 'text-amber-500 bg-amber-50/50 border-amber-100' :
-                    selectedTicket.status === 'Open' ? 'text-brandNavy bg-blue-50/50 border-blue-100' : 'text-brandRed bg-rose-50/50 border-rose-100'
-                  }`}>
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0 border ${selectedTicket.status === 'Resolved' ? 'text-emerald-600 bg-emerald-50/50 border-emerald-100' :
+                      selectedTicket.status === 'In Progress' ? 'text-amber-500 bg-amber-50/50 border-amber-100' :
+                        selectedTicket.status === 'Open' ? 'text-brandNavy bg-blue-50/50 border-blue-100' : 'text-brandRed bg-rose-50/50 border-rose-100'
+                    }`}>
                     <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                     </svg>
                   </div>
                   <div>
                     <p className="text-[9px] uppercase text-gray-400 font-extrabold tracking-wider font-sora leading-none">Status</p>
-                    <span className={`inline-block text-[10px] font-extrabold mt-1 px-2 py-0.5 rounded border leading-none ${
-                      selectedTicket.status === 'Resolved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' :
-                      selectedTicket.status === 'In Progress' ? 'bg-amber-50 text-amber-700 border-amber-200/50' :
-                      selectedTicket.status === 'Open' ? 'bg-blue-50 text-blue-700 border-blue-200/50' :
-                      'bg-rose-50 text-rose-700 border-rose-200/50'
-                    }`}>
+                    <span className={`inline-block text-[10px] font-extrabold mt-1 px-2 py-0.5 rounded border leading-none ${selectedTicket.status === 'Resolved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50' :
+                        selectedTicket.status === 'In Progress' ? 'bg-amber-50 text-amber-700 border-amber-200/50' :
+                          selectedTicket.status === 'Open' ? 'bg-blue-50 text-blue-700 border-blue-200/50' :
+                            'bg-rose-50 text-rose-700 border-rose-200/50'
+                      }`}>
                       {selectedTicket.status}
                     </span>
                   </div>
@@ -3274,7 +3291,7 @@ const UserDashboard = () => {
                             </p>
                           </div>
                         </div>
-                        
+
                         <button
                           onClick={() => downloadAttachment(selectedTicket.attachment_path)}
                           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-brandNavy bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 transition-all duration-200 shrink-0 shadow-sm"
@@ -3317,7 +3334,7 @@ const UserDashboard = () => {
                           </p>
                         </div>
                       </div>
-                      
+
                       <button
                         onClick={() => downloadAttachment(selectedTicket.attachment_path)}
                         className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-brandNavy bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 transition-all duration-200 shrink-0 shadow-sm"

@@ -98,6 +98,50 @@ const DepartmentDashboard = () => {
   const { user: contextUser, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const user = useMemo(() => getCurrentUser(contextUser), [contextUser]);
+
+  const normalizeTicketDetail = (ticket) => {
+    if (!ticket) return ticket;
+
+    const rawMessages = Array.isArray(ticket.messages)
+      ? ticket.messages
+      : Array.isArray(ticket.comments)
+        ? ticket.comments
+        : [];
+
+    const normalizedMessages = rawMessages.map((msg) => {
+      const body = msg.body || msg.message_text || msg.content || msg.message || '';
+      const attachmentPath = msg.attachment_path || msg.stored_path || msg.file_path || null;
+      const isCurrentUser = user && (String(msg.author_id) === String(user.user_id) || String(msg.author_id) === String(user.email));
+      const senderRole = msg.sender_role || (isCurrentUser ? 'user' : 'admin');
+
+      return {
+        ...msg,
+        message_text: body,
+        sender_role: senderRole,
+        created_at: msg.created_at || msg.createdAt || msg.timestamp,
+        attachment_path: attachmentPath,
+        has_attachment: Boolean(attachmentPath),
+        author_name: msg.author_name || msg.sender_name || msg.author_id || (senderRole === 'admin' ? 'Support' : 'You')
+      };
+    });
+
+    const normalizedAttachments = Array.isArray(ticket.attachments)
+      ? ticket.attachments.map((item) => ({
+        ...item,
+        stored_path: item.stored_path || item.attachment_path || item.path || item.file_path || null,
+        file_name: item.file_name || item.name || item.original_name || item.filename || 'Attachment'
+      }))
+      : [];
+
+    return {
+      ...ticket,
+      messages: normalizedMessages,
+      comments: normalizedMessages,
+      attachments: normalizedAttachments,
+      attachment_path: ticket.attachment_path || normalizedAttachments[0]?.stored_path || null,
+      has_attachment: Boolean(ticket.has_attachment || ticket.attachment_path || normalizedAttachments.length)
+    };
+  };
   const department = getDepartmentName(user);
   const userDisplayName = getUserDisplayName(user);
   const userRoleLabel = getUserRoleLabel(user);
@@ -156,7 +200,7 @@ const DepartmentDashboard = () => {
   const refreshSelectedTicket = async (ticketId = selectedTicket?.ticket_id) => {
     if (!ticketId) return;
     const response = await api.get(`/tickets/${ticketId}`);
-    setSelectedTicket(response.data);
+    setSelectedTicket(normalizeTicketDetail(response.data));
   };
 
   const openDetails = async (ticket) => {
@@ -534,98 +578,98 @@ const DepartmentDashboard = () => {
           </>
         ) : (
           <>
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_230px] lg:items-stretch">
-          <div className="flex flex-col justify-center rounded-[20px] border border-brandRed/25 bg-gradient-to-r from-white to-blue-50/35 p-5 shadow-[0_12px_32px_rgba(15,27,76,0.055)] transition-shadow duration-200 hover:border-brandRed/35 hover:shadow-[0_16px_36px_rgba(15,27,76,0.08)]">
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-brandRed">{department.toUpperCase()} Operations</p>
-            <h1 className="mt-1 font-sora text-2xl font-extrabold text-brandDarkNavy">{department} Department</h1>
-            <p className="mt-1 text-xs font-semibold text-slate-500">Manage {department} tickets assigned to your department in real time.</p>
-          </div>
-
-          <div className="w-full">
-            <div className="relative flex h-full min-h-[132px] flex-col overflow-hidden rounded-[20px] border border-brandRed/25 bg-gradient-to-br from-red-50 via-rose-50/80 to-white p-4 shadow-[0_14px_34px_rgba(227,24,55,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:border-brandRed/35 hover:shadow-[0_18px_40px_rgba(227,24,55,0.12)]">
-              <span className="absolute right-0 top-0 h-20 w-20 rounded-bl-full bg-brandRed/[0.05]" />
-              <div className="relative">
-                <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-brandRed/75">Department Workload</p>
+            <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_230px] lg:items-stretch">
+              <div className="flex flex-col justify-center rounded-[20px] border border-brandRed/25 bg-gradient-to-r from-white to-blue-50/35 p-5 shadow-[0_12px_32px_rgba(15,27,76,0.055)] transition-shadow duration-200 hover:border-brandRed/35 hover:shadow-[0_16px_36px_rgba(15,27,76,0.08)]">
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-brandRed">{department.toUpperCase()} Operations</p>
+                <h1 className="mt-1 font-sora text-2xl font-extrabold text-brandDarkNavy">{department} Department</h1>
+                <p className="mt-1 text-xs font-semibold text-slate-500">Manage {department} tickets assigned to your department in real time.</p>
               </div>
-              <div className="relative mt-3 grid flex-1 grid-cols-2 gap-2.5">
-                <div className="flex flex-col justify-center rounded-xl border border-brandRed/25 bg-white/70 px-3 py-2.5">
-                  <p className="font-sora text-2xl font-extrabold leading-none text-brandRed">{workload.owners.reduce((sum, [, count]) => sum + count, 0)}</p>
-                  <p className="mt-1.5 text-[8px] font-extrabold uppercase tracking-wider text-brandRed/60">Active</p>
-                </div>
-                <div className="flex flex-col justify-center rounded-xl border border-brandRed/25 bg-brandNavy/[0.06] px-3 py-2.5">
-                  <p className="font-sora text-2xl font-extrabold leading-none text-brandNavy">{workload.unclaimed}</p>
-                  <p className="mt-1.5 text-[8px] font-extrabold uppercase tracking-wider text-brandNavy/55">Unclaimed</p>
+
+              <div className="w-full">
+                <div className="relative flex h-full min-h-[132px] flex-col overflow-hidden rounded-[20px] border border-brandRed/25 bg-gradient-to-br from-red-50 via-rose-50/80 to-white p-4 shadow-[0_14px_34px_rgba(227,24,55,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:border-brandRed/35 hover:shadow-[0_18px_40px_rgba(227,24,55,0.12)]">
+                  <span className="absolute right-0 top-0 h-20 w-20 rounded-bl-full bg-brandRed/[0.05]" />
+                  <div className="relative">
+                    <p className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-brandRed/75">Department Workload</p>
+                  </div>
+                  <div className="relative mt-3 grid flex-1 grid-cols-2 gap-2.5">
+                    <div className="flex flex-col justify-center rounded-xl border border-brandRed/25 bg-white/70 px-3 py-2.5">
+                      <p className="font-sora text-2xl font-extrabold leading-none text-brandRed">{workload.owners.reduce((sum, [, count]) => sum + count, 0)}</p>
+                      <p className="mt-1.5 text-[8px] font-extrabold uppercase tracking-wider text-brandRed/60">Active</p>
+                    </div>
+                    <div className="flex flex-col justify-center rounded-xl border border-brandRed/25 bg-brandNavy/[0.06] px-3 py-2.5">
+                      <p className="font-sora text-2xl font-extrabold leading-none text-brandNavy">{workload.unclaimed}</p>
+                      <p className="mt-1.5 text-[8px] font-extrabold uppercase tracking-wider text-brandNavy/55">Unclaimed</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </section>
+            </section>
 
-        <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-          {[
-            ['Total Assigned', stats.total, 'text-brandNavy'], ['Open', stats.open, 'text-brandRed'],
-            ['In Progress', stats.progress, 'text-blue-600'], ['Waiting / Clarification', stats.waiting, 'text-amber-600'],
-            ['Resolved', stats.resolved, 'text-emerald-600']
-          ].map(([label, value, tone]) => <div key={label} className="rounded-[18px] border border-brandRed/25 bg-white p-4 shadow-[0_8px_24px_rgba(15,27,76,0.045)] transition-all duration-200 hover:-translate-y-0.5 hover:border-brandRed/35 hover:shadow-[0_12px_28px_rgba(15,27,76,0.08)]"><div className="mb-3 h-1 w-8 rounded-full bg-gradient-to-r from-brandNavy to-brandRed" /><p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">{label}</p><p className={`mt-2 font-sora text-3xl font-extrabold ${tone}`}>{value}</p></div>)}
-        </section>
+            <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+              {[
+                ['Total Assigned', stats.total, 'text-brandNavy'], ['Open', stats.open, 'text-brandRed'],
+                ['In Progress', stats.progress, 'text-blue-600'], ['Waiting / Clarification', stats.waiting, 'text-amber-600'],
+                ['Resolved', stats.resolved, 'text-emerald-600']
+              ].map(([label, value, tone]) => <div key={label} className="rounded-[18px] border border-brandRed/25 bg-white p-4 shadow-[0_8px_24px_rgba(15,27,76,0.045)] transition-all duration-200 hover:-translate-y-0.5 hover:border-brandRed/35 hover:shadow-[0_12px_28px_rgba(15,27,76,0.08)]"><div className="mb-3 h-1 w-8 rounded-full bg-gradient-to-r from-brandNavy to-brandRed" /><p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">{label}</p><p className={`mt-2 font-sora text-3xl font-extrabold ${tone}`}>{value}</p></div>)}
+            </section>
 
-        {clarifiedTickets.length > 0 && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveView('queue');
-              setQueue('Clarified by User');
-            }}
-            className="flex w-full items-center justify-between rounded-xl border border-brandNavy/20 bg-blue-50/70 px-4 py-2.5 text-left shadow-sm transition hover:border-brandNavy/35 hover:bg-blue-50"
-          >
-            <div>
-              <p className="text-[9px] font-extrabold uppercase tracking-wider text-brandNavy">User Clarified</p>
-              <p className="mt-0.5 text-xs font-bold text-brandDarkNavy">
-                {clarifiedTickets.length} {clarifiedTickets.length === 1 ? 'ticket has' : 'tickets have'} new clarification from user.
-              </p>
-            </div>
-            <span className="rounded-lg bg-brandNavy px-3 py-1.5 text-[10px] font-extrabold text-white">View</span>
-          </button>
-        )}
+            {clarifiedTickets.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveView('queue');
+                  setQueue('Clarified by User');
+                }}
+                className="flex w-full items-center justify-between rounded-xl border border-brandNavy/20 bg-blue-50/70 px-4 py-2.5 text-left shadow-sm transition hover:border-brandNavy/35 hover:bg-blue-50"
+              >
+                <div>
+                  <p className="text-[9px] font-extrabold uppercase tracking-wider text-brandNavy">User Clarified</p>
+                  <p className="mt-0.5 text-xs font-bold text-brandDarkNavy">
+                    {clarifiedTickets.length} {clarifiedTickets.length === 1 ? 'ticket has' : 'tickets have'} new clarification from user.
+                  </p>
+                </div>
+                <span className="rounded-lg bg-brandNavy px-3 py-1.5 text-[10px] font-extrabold text-white">View</span>
+              </button>
+            )}
 
-        <section>
-          <div className="min-w-0 overflow-hidden rounded-[20px] border border-brandRed/25 bg-white shadow-[0_12px_35px_rgba(15,27,76,0.055)]">
-            <div className="border-b border-slate-100 p-4">
-              <div><p className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-brandRed">Live Department Queue</p><h3 className="mt-1 font-sora text-base font-extrabold text-brandDarkNavy">{queue}</h3></div>
-            </div>
+            <section>
+              <div className="min-w-0 overflow-hidden rounded-[20px] border border-brandRed/25 bg-white shadow-[0_12px_35px_rgba(15,27,76,0.055)]">
+                <div className="border-b border-slate-100 p-4">
+                  <div><p className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-brandRed">Live Department Queue</p><h3 className="mt-1 font-sora text-base font-extrabold text-brandDarkNavy">{queue}</h3></div>
+                </div>
 
-            {loading ? <div className="flex min-h-[280px] flex-col items-center justify-center text-center"><span className="h-8 w-8 animate-spin rounded-full border-[3px] border-blue-100 border-t-brandNavy" /><p className="mt-3 text-xs font-extrabold text-brandDarkNavy">Loading {department} tickets</p><p className="mt-1 text-[10px] font-semibold text-slate-400">Synchronizing the latest department queue...</p></div>
-              : error ? <div className="flex min-h-[280px] flex-col items-center justify-center px-6 text-center"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-50 text-brandRed"><svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM12 16.5h.01" /></svg></span><p className="mt-3 text-xs font-extrabold text-brandDarkNavy">{error}</p><button onClick={() => fetchTickets()} className="mt-3 rounded-xl bg-brandNavy px-4 py-2 text-[10px] font-extrabold text-white transition-all duration-200 hover:bg-brandRed">Try Again</button></div>
-                : filteredTickets.length === 0 ? <div className="flex min-h-[280px] flex-col items-center justify-center px-6 text-center"><span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-brandNavy"><svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 6.75A2.25 2.25 0 0 1 5.25 4.5h13.5A2.25 2.25 0 0 1 21 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 17.25V6.75Z M8.25 9h7.5" /></svg></span><p className="mt-3 font-sora text-sm font-extrabold text-brandDarkNavy">{tickets.length === 0 ? `No tickets assigned to ${department} right now.` : 'No tickets in this queue'}</p>{tickets.length > 0 && <p className="mt-1 text-[10px] font-semibold text-slate-400">Choose another queue to see more work.</p>}</div>
-                  : <div className="max-h-[620px] overflow-auto">
-                    <table className="w-full min-w-[1050px] text-left">
-                      <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
-                        <tr className="border-b border-slate-200 text-[9px] uppercase tracking-[0.14em] text-slate-400">
-                          <th className="px-5 py-3">Ticket</th>
-                          <th className="px-4 py-3">Owner</th>
-                          <th className="px-4 py-3">Status</th>
-                          <th className="px-4 py-3">Category</th>
-                          <th className="px-4 py-3">Requester</th>
-                          <th className="px-4 py-3">Created</th>
-                          <th className="px-4 py-3 text-center">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {filteredTickets.map((ticket) => <tr key={ticket.ticket_id} className="group transition-colors duration-200 hover:bg-blue-50/45">
-                          <td className="px-5 py-3.5"><p className="font-sora text-[11px] font-extrabold text-brandNavy">#{ticket.ticket_id}</p><p className="mt-0.5 max-w-[240px] truncate text-xs font-bold text-slate-700">{ticket.title}</p></td>
-                          <td className="px-4 py-3.5 text-[11px] font-semibold text-slate-600">{getTicketOwnerName(ticket) || 'Unclaimed'}</td>
-                          <td className="px-4 py-3.5"><span className={`inline-flex min-w-[82px] justify-center rounded-full border px-2.5 py-1 text-[9px] font-extrabold ${statusClass(ticket.status)}`}>{ticket.status}</span></td>
-                          <td className="px-4 py-3.5 text-[11px] font-semibold text-slate-600">{ticket.category_name || `#${ticket.category_id}`}</td>
-                          <td className="px-4 py-3.5 text-[11px] font-semibold text-slate-600">{ticket.vendor_name || ticket.raised_by}</td>
-                          <td className="whitespace-nowrap px-4 py-3.5 text-[10px] font-bold text-slate-500">{formatDate(ticket.created_at)}</td>
-                          <td className="px-4 py-3.5 text-center"><button onClick={() => openDetails(ticket)} className="min-w-[112px] rounded-lg border border-brandNavy bg-brandNavy px-3 py-1.5 text-[9px] font-extrabold text-white shadow-sm transition-all duration-200 hover:-translate-y-px hover:border-brandRed hover:bg-brandRed hover:shadow-md">Process / View</button></td>
-                        </tr>)}
-                      </tbody>
-                    </table>
-                  </div>}
-          </div>
+                {loading ? <div className="flex min-h-[280px] flex-col items-center justify-center text-center"><span className="h-8 w-8 animate-spin rounded-full border-[3px] border-blue-100 border-t-brandNavy" /><p className="mt-3 text-xs font-extrabold text-brandDarkNavy">Loading {department} tickets</p><p className="mt-1 text-[10px] font-semibold text-slate-400">Synchronizing the latest department queue...</p></div>
+                  : error ? <div className="flex min-h-[280px] flex-col items-center justify-center px-6 text-center"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-50 text-brandRed"><svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM12 16.5h.01" /></svg></span><p className="mt-3 text-xs font-extrabold text-brandDarkNavy">{error}</p><button onClick={() => fetchTickets()} className="mt-3 rounded-xl bg-brandNavy px-4 py-2 text-[10px] font-extrabold text-white transition-all duration-200 hover:bg-brandRed">Try Again</button></div>
+                    : filteredTickets.length === 0 ? <div className="flex min-h-[280px] flex-col items-center justify-center px-6 text-center"><span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-brandNavy"><svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 6.75A2.25 2.25 0 0 1 5.25 4.5h13.5A2.25 2.25 0 0 1 21 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 17.25V6.75Z M8.25 9h7.5" /></svg></span><p className="mt-3 font-sora text-sm font-extrabold text-brandDarkNavy">{tickets.length === 0 ? `No tickets assigned to ${department} right now.` : 'No tickets in this queue'}</p>{tickets.length > 0 && <p className="mt-1 text-[10px] font-semibold text-slate-400">Choose another queue to see more work.</p>}</div>
+                      : <div className="max-h-[620px] overflow-auto">
+                        <table className="w-full min-w-[1050px] text-left">
+                          <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
+                            <tr className="border-b border-slate-200 text-[9px] uppercase tracking-[0.14em] text-slate-400">
+                              <th className="px-5 py-3">Ticket</th>
+                              <th className="px-4 py-3">Owner</th>
+                              <th className="px-4 py-3">Status</th>
+                              <th className="px-4 py-3">Category</th>
+                              <th className="px-4 py-3">Requester</th>
+                              <th className="px-4 py-3">Created</th>
+                              <th className="px-4 py-3 text-center">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {filteredTickets.map((ticket) => <tr key={ticket.ticket_id} className="group transition-colors duration-200 hover:bg-blue-50/45">
+                              <td className="px-5 py-3.5"><p className="font-sora text-[11px] font-extrabold text-brandNavy">#{ticket.ticket_id}</p><p className="mt-0.5 max-w-[240px] truncate text-xs font-bold text-slate-700">{ticket.title}</p></td>
+                              <td className="px-4 py-3.5 text-[11px] font-semibold text-slate-600">{getTicketOwnerName(ticket) || 'Unclaimed'}</td>
+                              <td className="px-4 py-3.5"><span className={`inline-flex min-w-[82px] justify-center rounded-full border px-2.5 py-1 text-[9px] font-extrabold ${statusClass(ticket.status)}`}>{ticket.status}</span></td>
+                              <td className="px-4 py-3.5 text-[11px] font-semibold text-slate-600">{ticket.category_name || `#${ticket.category_id}`}</td>
+                              <td className="px-4 py-3.5 text-[11px] font-semibold text-slate-600">{ticket.vendor_name || ticket.raised_by}</td>
+                              <td className="whitespace-nowrap px-4 py-3.5 text-[10px] font-bold text-slate-500">{formatDate(ticket.created_at)}</td>
+                              <td className="px-4 py-3.5 text-center"><button onClick={() => openDetails(ticket)} className="min-w-[112px] rounded-lg border border-brandNavy bg-brandNavy px-3 py-1.5 text-[9px] font-extrabold text-white shadow-sm transition-all duration-200 hover:-translate-y-px hover:border-brandRed hover:bg-brandRed hover:shadow-md">Process / View</button></td>
+                            </tr>)}
+                          </tbody>
+                        </table>
+                      </div>}
+              </div>
 
-        </section>
+            </section>
           </>
         )}
       </main>

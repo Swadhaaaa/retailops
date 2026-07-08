@@ -11,7 +11,6 @@ def get_conn():
     return get_db()
 
 ROLE_TO_LABEL = {
-    'super_admin': 'Super Admin',
     'admin': 'Admin',
     'department': 'Department User'
 }
@@ -19,7 +18,7 @@ ROLE_TO_LABEL = {
 LABEL_TO_ROLE = {label: role for role, label in ROLE_TO_LABEL.items()}
 
 def require_admin_role():
-    return get_jwt().get('role') in ('super_admin', 'admin')
+    return get_jwt().get('role') == 'admin'
 
 def normalize_role(role):
     return LABEL_TO_ROLE.get(role, role)
@@ -42,7 +41,7 @@ def admin_user_to_dict(row):
 def get_agents():
     try:
         role = get_jwt().get('role')
-        if role not in ('super_admin', 'admin', 'department'):
+        if role not in ('admin', 'department'):
             return jsonify({'error': 'Forbidden'}), 403
 
         conn = get_conn()
@@ -85,7 +84,7 @@ def get_admin_users():
         rows = conn.execute("""
             SELECT user_id, name, email, role, department, is_active, created_at, last_login
             FROM users
-            WHERE role IN ('super_admin', 'admin', 'department')
+            WHERE role IN ('admin', 'department')
             ORDER BY created_at ASC, name ASC
         """).fetchall()
         conn.close()
@@ -113,7 +112,7 @@ def create_admin_user():
             return jsonify({'error': 'Name, email, and password are required'}), 400
         if len(password) < 6:
             return jsonify({'error': 'Password must be at least 6 characters'}), 400
-        if role not in ('super_admin', 'admin', 'department'):
+        if role not in ('admin', 'department'):
             return jsonify({'error': 'Invalid role'}), 400
 
         conn = get_conn()
@@ -165,7 +164,7 @@ def update_admin_user(user_id):
 
         if not name or not email or not department:
             return jsonify({'error': 'Name, email, and department are required'}), 400
-        if role not in ('super_admin', 'admin', 'department'):
+        if role not in ('admin', 'department'):
             return jsonify({'error': 'Invalid role'}), 400
 
         conn = get_conn()

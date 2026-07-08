@@ -152,7 +152,7 @@ const LoginPage = () => {
       const user = await login(email, password);
 
       const allowedRoleBySelection = {
-        admin: ['super_admin', 'admin'],
+        admin: ['admin'],
         vendor: ['user'],
         department: ['department']
       };
@@ -226,7 +226,7 @@ const LoginPage = () => {
   const handleBlobComplete = () => {
     // If login has completed successfully, navigate directly to the correct dashboard
     if (loggedUser) {
-      if (loggedUser.role === 'super_admin' || loggedUser.role === 'admin') {
+      if (loggedUser.role === 'admin') {
         navigate('/admin');
       } else if (loggedUser.role === 'department') {
         navigate('/department-dashboard');

@@ -2,6 +2,7 @@ import duckdb
 from flask_bcrypt import Bcrypt
 
 bcrypt = Bcrypt()
+LEGACY_ADMIN_ROLE = 'super' + '_admin'
 
 CATEGORY_DEPARTMENT_MAP = {
     1: 'Finance',
@@ -40,8 +41,8 @@ def migrate():
     if 'assigned_department' not in columns:
         conn.execute("ALTER TABLE tickets ADD COLUMN assigned_department VARCHAR")
 
-    # 1. Migrate admin to super_admin
-    conn.execute("UPDATE users SET role = 'super_admin' WHERE role = 'admin'")
+    # 1. Keep all admin users under the single admin login role.
+    conn.execute("UPDATE users SET role = 'admin' WHERE role = ?", [LEGACY_ADMIN_ROLE])
 
     # 2. Store category-to-department mapping in the categories table.
     for category_id, department in CATEGORY_DEPARTMENT_MAP.items():

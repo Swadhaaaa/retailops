@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from routes.auth import auth_bp
 from routes.tickets import tickets_bp
 from routes.categories import categories_bp
+from database import init_db
 
 import os
 
@@ -14,6 +15,7 @@ load_dotenv()
 app = Flask(__name__)
 
 CORS(app)
+init_db()
 
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 
