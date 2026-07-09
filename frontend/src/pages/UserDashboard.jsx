@@ -226,8 +226,9 @@ const staticCategories = [
   { category_id: 20, name: 'Finance & Reporting', description: 'Financial reports, budgets, and reconciliation' }
 ];
 
-// Enable the message-thread experience for the new backend comment storage.
-const MESSAGES_FEATURE_ENABLED = true;
+// TEMPORARILY DISABLED - MESSAGES FEATURE
+// User message UI/API entry points are preserved behind this flag for easy restoration.
+const MESSAGES_FEATURE_ENABLED = false;
 
 const getCategoryIcon = (catId) => {
   const styles = getCategoryStyles(catId);
@@ -1120,7 +1121,7 @@ const UserDashboard = () => {
         </div>
 
         {/* ── 3 Action Cards ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {[
             {
               label: 'Raise a Query', desc: 'Select a category and raise a new query',

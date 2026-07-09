@@ -1,16 +1,40 @@
-# React + Vite
+# QMS Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the Vite React frontend for the Query Management System.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React
+- Vite
+- React Router
+- Axios
+- Tailwind CSS
+- Chart.js
+- react-chartjs-2
 
-## React Compiler
+## Main Files
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `src/App.jsx` - Route definitions for login, user, admin, and department dashboards
+- `src/main.jsx` - React app entrypoint
+- `src/context/AuthContext.jsx` - Auth provider and login/logout state
+- `src/components/shared/ProtectedRoute.jsx` - Role-based route protection
+- `src/utils/api.ts` - Axios client pointed at `http://localhost:5000/api`
+- `src/pages/LoginPage.jsx` - Login and password reset screen
+- `src/pages/UserDashboard.jsx` - User dashboard; Messages is currently disabled by feature flag
+- `src/pages/AdminDashboard.jsx` - Admin dashboard; Messages is currently disabled by feature flag
+- `src/pages/DepartmentDashboard.jsx` - Department-scoped dashboard
+- `src/components/RaiseTicketModal.jsx` - Query creation modal
 
-## Expanding the ESLint configuration
+## Current Notes
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Messages UI is temporarily disabled in both user and admin dashboards with `MESSAGES_FEATURE_ENABLED = false`.
+- `src/context/AuthContextBase.jsx` was removed because it duplicated `AuthContext.jsx` and was unused.
+- The app uses the root project `README.md` as the main source of truth for full-stack setup, backend APIs, and current project status.
+
+## Commands
+
+```bash
+npm install
+npm run dev
+npm run build
+```

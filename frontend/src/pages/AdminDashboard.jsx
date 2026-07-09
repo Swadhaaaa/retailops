@@ -39,8 +39,9 @@ const DEFAULT_AGENTS = [
   'Vikas Singh'
 ];
 
-// Enable the ticket conversation experience with the new backend comment storage.
-const MESSAGES_FEATURE_ENABLED = true;
+// TEMPORARILY DISABLED - MESSAGES FEATURE
+// Admin message UI/API entry points are preserved behind this flag for easy restoration.
+const MESSAGES_FEATURE_ENABLED = false;
 
 const DEPARTMENT_DIRECTORY = [
   { name: 'Finance', head: 'Finance Department', members: 10, accent: 'green' },
@@ -321,7 +322,9 @@ const AdminDashboard = () => {
     try {
       const res = await api.get(`/tickets/${ticket.ticket_id}`);
       const normalized = normalizeTicketDetail(res.data);
-      setDrawerMessages(normalized.messages || []);
+      if (MESSAGES_FEATURE_ENABLED) {
+        setDrawerMessages(normalized.messages || []);
+      }
       setDrawerTicket(normalized);
     } catch (err) {
       console.error('Error opening drawer details:', err);
@@ -352,7 +355,9 @@ const AdminDashboard = () => {
       setDrawerMessageText('');
       const res = await api.get(`/tickets/${drawerTicket.ticket_id}`);
       const normalized = normalizeTicketDetail(res.data);
-      setDrawerMessages(normalized.messages || []);
+      if (MESSAGES_FEATURE_ENABLED) {
+        setDrawerMessages(normalized.messages || []);
+      }
       setDrawerTicket(normalized);
       fetchTickets();
       notifyTicketsChanged();
@@ -400,7 +405,9 @@ const AdminDashboard = () => {
       const res = await api.get(`/tickets/${ticket.ticket_id}`);
       const normalized = normalizeTicketDetail(res.data);
       setQueryTicket(normalized);
-      setQueryMessages(normalized.messages || []);
+      if (MESSAGES_FEATURE_ENABLED) {
+        setQueryMessages(normalized.messages || []);
+      }
       setActiveTab('Queries');
     } catch (err) {
       console.error('Error opening query ticket:', err);
@@ -413,7 +420,9 @@ const AdminDashboard = () => {
     const res = await api.get(`/tickets/${ticketId}`);
     const normalized = normalizeTicketDetail(res.data);
     setQueryTicket(normalized);
-    setQueryMessages(normalized.messages || []);
+    if (MESSAGES_FEATURE_ENABLED) {
+      setQueryMessages(normalized.messages || []);
+    }
   };
 
   const handleQueryStatusChange = async (status) => {
@@ -627,14 +636,18 @@ const AdminDashboard = () => {
 
     if (drawerTicket?.ticket_id) {
       api.get(`/tickets/${drawerTicket.ticket_id}`).then(res => {
-        setDrawerMessages(res.data.messages || []);
+        if (MESSAGES_FEATURE_ENABLED) {
+          setDrawerMessages(res.data.messages || []);
+        }
       }).catch(err => console.error(err));
     }
 
     if (queryTicket?.ticket_id) {
       api.get(`/tickets/${queryTicket.ticket_id}`).then(res => {
         setQueryTicket(res.data);
-        setQueryMessages(res.data.messages || []);
+        if (MESSAGES_FEATURE_ENABLED) {
+          setQueryMessages(res.data.messages || []);
+        }
       }).catch(err => console.error(err));
     }
 
@@ -647,13 +660,17 @@ const AdminDashboard = () => {
       }
       if (drawerTicket?.ticket_id) {
         api.get(`/tickets/${drawerTicket.ticket_id}`).then(res => {
-          setDrawerMessages(res.data.messages || []);
+          if (MESSAGES_FEATURE_ENABLED) {
+            setDrawerMessages(res.data.messages || []);
+          }
         }).catch(err => console.error(err));
       }
       if (queryTicket?.ticket_id) {
         api.get(`/tickets/${queryTicket.ticket_id}`).then(res => {
           setQueryTicket(res.data);
-          setQueryMessages(res.data.messages || []);
+          if (MESSAGES_FEATURE_ENABLED) {
+            setQueryMessages(res.data.messages || []);
+          }
         }).catch(err => console.error(err));
       }
     }, 5000);
