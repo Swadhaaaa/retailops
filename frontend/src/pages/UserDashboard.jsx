@@ -1064,7 +1064,7 @@ const UserDashboard = () => {
     const clarificationCount = tickets.filter(t => t.status === 'Needs Clarification').length;
 
     return (
-      <div className="space-y-6 text-left">
+      <div className="space-y-5 text-left">
 
         {/* ── Welcome Banner ── */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -1121,7 +1121,7 @@ const UserDashboard = () => {
         </div>
 
         {/* ── 3 Action Cards ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className={`grid grid-cols-1 ${MESSAGES_FEATURE_ENABLED ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
           {[
             {
               label: 'Raise a Query', desc: 'Select a category and raise a new query',
@@ -1160,14 +1160,14 @@ const UserDashboard = () => {
             <div
               key={card.label}
               onClick={card.onClick}
-              className={`action-card bg-white border ${card.border} rounded-3xl p-5 cursor-pointer flex items-center space-x-4 ${card.glowHover} ${card.borderHover}`}
+              className={`action-card bg-white border ${card.border} rounded-xl px-4 py-3 cursor-pointer flex min-h-[68px] items-center gap-3 ${card.glowHover} ${card.borderHover}`}
             >
-              <div className={`w-12 h-12 rounded-full ${card.bg} flex items-center justify-center shadow-md ${card.shadow} shrink-0`}>
+              <div className={`w-9 h-9 rounded-full ${card.bg} flex items-center justify-center shadow-md ${card.shadow} shrink-0`}>
                 {card.icon}
               </div>
-              <div>
-                <h3 className="text-[13px] font-extrabold text-brandDarkNavy font-sora leading-none">{card.label}</h3>
-                <p className="text-[10px] text-gray-500 mt-1.5 font-semibold leading-normal font-dmSans">{card.desc}</p>
+              <div className="min-w-0">
+                <h3 className="text-[13px] font-extrabold text-brandDarkNavy font-sora leading-tight">{card.label}</h3>
+                <p className="text-[10px] text-gray-500 mt-0.5 font-semibold leading-normal font-dmSans">{card.desc}</p>
               </div>
             </div>
           ))}
@@ -2747,6 +2747,9 @@ const UserDashboard = () => {
                 }
               ].map((item) => {
                 const isActive = activeTab === item.name;
+                const sidebarIconTone = ['Dashboard', 'Track Status', 'Profile'].includes(item.name)
+                  ? 'bg-brandRed/10 text-brandRed'
+                  : 'bg-brandNavy/10 text-brandNavy';
                 return (
                   <button
                     key={item.name}
@@ -2761,7 +2764,7 @@ const UserDashboard = () => {
                     )}
                     <span className={`flex items-center justify-center w-7 h-7 rounded-xl transition-all duration-200 icon-scale ${isActive
                       ? (isVendor ? 'bg-brandRed/10 text-brandRed' : 'bg-brandNavy/10 text-brandNavy')
-                      : 'text-gray-400'
+                      : sidebarIconTone
                       }`}>
                       {item.icon}
                     </span>
@@ -3040,11 +3043,11 @@ const UserDashboard = () => {
       {selectedTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-brandNavy/35 backdrop-blur-sm overflow-hidden animate-fade-in">
           <div className="absolute inset-0 bg-brandNavy/10 backdrop-blur-[1px]" onClick={closeTicketDetails} />
-          <div className={`relative bg-white w-full ${selectedTicketView === 'track' ? 'max-w-6xl max-h-[calc(100vh-5.5rem)]' : 'max-w-5xl max-h-[calc(100vh-4rem)]'} rounded-2xl shadow-2xl border border-gray-100/90 overflow-hidden z-10 animate-scale-in flex flex-col font-dmSans`}>
+          <div className={`relative bg-white w-full ${selectedTicketView === 'track' ? 'max-w-6xl max-h-[calc(100vh-5.5rem)]' : 'max-w-5xl max-h-[calc(100vh-4rem)]'} rounded-md shadow-2xl border border-gray-100/90 overflow-hidden z-10 animate-scale-in flex flex-col font-dmSans`}>
             <div className={`h-1.5 w-full ${isVendor ? 'bg-brandRed' : 'bg-brandNavy'}`} />
 
             <button onClick={closeTicketDetails}
-              className="absolute top-3 right-3 w-8 h-8 rounded-lg hover:bg-gray-100 active:bg-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200">
+              className="absolute top-3 right-3 w-8 h-8 rounded-md hover:bg-gray-100 active:bg-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-all duration-200">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
               </svg>
@@ -3066,10 +3069,10 @@ const UserDashboard = () => {
               </div>
             </div>
 
-            <div className={`grid ${selectedTicketView === 'track' ? 'grid-cols-2 lg:grid-cols-5' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'} gap-2.5 px-4 py-3 bg-gray-50/30`}>
+            <div className={`grid ${selectedTicketView === 'track' ? 'grid-cols-2 lg:grid-cols-5' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'} gap-3 px-4 py-3 bg-gray-50/30`}>
               {/* Category */}
-              <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
-                <div className="w-7 h-7 rounded-lg bg-brandNavy/5 text-brandNavy flex items-center justify-center flex-shrink-0 border border-brandNavy/10">
+              <div className="bg-white border border-gray-150/70 rounded-md px-4 py-3 flex min-h-[68px] items-center space-x-3 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
+                <div className="w-8 h-8 rounded-sm bg-brandNavy/5 text-brandNavy flex items-center justify-center flex-shrink-0 border border-brandNavy/10">
                   {getCategoryIcon(selectedTicket.category_id)}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -3081,8 +3084,8 @@ const UserDashboard = () => {
               </div>
 
               {/* Assigned Department */}
-              <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
-                <div className="w-7 h-7 rounded-lg bg-brandNavy/5 text-brandNavy flex items-center justify-center flex-shrink-0 border border-brandNavy/10">
+              <div className="bg-white border border-gray-150/70 rounded-md px-4 py-3 flex min-h-[68px] items-center space-x-3 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
+                <div className="w-8 h-8 rounded-sm bg-brandNavy/5 text-brandNavy flex items-center justify-center flex-shrink-0 border border-brandNavy/10">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M8.25 7.5h1.5m-1.5 3h1.5m4.5-3h1.5m-1.5 3h1.5M9 21v-4.5h6V21" />
                   </svg>
@@ -3096,8 +3099,8 @@ const UserDashboard = () => {
               </div>
 
               {selectedTicketView === 'track' && (
-                <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0 border ${selectedTicket.status === 'Resolved' ? 'text-emerald-600 bg-emerald-50/50 border-emerald-100' :
+                <div className="bg-white border border-gray-150/70 rounded-md px-4 py-3 flex min-h-[68px] items-center space-x-3 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
+                  <div className={`w-8 h-8 rounded-sm flex items-center justify-center shadow-sm flex-shrink-0 border ${selectedTicket.status === 'Resolved' ? 'text-emerald-600 bg-emerald-50/50 border-emerald-100' :
                       selectedTicket.status === 'In Progress' ? 'text-amber-500 bg-amber-50/50 border-amber-100' :
                         selectedTicket.status === 'Open' ? 'text-brandNavy bg-blue-50/50 border-blue-100' : 'text-brandRed bg-rose-50/50 border-rose-100'
                     }`}>
@@ -3119,8 +3122,8 @@ const UserDashboard = () => {
               )}
 
               {/* Submitted Date */}
-              <div className="bg-white border border-gray-150/70 rounded-xl p-3 flex items-center space-x-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
-                <div className="w-7 h-7 rounded-lg bg-gray-50 text-gray-500 flex items-center justify-center flex-shrink-0 border border-gray-100">
+              <div className="bg-white border border-gray-150/70 rounded-md px-4 py-3 flex min-h-[68px] items-center space-x-3 shadow-[0_2px_8px_rgba(0,0,0,0.015)] hover:shadow-md transition-all duration-200">
+                <div className="w-8 h-8 rounded-sm bg-gray-50 text-gray-500 flex items-center justify-center flex-shrink-0 border border-gray-100">
                   <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
                   </svg>
@@ -3138,7 +3141,7 @@ const UserDashboard = () => {
             <div className="border-t border-gray-100 mx-4" />
 
             {selectedTicket.status === 'Open' && (
-              <div className="mx-4 mt-3 rounded-xl border border-brandNavy/10 bg-blue-50/40 p-3">
+              <div className="mx-4 mt-3 rounded-md border border-brandNavy/10 bg-blue-50/40 p-3">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-[9px] font-extrabold uppercase tracking-wider text-brandNavy font-sora">Ticket is still open</p>
@@ -3155,7 +3158,7 @@ const UserDashboard = () => {
                           category_id: String(selectedTicket.category_id || categories[0]?.category_id || '1')
                         });
                       }}
-                      className="rounded-lg bg-brandNavy px-4 py-2 text-xs font-extrabold text-white"
+                      className="rounded-md bg-brandNavy px-4 py-2 text-xs font-extrabold text-white"
                     >
                       {isEditingTicket ? 'Cancel Edit' : 'Edit Ticket'}
                     </button>
@@ -3163,7 +3166,7 @@ const UserDashboard = () => {
                       type="button"
                       disabled={ticketActionLoading === 'withdraw'}
                       onClick={handleWithdrawTicket}
-                      className="rounded-lg border border-brandRed/20 px-4 py-2 text-xs font-extrabold text-brandRed disabled:opacity-50"
+                      className="rounded-md border border-brandRed/20 px-4 py-2 text-xs font-extrabold text-brandRed disabled:opacity-50"
                     >
                       {ticketActionLoading === 'withdraw' ? 'Withdrawing...' : 'Withdraw'}
                     </button>
@@ -3269,7 +3272,7 @@ const UserDashboard = () => {
                   {/* Description Block */}
                   <div className="min-h-0">
                     <h4 className="text-[9px] uppercase text-gray-400 font-extrabold tracking-widest font-sora mb-2 leading-none">Description</h4>
-                    <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-3.5 text-xs text-gray-600 leading-relaxed whitespace-pre-wrap font-medium break-words line-clamp-[10]">
+                    <div className="bg-gray-50/70 border border-gray-200/80 rounded-md p-3.5 text-xs text-gray-600 leading-relaxed whitespace-pre-wrap font-medium break-words line-clamp-[10]">
                       {selectedTicket.description}
                     </div>
                   </div>
@@ -3312,7 +3315,7 @@ const UserDashboard = () => {
                 {/* Description Block */}
                 <div>
                   <h4 className="text-[9px] uppercase text-gray-400 font-extrabold tracking-widest font-sora mb-2 leading-none">Description</h4>
-                  <div className="bg-gray-50/70 border border-gray-200/80 rounded-xl p-4 text-sm text-gray-600 leading-relaxed whitespace-pre-wrap font-medium break-words">
+                  <div className="bg-gray-50/70 border border-gray-200/80 rounded-md p-4 text-sm text-gray-600 leading-relaxed whitespace-pre-wrap font-medium break-words">
                     {selectedTicket.description}
                   </div>
                 </div>

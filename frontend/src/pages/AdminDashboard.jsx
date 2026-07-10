@@ -1000,7 +1000,7 @@ const AdminDashboard = () => {
 
         <div className="relative hidden flex-1 max-w-xl mx-6 lg:block">
           <div className="relative">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.2" stroke="currentColor" className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brandNavy/70">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.2" stroke="currentColor" className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brandNavy">
               <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
             </svg>
             <input
@@ -1060,6 +1060,9 @@ const AdminDashboard = () => {
           <div className="space-y-1.5">
             {sidebarItems.map((item) => {
               const isActive = activeTab === item.name;
+              const sidebarIconTone = ['Dashboard', 'Departments', 'Profile'].includes(item.name)
+                ? 'bg-brandRed/10 text-brandRed'
+                : 'bg-brandNavy/10 text-brandNavy';
               return (
                 <button
                   key={item.name}
@@ -1075,7 +1078,7 @@ const AdminDashboard = () => {
                   {isActive && (
                     <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-md bg-gradient-to-b from-brandNavy to-brandRed" />
                   )}
-                  <span className={`w-5 h-5 shrink-0 flex items-center justify-center ${isActive ? 'text-brandNavy' : 'text-gray-400 hover:text-gray-600'}`}>{item.icon}</span>
+                  <span className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-xl transition-all duration-200 ${isActive ? sidebarIconTone : sidebarIconTone}`}>{item.icon}</span>
                   <span className="font-medium whitespace-nowrap leading-none">{item.name}</span>
                 </button>
               );
@@ -1846,7 +1849,7 @@ const AdminDashboard = () => {
         </div>
 
         {!isQueryQueueCollapsed && (
-          <div className="premium-glass rounded-[18px] border border-white/70 p-4">
+          <div className="premium-glass rounded-[18px] border border-brandNavy/15 p-4 shadow-sm ring-1 ring-brandNavy/5">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-sm font-extrabold text-brandDarkNavy font-sora">Filters</h2>
@@ -1911,8 +1914,8 @@ const AdminDashboard = () => {
         )}
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-          <div className={`${isQueryQueueCollapsed ? 'xl:col-span-1' : 'xl:col-span-4'} premium-glass rounded-[18px] overflow-hidden transition-all duration-300`}>
-            <div className="px-4 py-3 border-b border-white/60 flex items-center justify-between gap-3">
+          <div className={`${isQueryQueueCollapsed ? 'xl:col-span-1' : 'xl:col-span-4'} premium-glass rounded-[18px] overflow-hidden border border-brandNavy/15 shadow-sm ring-1 ring-brandNavy/5 transition-all duration-300`}>
+            <div className="px-4 py-3 border-b border-brandNavy/15 flex items-center justify-between gap-3">
               {!isQueryQueueCollapsed && (
                 <h2 className="text-sm font-extrabold text-brandDarkNavy font-sora">Ticket Queue</h2>
               )}
@@ -1928,7 +1931,7 @@ const AdminDashboard = () => {
                 </svg>
               </button>
             </div>
-            <div className={`max-h-[680px] overflow-y-auto divide-y divide-slate-100 ${isQueryQueueCollapsed ? 'px-2 py-2' : ''}`}>
+            <div className={`max-h-[680px] overflow-y-auto ${isQueryQueueCollapsed ? 'px-2 py-2' : 'space-y-2 p-2'}`}>
               {loading ? (
                 <div className={`${isQueryQueueCollapsed ? 'p-3' : 'p-8'} text-center text-xs font-bold text-slate-400`}>{isQueryQueueCollapsed ? '...' : 'Loading tickets...'}</div>
               ) : filteredQueryTickets.length === 0 ? (
@@ -1941,10 +1944,10 @@ const AdminDashboard = () => {
                       key={ticket.ticket_id}
                       type="button"
                       onClick={() => openQueryTicket(ticket)}
-                      className={`relative w-full text-left transition-all ${isQueryQueueCollapsed ? `my-1 flex h-11 items-center justify-center rounded-xl px-2 ${isSelected ? 'bg-brandNavy text-white shadow-sm' : 'bg-white/65 text-brandNavy hover:bg-white'}` : `px-4 py-3 ${isSelected ? 'bg-slate-50 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.18)] text-brandNavy' : 'hover:bg-white/65 hover:shadow-sm'}`}`}
+                      className={`relative w-full text-left transition-all ${isQueryQueueCollapsed ? `my-1 flex h-11 items-center justify-center rounded-xl border px-2 ${isSelected ? 'border-brandNavy/20 bg-brandNavy text-white shadow-sm' : 'border-slate-100 bg-white/75 text-brandNavy hover:bg-white'}` : `rounded-2xl border px-4 py-3 ${isSelected ? 'border-brandRed/15 bg-brandRed/[0.025] shadow-sm text-brandNavy' : 'border-slate-100/80 bg-white/55 hover:border-slate-200 hover:bg-white/75 hover:shadow-sm'}`}`}
                     >
                       {!isQueryQueueCollapsed && isSelected && (
-                        <span className="absolute left-0 top-0 bottom-0 w-1 bg-brandRed" aria-hidden="true" />
+                        <span className="absolute left-2 top-3 bottom-3 w-1 rounded-full bg-brandRed/80 shadow-sm shadow-brandRed/10" aria-hidden="true" />
                       )}
                       {isQueryQueueCollapsed ? (
                         <span
@@ -1978,13 +1981,13 @@ const AdminDashboard = () => {
 
           <div className={`${isQueryQueueCollapsed ? 'xl:col-span-11' : 'xl:col-span-8'} transition-all duration-300`}>
             {!selectedTicket ? (
-              <div className="premium-glass rounded-[22px] p-10 text-center text-sm font-bold text-slate-400">
+              <div className="premium-glass rounded-[22px] border border-brandNavy/15 p-10 text-center text-sm font-bold text-slate-400 shadow-sm ring-1 ring-brandNavy/5">
                 Select a ticket to view details.
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-12 premium-glass rounded-[22px] overflow-hidden">
-                <div className="lg:col-span-8 p-5 lg:p-6 space-y-5 border-b lg:border-b-0 lg:border-r border-white/60">
-                  <div className="rounded-[20px] border border-brandNavy/10 bg-gradient-to-br from-brandNavy/[0.08] via-white to-brandRed/[0.05] p-5 shadow-sm">
+              <div className="grid grid-cols-1 lg:grid-cols-12 premium-glass rounded-[22px] overflow-hidden border border-brandNavy/15 shadow-sm ring-1 ring-brandNavy/5">
+                <div className="lg:col-span-8 p-5 lg:p-6 space-y-5 border-b lg:border-b-0 lg:border-r border-brandNavy/15">
+                  <div className="rounded-[20px] border border-brandNavy/20 bg-gradient-to-br from-brandNavy/[0.08] via-white to-brandRed/[0.05] p-5 shadow-sm ring-1 ring-brandNavy/5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <div className="flex items-center gap-3 flex-wrap">
@@ -1997,14 +2000,14 @@ const AdminDashboard = () => {
                           </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 mt-4 text-[10px] font-bold text-slate-500">
-                          <span className="rounded-full bg-white/75 border border-white px-3 py-1 shadow-sm">Created: {getRelativeTime(selectedTicket.created_at)}</span>
-                          <span className="rounded-full bg-white/75 border border-white px-3 py-1 shadow-sm">Category: {selectedTicket.category_name || `Category #${selectedTicket.category_id}`}</span>
+                          <span className="rounded-full bg-white/85 border border-brandNavy/15 px-3 py-1 shadow-sm">Created: {getRelativeTime(selectedTicket.created_at)}</span>
+                          <span className="rounded-full bg-white/85 border border-brandRed/15 px-3 py-1 shadow-sm">Category: {selectedTicket.category_name || `Category #${selectedTicket.category_id}`}</span>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <section className="rounded-2xl border border-slate-100 bg-white/70 p-3 shadow-sm">
+                  <section className="rounded-2xl border border-brandNavy/15 bg-white/75 p-3 shadow-sm ring-1 ring-brandNavy/5">
                     <div className="mb-2 flex items-center gap-2">
                       <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora">Description</h3>
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-slate-500">Issue Summary</span>
@@ -2012,7 +2015,7 @@ const AdminDashboard = () => {
                     <p className="text-xs text-slate-700 leading-snug font-semibold whitespace-pre-wrap">{selectedTicket.description}</p>
                   </section>
 
-                  <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-[18px] border border-slate-100 bg-white/70 p-4 shadow-sm">
+                  <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-[18px] border border-brandRed/15 bg-white/75 p-4 shadow-sm ring-1 ring-brandRed/5">
                     {[
                       ['Requester', selectedTicket.vendor_name || selectedTicket.raised_by],
                       ['Department', selectedTeam],
@@ -2025,13 +2028,13 @@ const AdminDashboard = () => {
                     ))}
                   </section>
 
-                  <section className="border-t border-slate-100 pt-5">
+                  <section className="rounded-[18px] border border-brandNavy/15 bg-white/60 p-4 shadow-sm ring-1 ring-brandNavy/5">
                     <div className="mb-3 flex items-center gap-2">
                       <h3 className="text-xs font-extrabold text-brandDarkNavy font-sora">Attachments</h3>
                       <span className="rounded-full bg-brandNavy/10 px-2.5 py-1 text-[9px] font-extrabold text-brandNavy">{attachments.length} files</span>
                     </div>
                     {attachments.length === 0 ? (
-                      <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-4 text-xs font-semibold text-slate-400">No attachments uploaded.</p>
+                      <p className="rounded-2xl border border-dashed border-brandNavy/20 bg-slate-50/80 px-4 py-4 text-xs font-semibold text-slate-400">No attachments uploaded.</p>
                     ) : (
                       <div className="space-y-2">
                         {attachments.map((file, index) => (
@@ -2075,9 +2078,9 @@ const AdminDashboard = () => {
                   )}
                 </div>
 
-                <aside className="lg:col-span-4 p-5 bg-white/42 backdrop-blur-md">
-                  <div className="sticky top-5 space-y-4 rounded-[18px] border border-brandNavy/10 bg-white/88 p-4 shadow-lg shadow-brandNavy/5 backdrop-blur-xl">
-                    <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                <aside className="lg:col-span-4 border-l border-brandNavy/10 bg-white/42 p-5 backdrop-blur-md">
+                  <div className="sticky top-5 space-y-4 rounded-[18px] border border-brandNavy/20 bg-white/88 p-4 shadow-lg shadow-brandNavy/5 ring-1 ring-brandNavy/5 backdrop-blur-xl">
+                    <div className="flex items-center gap-2 border-b border-brandNavy/15 pb-3">
                       <div>
                         <h3 className="text-sm font-extrabold text-brandDarkNavy font-sora">Ticket Actions</h3>
                         <p className="text-[10px] font-bold text-slate-400">Update ownership and status.</p>
@@ -2318,46 +2321,6 @@ const AdminDashboard = () => {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
-          <section className="premium-glass rounded-[18px] border border-brandNavy/20 p-6">
-            <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-brandNavy">Resolved Tickets</p>
-            <h2 className="mt-1 text-sm font-extrabold text-brandDarkNavy font-sora">Resolved tickets by department</h2>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-3">
-              {departmentLeaderboard.map((department, index) => (
-                <div key={department.name} className={`min-h-[78px] rounded-lg border bg-white/75 px-4 py-3 ${index % 2 === 0 ? 'border-brandNavy/25' : 'border-brandRed/25'}`}>
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="truncate text-[11px] font-extrabold text-brandNavy">{index + 1}. {department.name}</p>
-                    <span className="shrink-0 text-[11px] font-extrabold text-brandRed">{department.resolved}</span>
-                  </div>
-                  <div className="mt-2 h-1.5 rounded-full bg-slate-100">
-                    <div className="h-1.5 rounded-full bg-brandNavy" style={{ width: `${Math.round((department.resolved / maxDepartmentResolved) * 100)}%` }} />
-                  </div>
-                  <p className="mt-1 text-[9px] font-semibold text-slate-400">{department.resolved}/{department.total} resolved</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="premium-glass rounded-[18px] border border-brandRed/20 p-5">
-            <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-brandRed">SLA Performance</p>
-            <h2 className="mt-1 text-sm font-extrabold text-brandDarkNavy font-sora">Met SLA vs breached SLA</h2>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
-                <p className="text-[10px] font-extrabold uppercase tracking-wider text-green-700">Met SLA</p>
-                <p className="mt-1 text-2xl font-extrabold text-green-700 font-sora">{slaMet}</p>
-              </div>
-              <div className="rounded-lg border border-brandRed/20 bg-brandRed/5 px-4 py-3">
-                <p className="text-[10px] font-extrabold uppercase tracking-wider text-brandRed">Breached SLA</p>
-                <p className="mt-1 text-2xl font-extrabold text-brandRed font-sora">{slaBreached}</p>
-              </div>
-            </div>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-              <div className="h-full bg-green-500" style={{ width: `${totalCount ? Math.round((slaMet / totalCount) * 100) : 0}%` }} />
-            </div>
-          </section>
-
-        </div>
-
         {loading ? (
           <div className="premium-glass rounded-[24px] p-10 text-center text-xs font-bold text-slate-400">
             Loading analytics...
@@ -2431,6 +2394,45 @@ const AdminDashboard = () => {
                   ))}
                 </div>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <section className="premium-glass rounded-[18px] border border-brandNavy/20 p-6">
+                <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-brandNavy">Resolved Tickets</p>
+                <h2 className="mt-1 text-sm font-extrabold text-brandDarkNavy font-sora">Resolved tickets by department</h2>
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-3">
+                  {departmentLeaderboard.map((department, index) => (
+                    <div key={department.name} className={`min-h-[78px] rounded-lg border bg-white/75 px-4 py-3 ${index % 2 === 0 ? 'border-brandNavy/25' : 'border-brandRed/25'}`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="truncate text-[11px] font-extrabold text-brandNavy">{index + 1}. {department.name}</p>
+                        <span className="shrink-0 text-[11px] font-extrabold text-brandRed">{department.resolved}</span>
+                      </div>
+                      <div className="mt-2 h-1.5 rounded-full bg-slate-100">
+                        <div className="h-1.5 rounded-full bg-brandNavy" style={{ width: `${Math.round((department.resolved / maxDepartmentResolved) * 100)}%` }} />
+                      </div>
+                      <p className="mt-1 text-[9px] font-semibold text-slate-400">{department.resolved}/{department.total} resolved</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="premium-glass rounded-[18px] border border-brandRed/20 p-5">
+                <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-brandRed">SLA Performance</p>
+                <h2 className="mt-1 text-sm font-extrabold text-brandDarkNavy font-sora">Met SLA vs breached SLA</h2>
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-green-700">Met SLA</p>
+                    <p className="mt-1 text-2xl font-extrabold text-green-700 font-sora">{slaMet}</p>
+                  </div>
+                  <div className="rounded-lg border border-brandRed/20 bg-brandRed/5 px-4 py-3">
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-brandRed">Breached SLA</p>
+                    <p className="mt-1 text-2xl font-extrabold text-brandRed font-sora">{slaBreached}</p>
+                  </div>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-full bg-green-500" style={{ width: `${totalCount ? Math.round((slaMet / totalCount) * 100) : 0}%` }} />
+                </div>
+              </section>
             </div>
 
           </>
