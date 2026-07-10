@@ -7,7 +7,6 @@ An enterprise-grade, full-stack ticket and workflow management platform featurin
 ![React](https://img.shields.io/badge/React-19.2-61DAFB?style=flat-square&logo=react&logoColor=white&labelColor=333333)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?style=flat-square&logo=typescript&logoColor=white&labelColor=333333)
 ![DuckDB](https://img.shields.io/badge/DuckDB-Database-FFF000?style=flat-square&logo=duckdb&logoColor=black&labelColor=333333)
-![License](https://img.shields.io/badge/License-MIT-DFB317?style=flat-square&labelColor=333333)
 
 ---
 
