@@ -19,7 +19,10 @@ vendor_password = bcrypt.generate_password_hash("User@123").decode('utf-8')
 
 # Insert admin user
 conn.execute("""
-INSERT INTO users VALUES (
+INSERT INTO users (
+    user_id, name, email, password_hash, role, department,
+    assigned_categories, vendor_id, is_active, created_at, last_login
+) VALUES (
     'USR-10001',
     'Admin User',
     'admin@test.com',
@@ -36,31 +39,52 @@ INSERT INTO users VALUES (
 
 # Insert user accounts
 conn.execute("""
-INSERT INTO users VALUES ('USR-10002', 'User One', 'user1@test.com', ?, 'user', 'Supply Chain', '[1,2,4,6,11,14]', 'VEND-001', true, CURRENT_TIMESTAMP, NULL)
+INSERT INTO users (
+    user_id, name, email, password_hash, role, department,
+    assigned_categories, vendor_id, is_active, created_at, last_login
+) VALUES ('USR-10002', 'User One', 'user1@test.com', ?, 'user', 'Supply Chain', '[1,2,4,6,11,14]', 'VEND-001', true, CURRENT_TIMESTAMP, NULL)
 """, [vendor_password])
 
 conn.execute("""
-INSERT INTO users VALUES ('USR-10003', 'User Two', 'user2@test.com', ?, 'user', 'Inventory', '[2,3,8,9,10,12]', 'VEND-002', true, CURRENT_TIMESTAMP, NULL)
+INSERT INTO users (
+    user_id, name, email, password_hash, role, department,
+    assigned_categories, vendor_id, is_active, created_at, last_login
+) VALUES ('USR-10003', 'User Two', 'user2@test.com', ?, 'user', 'Inventory', '[2,3,8,9,10,12]', 'VEND-002', true, CURRENT_TIMESTAMP, NULL)
 """, [vendor_password])
 
 conn.execute("""
-INSERT INTO users VALUES ('USR-10004', 'ABC Suppliers Ltd', 'abc@test.com', ?, 'user', 'Operations', '[1,2,3,4,5,6,7,8,9,10]', 'VEND-ABC', true, CURRENT_TIMESTAMP, NULL)
+INSERT INTO users (
+    user_id, name, email, password_hash, role, department,
+    assigned_categories, vendor_id, is_active, created_at, last_login
+) VALUES ('USR-10004', 'ABC Suppliers Ltd', 'abc@test.com', ?, 'user', 'Operations', '[1,2,3,4,5,6,7,8,9,10]', 'VEND-ABC', true, CURRENT_TIMESTAMP, NULL)
 """, [vendor_password])
 
 conn.execute("""
-INSERT INTO users VALUES ('USR-10005', 'XYZ Logistics', 'xyz@test.com', ?, 'user', 'Logistics', '[1,2,3,4,5,6,7,8,9,10]', 'VEND-XYZ', true, CURRENT_TIMESTAMP, NULL)
+INSERT INTO users (
+    user_id, name, email, password_hash, role, department,
+    assigned_categories, vendor_id, is_active, created_at, last_login
+) VALUES ('USR-10005', 'XYZ Logistics', 'xyz@test.com', ?, 'user', 'Logistics', '[1,2,3,4,5,6,7,8,9,10]', 'VEND-XYZ', true, CURRENT_TIMESTAMP, NULL)
 """, [vendor_password])
 
 conn.execute("""
-INSERT INTO users VALUES ('USR-10006', 'Global Tech Corp', 'global@test.com', ?, 'user', 'IT Support', '[1,2,3,4,5,6,7,8,9,10]', 'VEND-GLOBAL', true, CURRENT_TIMESTAMP, NULL)
+INSERT INTO users (
+    user_id, name, email, password_hash, role, department,
+    assigned_categories, vendor_id, is_active, created_at, last_login
+) VALUES ('USR-10006', 'Global Tech Corp', 'global@test.com', ?, 'user', 'IT Support', '[1,2,3,4,5,6,7,8,9,10]', 'VEND-GLOBAL', true, CURRENT_TIMESTAMP, NULL)
 """, [vendor_password])
 
 conn.execute("""
-INSERT INTO users VALUES ('USR-10007', 'Prime Distributors', 'prime@test.com', ?, 'user', 'Finance', '[1,2,3,4,5,6,7,8,9,10]', 'VEND-PRIME', true, CURRENT_TIMESTAMP, NULL)
+INSERT INTO users (
+    user_id, name, email, password_hash, role, department,
+    assigned_categories, vendor_id, is_active, created_at, last_login
+) VALUES ('USR-10007', 'Prime Distributors', 'prime@test.com', ?, 'user', 'Finance', '[1,2,3,4,5,6,7,8,9,10]', 'VEND-PRIME', true, CURRENT_TIMESTAMP, NULL)
 """, [vendor_password])
 
 conn.execute("""
-INSERT INTO users VALUES ('USR-10008', 'Smart Solutions', 'smart@test.com', ?, 'user', 'Compliance', '[1,2,3,4,5,6,7,8,9,10]', 'VEND-SMART', true, CURRENT_TIMESTAMP, NULL)
+INSERT INTO users (
+    user_id, name, email, password_hash, role, department,
+    assigned_categories, vendor_id, is_active, created_at, last_login
+) VALUES ('USR-10008', 'Smart Solutions', 'smart@test.com', ?, 'user', 'Compliance', '[1,2,3,4,5,6,7,8,9,10]', 'VEND-SMART', true, CURRENT_TIMESTAMP, NULL)
 """, [vendor_password])
 
 # Insert categories
