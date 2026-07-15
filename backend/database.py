@@ -2,11 +2,11 @@ import os
 import duckdb
 from dotenv import load_dotenv
 
+
 load_dotenv()
 
 DB_PATH = os.getenv('DB_PATH', 'tickets.db')
 LEGACY_ADMIN_ROLE = 'super' + '_admin'
-
 
 def get_db():
     return duckdb.connect(DB_PATH)
