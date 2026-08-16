@@ -6,7 +6,9 @@ from dotenv import load_dotenv
 from routes.auth import auth_bp
 from routes.tickets import tickets_bp
 from routes.categories import categories_bp
+from routes.user import user_bp
 from database import init_db
+from seed import seed_data
 
 import os
 
@@ -14,38 +16,52 @@ load_dotenv()
 
 app = Flask(__name__)
 
+# Enable CORS so the Vercel frontend can communicate with Render
 CORS(app)
+
+# Initialize the database
 init_db()
 
+# Create demo/initial data only if the database is empty
+seed_data()
+
+# JWT configuration
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 
 jwt = JWTManager(app)
 
-# Register Auth Blueprint
+# ---------------------------------------------------------
+# REGISTER BLUEPRINTS
+# ---------------------------------------------------------
+
+# Authentication
 app.register_blueprint(
     auth_bp,
     url_prefix='/api/auth'
 )
 
-# Register Tickets Blueprint
+# Tickets
 app.register_blueprint(
     tickets_bp,
     url_prefix='/api/tickets'
 )
 
-from routes.user import user_bp
-
-# Register Categories Blueprint
+# Categories
 app.register_blueprint(
     categories_bp,
     url_prefix='/api/categories'
 )
 
-# Register User Blueprint
+# Users
 app.register_blueprint(
     user_bp,
     url_prefix='/api/users'
 )
+
+
+# ---------------------------------------------------------
+# HEALTH CHECK
+# ---------------------------------------------------------
 
 @app.route('/')
 def health():
@@ -54,5 +70,13 @@ def health():
         'message': 'QMS Retail API v1.0'
     })
 
+
+# ---------------------------------------------------------
+# LOCAL DEVELOPMENT
+# ---------------------------------------------------------
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(
+        debug=True,
+        port=5000
+    )
